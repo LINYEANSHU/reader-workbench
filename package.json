@@ -26,7 +26,17 @@
     "bin",
     "apps/web/dist",
     "plugins",
-    "docs/installation.md"
+    "docs/installation.md",
+    "docs/plugins.md",
+    "docs/api.md",
+    "docs/mcp.md",
+    "docs/current-delivery.md",
+    "docs/verification.md",
+    "docs/THIRD_PARTY.md",
+    "Start-Reader.ps1",
+    "scripts/http-client.mjs",
+    "scripts/mcp-client.mjs",
+    "scripts/live-model.mjs"
   ],
   "scripts": {
     "test": "vitest run",
@@ -34,7 +44,8 @@
     "build": "node scripts/build.mjs",
     "start": "node bin/reader-workbench.mjs",
     "test:e2e": "playwright test",
-    "test:live": "node scripts/live-model.mjs"
+    "test:live": "node scripts/live-model.mjs",
+    "acceptance": "node scripts/acceptance.mjs"
   },
   "dependencies": {
     "@fastify/static": "10.1.6",

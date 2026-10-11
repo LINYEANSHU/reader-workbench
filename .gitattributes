@@ -1,0 +1,2 @@
+# Preserve evidence bytes and hashes; logs are captured output, not source.
+docs/evidence/** -text -whitespace

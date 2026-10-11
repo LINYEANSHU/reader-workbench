@@ -19,6 +19,12 @@ async function setup(){
 }
 const digest=(bytes:Uint8Array)=>createHash('sha256').update(bytes).digest('hex');
 describe('versioned document parsing',()=>{
+ it('converts Office in a deeply nested workspace without a long LibreOffice profile',async()=>{
+  const local=resolve('.reader-runtime/LibreOffice/program/soffice.com');try{await access(local);process.env.READER_LIBREOFFICE=local;}catch{}
+  const {root,documents}=await setup();const deep=join(root,'deep workspace with spaces '.repeat(4).trimEnd());await mkdir(deep);await cp(join(root,'reader.docx'),join(deep,'中文 source.docx'));
+  const operation=AbortSignal.timeout(30000),workspace=await documents.workspaces.select(deep,{callerId:'local-owner',transport:'internal'}),before=digest(await readFile(join(deep,'中文 source.docx'))),record=await documents.open(workspace.id,'中文 source.docx',operation);
+  expect((await documents.waitReady(record,operation)).parseState).toBe('ready');expect((await documents.readPage(record,1)).text).toContain('RI');expect(digest(await readFile(join(deep,'中文 source.docx')))).toBe(before);
+ },45000);
  it('reads office pages and keeps versioned originals',async()=>{
   const local=resolve('.reader-runtime/LibreOffice/program/soffice.com');try{await access(local);process.env.READER_LIBREOFFICE=local;}catch{}
   expect(await findLibreOffice(),'Real LibreOffice required for Office acceptance').toBeTruthy();

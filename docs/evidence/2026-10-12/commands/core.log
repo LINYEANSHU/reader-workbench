@@ -1,0 +1,81 @@
+
+> reader-workbench@0.1.0 test
+> vitest run
+
+
+ RUN  v4.0.18 G:/My_project/try/.worktrees/reader-workbench
+
+ ✓ tests/integration/runs.test.ts (11 tests) 2363ms
+     ✓ keeps repeated source citations unique across completed main and temporary turns  313ms
+     ✓ inherits completed main turns during a real concurrent stream and freezes archive tool reads  326ms
+ ✓ tests/integration/model-adapter.test.ts (10 tests) 2319ms
+     ✓ sends the previous reasoning and both actual tool results in the second HTTP request  343ms
+     ✓ saves only credential references, reloads settings and registers demo only explicitly  410ms
+     ✓ uses only configured read OCR on an authorized local image and never sends it to a text-only endpoint  338ms
+     ✓ freezes queued model settings and carries the selected effort through the agent loop  362ms
+stderr | tests/integration/artifacts.test.ts > workspace artifact export > reopens generated files inside the original run workspace
+Warning: TT: undefined function: 21
+
+stderr | tests/integration/artifacts.test.ts > workspace artifact export > reopens generated files inside the original run workspace
+Warning: TT: undefined function: 21
+
+ ✓ tests/integration/artifacts.test.ts (8 tests) 27112ms
+     ✓ reopens generated files inside the original run workspace  25490ms
+ ✓ tests/integration/plugin-extension.test.ts (5 tests) 3398ms
+   ✓ installs, configures, invokes and persistently reloads a reader plugin without changing its parent  322ms
+   ✓ manages actual HTTP MCP discovery, schema notifications, aborts and authenticated settings  965ms
+   ✓ calls a real Python process with Unicode and shell characters, and terminates timed-out and cancelled process trees  1434ms
+   ✓ discovers real external MCP tools, refreshes schemas, and refuses undeclared writes in a temporary run  478ms
+ ✓ tests/integration/plugin-consumers.test.ts (5 tests) 1341ms
+   ✓ dispatches persisted document and run lifecycle events without blocking another session and makes errors observable  374ms
+ ✓ tests/integration/mcp-server.test.ts (2 tests) 3065ms
+   ✓ shares HTTP and both MCP transports with the web service  2881ms
+stderr | tests/integration/documents.test.ts > versioned document parsing > reads office pages and keeps versioned originals
+Warning: TT: undefined function: 21
+
+stderr | tests/integration/documents.test.ts > versioned document parsing > reads office pages and keeps versioned originals
+Warning: TT: undefined function: 21
+
+stderr | tests/integration/documents.test.ts > versioned document parsing > reads office pages and keeps versioned originals
+Warning: TT: undefined function: 21
+
+stderr | tests/integration/documents.test.ts > versioned document parsing > reads office pages and keeps versioned originals
+Warning: TT: undefined function: 21
+
+stderr | tests/integration/documents.test.ts > versioned document parsing > reports invalid PDF and reads text, image and unsupported binary honestly
+Warning: Indexing all PDF objects
+
+ ✓ tests/integration/documents.test.ts (9 tests) 43578ms
+     ✓ converts Office in a deeply nested workspace without a long LibreOffice profile  8545ms
+     ✓ reads office pages and keeps versioned originals  32723ms
+     ✓ serves versioned documents and authorized assets over authenticated HTTP  429ms
+     ✓ terminates actual child processes on timeout and cancellation without shell expansion  830ms
+ ✓ tests/integration/session-isolation.test.ts (3 tests) 431ms
+ ✓ tests/integration/cli-distribution.test.ts (1 test) 21822ms
+   ✓ starts the installed package with no source workspace links  21822ms
+ ✓ tests/unit/context-budget.test.ts (3 tests) 192ms
+ ✓ tests/integration/speech.test.ts (4 tests) 1029ms
+   ✓ queues scoped speech jobs, cancels preparation and recognition, and never commits either conversation  461ms
+ ✓ tests/integration/attachments.test.ts (2 tests) 709ms
+   ✓ sends the saved PNG to vision, refuses text-only answers, and invokes OCR only as a scoped read  401ms
+   ✓ saves only owned temporary PNGs with verified size, source and workspace, without changing parent memory  308ms
+ ✓ tests/integration/workspaces.test.ts (6 tests) 634ms
+ ✓ tests/integration/runtime.test.ts (5 tests) 363ms
+ ✓ tests/unit/plugins.test.ts (5 tests) 31ms
+ ✓ tests/unit/tool-policy.test.ts (3 tests) 4ms
+ ✓ tests/unit/layout.test.ts (4 tests) 3ms
+ ✓ tests/integration/speech-native.test.ts (2 tests) 6301ms
+   ✓ recognizes actual owned Chinese and English waveforms with fixed models and outgoing asset fetch blocked  3207ms
+   ✓ hard-cancels a real native decode and releases its process before recognizing again  3094ms
+ ✓ tests/integration/selection-actions.test.ts (1 test) 258ms
+ ✓ tests/integration/speech-assets.test.ts (1 test) 41ms
+ ✓ tests/unit/selection.test.ts (2 tests) 3ms
+ ✓ tests/unit/wave.test.ts (2 tests) 8ms
+ ✓ tests/unit/hotkeys.test.ts (1 test) 2ms
+ ✓ tests/unit/artifact-formula.test.ts (1 test) 62ms
+
+ Test Files  24 passed (24)
+      Tests  96 passed (96)
+   Start at  03:21:05
+   Duration  125.26s (transform 723ms, setup 0ms, import 7.01s, tests 115.07s, environment 1ms)
+

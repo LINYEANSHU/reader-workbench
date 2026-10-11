@@ -1,7 +1,7 @@
-import {mkdir,access,writeFile,readFile,rm,lstat} from 'node:fs/promises';
-import {join,basename,dirname} from 'node:path';
+import {mkdtemp,access,writeFile,readFile,rm,realpath} from 'node:fs/promises';
+import {join,resolve} from 'node:path';
+import {tmpdir} from 'node:os';
 import {pathToFileURL} from 'node:url';
-import {randomUUID} from 'node:crypto';
 import type {VersionedFile} from '../../../contracts/src/documents.js';
 import type {DocumentAdapter} from '../../../sdk/src/capabilities.js';
 import {ReaderError} from '../../../contracts/src/errors.js';
@@ -9,6 +9,7 @@ import {findLibreOffice} from '../runtime/doctor.js';
 import {runProcess} from '../runtime/process.js';
 import {parsePdf} from './pdf.js';
 import {extractNotes} from './notes.js';
+import {isWithin} from '../workspaces/path-guard.js';
 let queue:Promise<unknown>=Promise.resolve();
 export async function convertOffice(input:VersionedFile,signal:AbortSignal):Promise<string>{
  const conversion=queue.catch(()=>{}).then(async()=>{
@@ -16,19 +17,16 @@ export async function convertOffice(input:VersionedFile,signal:AbortSignal):Prom
   const version=await runProcess(executable,['--version'],signal,10000);
   const signature=version.stdout.trim();const metadata=join(input.cacheDir,'conversion.json'),destination=join(input.cacheDir,'source.pdf');
   try{if(JSON.parse(await readFile(metadata,'utf8')).engine===signature){await access(destination);return destination;}}catch{}
-  const cacheRoot=dirname(dirname(dirname(input.cacheDir)));
-  const workRoot=join(cacheRoot,'conversions');
-  try{if((await lstat(workRoot)).isSymbolicLink())throw new ReaderError('PATH_OUTSIDE_WORKSPACE','转换目录不能指向链接',403);}
-  catch(error){if(error instanceof ReaderError)throw error;if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;}
-  await mkdir(workRoot,{recursive:true});
-  const output=join(workRoot,randomUUID().slice(0,8));await mkdir(output);
-  const staged=join(output,'source'+input.extension);await writeFile(staged,await readFile(input.path),{flag:'wx'});
-  const profile=pathToFileURL(join(output,'profile')).href;
+  // LibreOffice creates long nested profile files; keep its private staging
+  // independent of workspace depth. Only the durable preview stays in cacheDir.
+  const workRoot=await realpath(tmpdir()),output=await mkdtemp(join(workRoot,'reader-office-'));
   try{
+    const staged=join(output,'source'+input.extension);await writeFile(staged,await readFile(input.path),{flag:'wx',mode:0o600});
+    const profile=pathToFileURL(join(output,'profile')).href;
     await runProcess(executable,['-env:UserInstallation='+profile,'--headless','--nologo','--nodefault','--nofirststartwizard','--convert-to','pdf','--outdir',output,staged],signal,120000);
-    const converted=join(output,'source.pdf');await access(converted);
+    const converted=join(output,'source.pdf');try{await access(converted);}catch{throw new ReaderError('CONVERTER_FAILED','LibreOffice 未生成预览，请检查转换器和本机字体');}
     await writeFile(destination,await readFile(converted));await writeFile(metadata,JSON.stringify({engine:signature,source:input.version}));
-  }finally{await rm(output,{recursive:true,force:true});}
+  }finally{if(resolve(output)===resolve(workRoot)||!isWithin(workRoot,output))throw new ReaderError('PATH_OUTSIDE_WORKSPACE','临时转换目录无效',403);await rm(output,{recursive:true,force:true});}
   return destination;
  });queue=conversion;return conversion;
 }

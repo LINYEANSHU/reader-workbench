@@ -1,0 +1,15 @@
+
+> reader-workbench@0.1.0 test
+> vitest run tests/integration/documents.test.ts -t deeply nested workspace
+
+
+ RUN  v4.0.18 G:/My_project/try/.worktrees/reader-workbench
+
+ ✓ tests/integration/documents.test.ts (9 tests | 8 skipped) 14653ms
+     ✓ converts Office in a deeply nested workspace without a long LibreOffice profile  14652ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 8 skipped (9)
+   Start at  03:13:13
+   Duration  16.34s (transform 841ms, setup 0ms, import 1.52s, tests 14.65s, environment 0ms)
+

@@ -1,0 +1,32 @@
+{
+  "platform": "win32",
+  "node": "v24.21.0",
+  "model": "deepseek-flash",
+  "baseUrl": "https://api.deepseek.com",
+  "checks": [
+    {
+      "name": "real main stream",
+      "status": "passed"
+    },
+    {
+      "name": "temporary inherits A and leaves parent unchanged",
+      "status": "passed",
+      "revision": 1
+    },
+    {
+      "name": "dynamic main memory plus own followup history",
+      "status": "passed",
+      "revision": 2
+    },
+    {
+      "name": "real image recognition and citation",
+      "status": "passed",
+      "documentVersion": "4a8add1cf1d444a3b1e9589973db9c59fa23387811619c6a9a0320551c71426e"
+    },
+    {
+      "name": "real low-effort stream cancellation and parent isolation",
+      "status": "passed"
+    }
+  ],
+  "date": "2026-10-11T05:17:53.155Z"
+}

@@ -1,0 +1,15 @@
+
+> reader-workbench@0.1.0 test
+> vitest run tests/integration/cli-distribution.test.ts
+
+
+ RUN  v4.0.18 G:/My_project/try/.worktrees/reader-workbench
+
+ ✓ tests/integration/cli-distribution.test.ts (1 test) 38596ms
+   ✓ starts the installed package with no source workspace links  38595ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  03:13:42
+   Duration  38.94s (transform 52ms, setup 0ms, import 173ms, tests 38.60s, environment 0ms)
+

@@ -1,0 +1,214 @@
+{
+  "status": "passed",
+  "platform": "win32",
+  "node": "v24.21.0",
+  "source": "real LibreOffice + PDF.js from built runtime; all source pages and generated pages",
+  "results": [
+    {
+      "name": "source-reader.pdf",
+      "version": "48a7422388b3ffa3439a40383f92128186126e85bb6ee547a65365294ac72c37",
+      "pageCount": 2,
+      "pages": [
+        {
+          "page": 1,
+          "file": "source-reader.pdf-1.png",
+          "sha256": "3796eaf6020582dc5d34846a9319c6ed937b21c5f8737e4d3a651e11299c5f3e",
+          "textCharacters": 95
+        },
+        {
+          "page": 2,
+          "file": "source-reader.pdf-2.png",
+          "sha256": "876c3c0f32901adc94f03de7942b9b09a5953a2415c10feb0ff793a6f966a7cd",
+          "textCharacters": 95
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "name": "source-reader.docx",
+      "version": "68c5e7a34f231371ea212e962d44f6b2a081e5f9f1b5e465157a8f10f24023c6",
+      "pageCount": 2,
+      "pages": [
+        {
+          "page": 1,
+          "file": "source-reader.docx-1.png",
+          "sha256": "990c6f193e7424cb410f57108be7a7684a7f133c91811466d7d1c76fd699c9d6",
+          "textCharacters": 93
+        },
+        {
+          "page": 2,
+          "file": "source-reader.docx-2.png",
+          "sha256": "972268c10d4569b5b6f83c79f61d68d46b110c8fa2175194c5f5f106ee9507d2",
+          "textCharacters": 27
+        }
+      ],
+      "warnings": [
+        "Office 页面由 LibreOffice 转换；缺失字体或转换器差异可能改变排版。"
+      ]
+    },
+    {
+      "name": "source-reader.pptx",
+      "version": "6f86d7538389199eeff365a16b52f654d6823b6d55d8b6921546aeda1b2b0f34",
+      "pageCount": 2,
+      "pages": [
+        {
+          "page": 1,
+          "file": "source-reader.pptx-1.png",
+          "sha256": "0ce2ab4689d408361e09a9780a6719cb8e9525592658c0c89be9c74a507117b3",
+          "textCharacters": 67
+        },
+        {
+          "page": 2,
+          "file": "source-reader.pptx-2.png",
+          "sha256": "439009975ac0f805bdc4ef477491a218f6faffc45bc2705b499213876fce5188",
+          "textCharacters": 67
+        }
+      ],
+      "warnings": [
+        "Office 页面由 LibreOffice 转换；缺失字体或转换器差异可能改变排版。"
+      ]
+    },
+    {
+      "name": "source-reader.doc",
+      "version": "b8d393567390e36ce13536be67f52a0ff7fb061052065bd48629f0b3a9f57288",
+      "pageCount": 2,
+      "pages": [
+        {
+          "page": 1,
+          "file": "source-reader.doc-1.png",
+          "sha256": "57f702ab198ebcbfc20e92c5931c3ebe5bded85be583344d4e708ade59009bba",
+          "textCharacters": 77
+        },
+        {
+          "page": 2,
+          "file": "source-reader.doc-2.png",
+          "sha256": "972268c10d4569b5b6f83c79f61d68d46b110c8fa2175194c5f5f106ee9507d2",
+          "textCharacters": 27
+        }
+      ],
+      "warnings": [
+        "Office 页面由 LibreOffice 转换；缺失字体或转换器差异可能改变排版。"
+      ]
+    },
+    {
+      "name": "source-reader.ppt",
+      "version": "2147dc4a22daa92692e7eb04f898d48e435104bb93b344383c59c4f657d73c3f",
+      "pageCount": 2,
+      "pages": [
+        {
+          "page": 1,
+          "file": "source-reader.ppt-1.png",
+          "sha256": "1e794eb766c0b87bf7048afdea69a41458460938c2e35de40fc7a21c05e04a8b",
+          "textCharacters": 67
+        },
+        {
+          "page": 2,
+          "file": "source-reader.ppt-2.png",
+          "sha256": "cd6318cac02c6def7b866633b36eb3b9174a4baa436cb3d0508bc91fafac092e",
+          "textCharacters": 67
+        }
+      ],
+      "warnings": [
+        "Office 页面由 LibreOffice 转换；缺失字体或转换器差异可能改变排版。"
+      ]
+    },
+    {
+      "name": "source-scan.pdf",
+      "version": "d34d9a4fc35a7c38d176a6bc10ccd87ec54142aa476075d23ac2ad0e16604394",
+      "pageCount": 1,
+      "pages": [
+        {
+          "page": 1,
+          "file": "source-scan.pdf-1.png",
+          "sha256": "efaf73eff0467c0b4a0427af9107c3bbcb797727edccafcdc52e7bd52ef1546a",
+          "textCharacters": 0
+        }
+      ],
+      "warnings": [
+        "第 1 页无文本层，可能为扫描页；没有执行 OCR。"
+      ]
+    },
+    {
+      "name": "generated-docx",
+      "version": "3820d6030873c444629fad57eb3351fe8b4481ddceede8f2f5bbe0f3a7b11693",
+      "pageCount": 1,
+      "pages": [
+        {
+          "page": 1,
+          "file": "generated-docx-1.png",
+          "sha256": "6833d7d1f28a22e9696e5daffbc6f1fbac568de70cf11d4c9cb5eb1dfcbf85a1",
+          "textCharacters": 148
+        }
+      ],
+      "warnings": [
+        "Office 页面由 LibreOffice 转换；缺失字体或转换器差异可能改变排版。"
+      ]
+    },
+    {
+      "name": "generated-pptx",
+      "version": "2b9f05df64a61e9fa0c183e033025cdd430fa3b1e97467f60a9c6e20e1f6f864",
+      "pageCount": 7,
+      "pages": [
+        {
+          "page": 1,
+          "file": "generated-pptx-1.png",
+          "sha256": "84340c863d1d8229e5e00754d0d945af4a408905c68e4825e181d96871e819fe",
+          "textCharacters": 36
+        },
+        {
+          "page": 2,
+          "file": "generated-pptx-2.png",
+          "sha256": "187ac9602d27010a7a1d6af504b8484721afabd28d66095ce07c445c2da56267",
+          "textCharacters": 10
+        },
+        {
+          "page": 3,
+          "file": "generated-pptx-3.png",
+          "sha256": "2935dfd0365e3eef6f8df2a0f250efc62813a879f4f14b7529cc522d751bdfe1",
+          "textCharacters": 29
+        },
+        {
+          "page": 4,
+          "file": "generated-pptx-4.png",
+          "sha256": "a06727fb3f668abbcad40d6b868d81b8579d2a2ee38bf2c5d84c0077c415cd12",
+          "textCharacters": 21
+        },
+        {
+          "page": 5,
+          "file": "generated-pptx-5.png",
+          "sha256": "b5d6a40e0e0279f9ea19a1fa3c4c09f537d51773a2ad3061da060454b5ca5dfd",
+          "textCharacters": 30
+        },
+        {
+          "page": 6,
+          "file": "generated-pptx-6.png",
+          "sha256": "a2607f7cdcb62c8cd0e3408afc7aeb4cb454e1ed552c32f3a3b361ac1621d8b1",
+          "textCharacters": 3
+        },
+        {
+          "page": 7,
+          "file": "generated-pptx-7.png",
+          "sha256": "3b6a82e53c9ab72c927eca22de554fddcead5afee56ea43b90110033b25eb4bd",
+          "textCharacters": 61
+        }
+      ],
+      "warnings": [
+        "Office 页面由 LibreOffice 转换；缺失字体或转换器差异可能改变排版。"
+      ]
+    },
+    {
+      "name": "generated-pdf",
+      "version": "995a4a4beb3c2a3929eaba4c478bb339563886d21b37211ae4af535e11190573",
+      "pageCount": 1,
+      "pages": [
+        {
+          "page": 1,
+          "file": "generated-pdf-1.png",
+          "sha256": "6833d7d1f28a22e9696e5daffbc6f1fbac568de70cf11d4c9cb5eb1dfcbf85a1",
+          "textCharacters": 148
+        }
+      ],
+      "warnings": []
+    }
+  ]
+}

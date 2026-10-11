@@ -1,0 +1,44 @@
+name: Reader Workbench
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      READER_TEST_SPEECH_ASSETS: ${{ github.workspace }}/.reader-runtime/sensevoice-small-int8
+      READER_SPEECH_ASSET_DIR: ${{ github.workspace }}/.reader-runtime/sensevoice-small-int8
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Office on Linux
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libreoffice fonts-noto-cjk
+      - name: Office on macOS
+        if: runner.os == 'macOS'
+        run: brew install --cask libreoffice
+      - name: Office on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $readerInstaller = Join-Path $env:RUNNER_TEMP 'reader-libreoffice.msi'
+          Invoke-WebRequest 'https://download.documentfoundation.org/libreoffice/stable/26.2.6/win/x86_64/LibreOffice_26.2.6_Win_x86-64.msi' -OutFile $readerInstaller
+          if ((Get-FileHash -LiteralPath $readerInstaller -Algorithm SHA256).Hash.ToLowerInvariant() -ne 'f9877032fd908beb9c0ddf06df4af5c2e85f419c42e14876c4cce5aae5fb2660') { throw 'Converter hash mismatch' }
+          $readerInstall = Start-Process msiexec.exe -ArgumentList @('/i', $readerInstaller, '/qn', '/norestart') -WindowStyle Hidden -Wait -PassThru
+          if ($readerInstall.ExitCode -notin @(0, 3010)) { throw 'Converter installation failed' }
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium chrome
+      - run: node scripts/prepare-speech.mjs --cache .reader-runtime/sensevoice-small-int8
+      - run: npm test
+      - run: npm run test:e2e

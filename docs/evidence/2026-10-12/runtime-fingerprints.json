@@ -1,0 +1,45 @@
+{
+  "stage": "Task 15 runtime tested before final review",
+  "files": [
+    {
+      "path": "dist/cli.mjs",
+      "sha256": "b6f05409a7308f9c4598d6585c003d87b01d9d08d6d8153dcd16d4fc43ba3af7"
+    },
+    {
+      "path": "dist/sdk.mjs",
+      "sha256": "6e74087aeda335f0d1e9e59e8bb98800f94de6ee633f36e687a017d433746cb7"
+    },
+    {
+      "path": "dist/sdk.d.ts",
+      "sha256": "442cdd506bf49f4656546f0b779e56356cda8897325573eb60cc97ad8a496d6c"
+    },
+    {
+      "path": "dist/worker.mjs",
+      "sha256": "e9cd3a493aefb5ee0431eba8863d88afbc7472656249747bf185eea71771d513"
+    },
+    {
+      "path": "apps/web/dist/index.html",
+      "sha256": "19c401074c3893de05d61f75f972225f5e9f3929f99b91471059bd0e328dc947"
+    },
+    {
+      "path": "packages/core/src/documents/office.ts",
+      "sha256": "50fffe6f5443baca1e568ca6845f1baa19e18c0fac43577cd7d727c47f38010a"
+    },
+    {
+      "path": "packages/core/src/runtime/doctor.ts",
+      "sha256": "e7c49cf4a8ec0219a6ded8bf665354bfcec2e1fa86db2ea535705d229336078b"
+    },
+    {
+      "path": "Start-Reader.ps1",
+      "sha256": "118e01bdbe8481fa708ff71162cd729f185ecdfcce22efe9b84cf65b992a73ac"
+    },
+    {
+      "path": "package.json",
+      "sha256": "e772cfcf6c008cd23b9db1349f3147a1bd1ac310c86bd9c1256b9b1da71abc39"
+    },
+    {
+      "path": "package-lock.json",
+      "sha256": "a0a4397428cc01651beb6116c36bb13dc37b6c73791f41eb9355ec5ad5d309e5"
+    }
+  ]
+}
