@@ -1,0 +1,50 @@
+{
+  "name": "reader-workbench",
+  "version": "0.1.0",
+  "description": "A workspace-first document reading agent",
+  "type": "module",
+  "private": false,
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "bin": {
+    "reader-workbench": "bin/reader-workbench.mjs"
+  },
+  "exports": {
+    ".": "./dist/cli.mjs",
+    "./sdk": {
+      "types": "./dist/sdk.d.ts",
+      "import": "./dist/sdk.mjs"
+    }
+  },
+  "files": [
+    "dist",
+    "bin",
+    "apps/web/dist",
+    "plugins",
+    "docs/installation.md"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "build": "node scripts/build.mjs",
+    "start": "node bin/reader-workbench.mjs",
+    "test:e2e": "playwright test",
+    "test:live": "node scripts/live-model.mjs"
+  },
+  "dependencies": {
+    "env-paths": "4.0.0",
+    "fastify": "5.12.5",
+    "open": "11.0.4"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "esbuild": "0.28.2",
+    "typescript": "5.9.3",
+    "vitest": "4.0.18"
+  }
+}
