@@ -29,6 +29,7 @@ import {serveWeb} from './static.js';
 import {layoutRoutes} from './routes/layout.js';
 import {SelectionService} from '../../../packages/core/src/selection/service.js';import {selectionRoutes} from './routes/selection.js';
 import {AttachmentService} from '../../../packages/core/src/documents/attachments.js';import {attachmentRoutes} from './routes/attachments.js';
+import {attachMcpHttp} from './mcp/http.js';import {attachReaderOpenApi} from './openapi.js';
 export async function startServer(config:RuntimeConfig){
   const app=Fastify({logger:false,bodyLimit:16*1024*1024,forceCloseConnections:true});
   const auth=new Authentication();
@@ -56,6 +57,7 @@ export async function startServer(config:RuntimeConfig){
   artifactRoutes(app,artifacts,auth);
   layoutRoutes(app,workspaces,capabilities);
   selectionRoutes(app,selections,auth);attachmentRoutes(app,attachments,auth);
+  const services={workspaces,documents,sessions,runs,artifacts,plugins};await attachMcpHttp(app,services,auth);attachReaderOpenApi(app,services,auth);
   app.addHook('preClose',async()=>{await runs.close();await artifacts.close();await documents.close();});
   app.addHook('onClose',async()=>{await workspaces.close();});
   app.setErrorHandler((error,_request,reply)=>{
@@ -79,3 +81,4 @@ export async function startServer(config:RuntimeConfig){
     return {url,bootstrapUrl:url+'/#bootstrap='+auth.code,app,auth,workspaces,documents,capabilities,plugins,sessionRepository,sessions,context,runs,tools,models,artifacts,attachments,close:async()=>{await app.close();}};
   }catch(error){await app.close();if((error as NodeJS.ErrnoException).code==='EADDRINUSE')throw new ReaderError('PORT_IN_USE','端口 '+config.port+' 已被占用，请使用 --port 指定其他端口');throw error;}
 }
+

@@ -57,6 +57,10 @@ export class RunService{
   if(!terminal(record)&&!this.controllers.has(id)){record.status='failed';record.error=new ReaderError('RUN_INTERRUPTED','服务重启中断本次运行，请重新提问').public();await this.records.save(record);await this.records.emit(record,'error',record.error);await this.records.emit(record,'state',{status:'failed'});}return record;
   });
  }
+ async readSavedEvents(workspaceId:WorkspaceId,id:RunId,afterSeq:number):Promise<RunEvent[]>{
+  if(!Number.isSafeInteger(afterSeq)||afterSeq<0)throw new ReaderError('INVALID_CURSOR','事件序号无效');
+  const record=await this.get(workspaceId,id);return record.kind==='document'?this.dependencies.documents.jobs.readEvents(workspaceId,id,afterSeq):this.records.readEvents(workspaceId,id,afterSeq);
+ }
  async *events(workspaceId:WorkspaceId,id:RunId,afterSeq:number,signal:AbortSignal):AsyncIterable<RunEvent>{
   if(!Number.isSafeInteger(afterSeq)||afterSeq<0)throw new ReaderError('INVALID_CURSOR','事件序号无效');const record=await this.get(workspaceId,id);
   if(record.kind==='document'){yield* this.dependencies.documents.jobs.events(workspaceId,id,afterSeq,signal);return;}

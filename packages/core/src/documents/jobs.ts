@@ -38,11 +38,14 @@ export class DocumentJobService {
    store.putRecord('document-sequences',record.id,seq);store.putRecord('document-events',record.id+':'+String(seq).padStart(10,'0'),event);
   });
  }
+ async readEvents(workspaceId:WorkspaceId,id:RunId,afterSeq:number):Promise<RunEvent[]>{
+  await this.get(workspaceId,id);return(await this.workspaces.storeFor(workspaceId)).listRecords<RunEvent>('document-events').filter(event=>event.runId===id&&event.seq>afterSeq).sort((a,b)=>a.seq-b.seq);
+ }
  async *events(workspaceId:WorkspaceId,id:RunId,afterSeq:number,signal:AbortSignal):AsyncIterable<RunEvent>{
   let cursor=afterSeq;
   while(!signal.aborted){
    const record=await this.get(workspaceId,id),store=await this.workspaces.storeFor(workspaceId);
-   for(const event of store.listRecords<RunEvent>('document-events').filter(event=>event.runId===id&&event.seq>cursor).sort((a,b)=>a.seq-b.seq)){cursor=event.seq;yield event;}
+   for(const event of await this.readEvents(workspaceId,id,cursor)){cursor=event.seq;yield event;}
    if(['completed','failed','cancelled'].includes(record.status))return;
    await delay(30,undefined,{signal});
   }

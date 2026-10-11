@@ -1,0 +1,73 @@
+import {afterEach,expect,it} from 'vitest';
+import {mkdtemp,mkdir,writeFile,rm} from 'node:fs/promises';
+import {join,resolve} from 'node:path';
+import {tmpdir} from 'node:os';
+import {request as httpRequest} from 'node:http';
+import {execFile} from 'node:child_process';import {promisify} from 'node:util';import {setTimeout as delay} from 'node:timers/promises';
+import {Client,StreamableHTTPClientTransport} from '@modelcontextprotocol/client';
+import {StdioClientTransport} from '@modelcontextprotocol/client/stdio';
+import {startServer} from '../../apps/server/src/app.js';
+import {CredentialStore} from '../../packages/core/src/runtime/credentials.js';
+import type {WorkspaceId,SessionId,RunId} from '../../packages/contracts/src/ids.js';
+const cleanup:Array<()=>Promise<unknown>>=[];afterEach(async()=>{for(const close of cleanup.splice(0).reverse())await close();});
+const payload=(result:any)=>{expect(result.isError).not.toBe(true);return result.structuredContent as any;};
+it('shares HTTP and both MCP transports with the web service',async()=>{
+ const directory=await mkdtemp(join(tmpdir(),'reader MCP 中文 '));cleanup.push(()=>rm(directory,{recursive:true,force:true}));
+ const root=join(directory,'阅读 工作区');await mkdir(root);await writeFile(join(root,'原文.md'),'# 原文\n\nRI 表示秩指示。');
+ const host=await startServer({host:'127.0.0.1',port:0,configDir:join(directory,'config'),demo:true,noOpen:true});cleanup.push(()=>host.close());
+ const testKey='sk-mcp-test-private';await new CredentialStore(host.workspaces.configDir).setSecret('mcp-proof',testKey);
+ const client=new Client({name:'reader-http-proof',version:'1'});cleanup.push(()=>client.close());
+ await client.connect(new StreamableHTTPClientTransport(new URL(host.url+'/mcp'),{requestInit:{headers:{authorization:'Bearer '+host.auth.token}}}));
+ const workspace=payload(await client.callTool({name:'select_workspace',arguments:{root}}));
+ expect((await client.listResourceTemplates()).resourceTemplates).toHaveLength(3);
+ expect(payload(await client.callTool({name:'list_workspace_files',arguments:{workspaceId:workspace.id}})).files).toEqual(expect.arrayContaining([expect.objectContaining({relativePath:'原文.md'})]));
+ expect(payload(await client.callTool({name:'list_workspaces',arguments:{}})).workspaces).toContainEqual(workspace);
+ const doc=payload(await client.callTool({name:'open_document',arguments:{workspaceId:workspace.id,relativePath:'原文.md'}}));
+ await host.documents.waitReady(doc,new AbortController().signal);
+ const documentEvents=payload(await client.callTool({name:'get_run_events',arguments:{workspaceId:workspace.id,runId:doc.processingRunId}}));expect(documentEvents.events.length).toBeGreaterThan(0);
+ const main=payload(await client.callTool({name:'create_reading_session',arguments:{workspaceId:workspace.id,title:'MCP 阅读'}}));
+ const temporary=payload(await client.callTool({name:'create_reading_session',arguments:{workspaceId:workspace.id,parentMainSessionId:main.id}}));
+ const ask={workspaceId:workspace.id,sessionId:main.id,question:'解释 RI',documents:[{workspaceId:workspace.id,documentId:doc.documentId,version:doc.version}],attachmentIds:[],providerId:'demo',requestId:'mcp-main-1',allowArtifactWrites:false};
+ const result=payload(await client.callTool({name:'ask_main',arguments:ask}));expect(result.runId).toBeTruthy();
+ await expect.poll(async()=>payload(await client.callTool({name:'get_run',arguments:{workspaceId:workspace.id,runId:result.runId}})).status).toBe('completed');
+ const history=await(await fetch(host.url+'/api/v1/workspaces/'+workspace.id+'/sessions/'+main.id+'/history',{headers:{authorization:'Bearer '+host.auth.token}})).json();
+ const resource=await client.readResource({uri:'reader://'+workspace.id+'/sessions/'+main.id});
+ expect(JSON.parse((resource.contents[0] as any).text)).toEqual(history);expect(JSON.stringify(resource)).not.toContain(host.auth.token);expect(JSON.stringify(resource)).not.toContain(testKey);
+ const before=await host.sessionRepository.snapshot(workspace.id,main.id);
+ const tempResult=payload(await client.callTool({name:'ask_temporary',arguments:{...ask,sessionId:temporary.id,requestId:'mcp-temp-1'}}));
+ await expect.poll(async()=>payload(await client.callTool({name:'get_run',arguments:{workspaceId:workspace.id,runId:tempResult.runId}})).status).toBe('completed');
+ expect(await host.sessionRepository.snapshot(workspace.id,main.id)).toEqual(before);
+ let generating=false,cancelled=false;host.capabilities.register(workspace.id,'model','slow-mcp',{capabilities:{vision:false,tools:false,contextWindow:64000,maxOutputTokens:512},async *generate(_request,signal){generating=true;try{yield{kind:'delta',text:'unfinished'};await delay(5000,undefined,{signal});yield{kind:'done'};}finally{cancelled=signal.aborted;}}});
+ const long=payload(await client.callTool({name:'ask_main',arguments:{...ask,providerId:'slow-mcp',requestId:'mcp-cancel'}}));expect(long.runId).toBeTruthy();await expect.poll(()=>generating).toBe(true);expect(payload(await client.callTool({name:'get_run',arguments:{workspaceId:workspace.id,runId:long.runId}})).status).toBe('running');
+ expect(payload(await client.callTool({name:'cancel_run',arguments:{workspaceId:workspace.id,runId:long.runId}})).cancelled).toBe(true);expect(cancelled).toBe(true);expect(await host.sessionRepository.snapshot(workspace.id,main.id)).toEqual(before);
+ const events=payload(await client.callTool({name:'get_run_events',arguments:{workspaceId:workspace.id,runId:result.runId}}));expect(events.events.at(-1).data).toEqual({status:'completed'});
+ const page=await client.readResource({uri:'reader://'+workspace.id+'/documents/'+doc.documentId+'/'+doc.version+'/pages/1'});expect(JSON.stringify(page)).toContain('秩指示');expect(JSON.stringify(page)).not.toContain('.reader-workbench');
+ const transport=new StdioClientTransport({command:process.execPath,args:[resolve('bin/reader-workbench.mjs'),'mcp','--config-dir',host.workspaces.configDir],stderr:'pipe'});
+ const stdio=new Client({name:'reader-stdio-proof',version:'1'});cleanup.push(()=>stdio.close());await stdio.connect(transport);
+ const same=payload(await stdio.callTool({name:'open_document',arguments:{workspaceId:workspace.id,relativePath:'原文.md'}}));expect(same.documentId).toBe(doc.documentId);
+ const sameHistory=await stdio.readResource({uri:'reader://'+workspace.id+'/sessions/'+main.id});expect(sameHistory.contents).toEqual(resource.contents);
+ expect(payload(await stdio.callTool({name:'select_workspace',arguments:{root}})).id).toBe(workspace.id);
+ const stdioAsk=payload(await stdio.callTool({name:'ask_temporary',arguments:{...ask,sessionId:temporary.id,requestId:'stdio-temp-2'}}));await expect.poll(async()=>payload(await stdio.callTool({name:'get_run',arguments:{workspaceId:workspace.id,runId:stdioAsk.runId}})).status).toBe('completed');expect(await host.sessionRepository.snapshot(workspace.id,main.id)).toEqual(before);
+ generating=false;const stdioLong=payload(await stdio.callTool({name:'ask_main',arguments:{...ask,providerId:'slow-mcp',requestId:'stdio-cancel'}}));await expect.poll(()=>generating).toBe(true);await stdio.callTool({name:'cancel_run',arguments:{workspaceId:workspace.id,runId:stdioLong.runId}});expect(payload(await stdio.callTool({name:'get_run',arguments:{workspaceId:workspace.id,runId:stdioLong.runId}})).status).toBe('cancelled');
+ const exported=await(await fetch(host.url+'/api/v1/artifacts',{method:'POST',headers:{authorization:'Bearer '+host.auth.token,'content-type':'application/json'},body:JSON.stringify({workspaceId:workspace.id,sessionId:main.id,input:{format:'md',name:'MCP笔记',blocks:[{kind:'paragraph',text:'RI 表示秩指示。'}],sourceAnchors:[{workspaceId:workspace.id,documentId:doc.documentId,version:doc.version,location:{kind:'block',blockId:'b1',start:0,end:9}}]}})})).json() as any;
+ expect(exported.id).toBeTruthy();expect(payload(await stdio.callTool({name:'list_artifacts',arguments:{workspaceId:workspace.id,sessionId:main.id}})).artifacts).toContainEqual(exported);expect(payload(await stdio.callTool({name:'open_artifact',arguments:{workspaceId:workspace.id,artifactId:exported.id}})).relativePath).toBe(exported.relativePath);
+ const artifactResource=await stdio.readResource({uri:'reader://'+workspace.id+'/artifacts/'+exported.id});expect(JSON.parse((artifactResource.contents[0] as any).text)).toEqual(exported);
+ await stdio.close();expect(transport.pid).toBeNull();
+ const tokenFile=join(directory,'token.txt');await writeFile(tokenFile,host.auth.token,{mode:0o600});const directTransport=new StdioClientTransport({command:process.execPath,args:[resolve('bin/reader-workbench.mjs'),'mcp','--url',host.url,'--token-file',tokenFile,'--config-dir',join(directory,'unused-config')],stderr:'pipe'}),direct=new Client({name:'reader-explicit-stdio',version:'1'});cleanup.push(()=>direct.close());await direct.connect(directTransport);expect(payload(await direct.callTool({name:'list_workspaces',arguments:{}})).workspaces).toHaveLength(1);await direct.close();expect(directTransport.pid).toBeNull();
+ const execute=promisify(execFile);for(const [script,...args] of [['http-client.mjs'],['mcp-client.mjs'],['mcp-client.mjs','--stdio']]){const proof=await execute(process.execPath,[resolve('scripts/'+script),host.workspaces.configDir,...args],{windowsHide:true,timeout:15000});expect(JSON.parse(proof.stdout)).toMatchObject({workspaceCount:1});expect(proof.stdout).not.toContain(host.auth.token);expect(proof.stdout).not.toContain(testKey);}
+ const malformed=await client.callTool({name:'ask_main',arguments:{...ask,sessionId:temporary.id,requestId:'wrong-kind'}});expect(malformed.isError).toBe(true);
+},60000);
+
+it('rejects unauthenticated transports, mismatched sources, traversal and unowned sessions',async()=>{
+ const directory=await mkdtemp(join(tmpdir(),'reader MCP guards '));cleanup.push(()=>rm(directory,{recursive:true,force:true}));
+ const root=join(directory,'workspace');await mkdir(root);await writeFile(join(root,'safe.md'),'safe');
+ const host=await startServer({host:'127.0.0.1',port:0,configDir:join(directory,'config'),demo:true,noOpen:true});cleanup.push(()=>host.close());
+ for(const headers of [{},{authorization:'Bearer '+host.auth.token,origin:'https://foreign.example'},{authorization:'Bearer '+host.auth.token,host:'foreign.example'}] as Array<Record<string,string>>){const status=await new Promise<number>((resolve,reject)=>{const request=httpRequest(host.url+'/mcp',{method:'POST',headers:{...headers,'content-type':'application/json'}},response=>{response.resume();resolve(response.statusCode!);});request.on('error',reject);request.end('{}');});expect(status).toBe(headers.authorization?403:401);}
+ const client=new Client({name:'reader-guards',version:'1'});cleanup.push(()=>client.close());await client.connect(new StreamableHTTPClientTransport(new URL(host.url+'/mcp'),{requestInit:{headers:{authorization:'Bearer '+host.auth.token}}}));
+ const workspace=await host.workspaces.select(root,{callerId:'local-owner',transport:'internal'});
+ expect((await client.callTool({name:'open_document',arguments:{workspaceId:workspace.id,relativePath:'../outside.md'}})).isError).toBe(true);
+ const session=await host.sessions.createMain(workspace.id,'private');session.callerId='another-owner';await(await host.workspaces.storeFor(workspace.id)).sessions.createSession({...session,id:'other-session' as SessionId});
+ await expect(client.readResource({uri:'reader://'+workspace.id+'/sessions/other-session'})).rejects.toThrow();
+ const schema=await(await fetch(host.url+'/api/v1/openapi.json',{headers:{authorization:'Bearer '+host.auth.token}})).json();expect(schema).toMatchObject({openapi:'3.1.0'});expect(JSON.stringify(schema)).not.toContain(host.auth.token);
+});
+
