@@ -7,6 +7,8 @@ import {openDatabase} from './database.js';
 import type {DocumentRef,DocumentBlock,SearchHit,StoredDocument} from '../../../contracts/src/documents.js';
 import type {SessionRecord,SessionSnapshot,CommittedTurn} from '../../../contracts/src/sessions.js';
 import {ReaderError} from '../../../contracts/src/errors.js';
+import type {ArtifactRecord} from '../../../contracts/src/artifacts.js';
+import type {ArtifactStorePort} from '../../../contracts/src/storage.js';
 export class SqliteWorkspaceStore implements WorkspaceStore {
   private scopes=new Map<RunId,{scope:RunScope;references:number}>();
   bindScope(scope:RunScope):()=>void{
@@ -127,6 +129,11 @@ export class SqliteWorkspaceStore implements WorkspaceStore {
     setStatus:async(id,status,error)=>{
       const record=await this.runs.get(id);record.status=status;if(error)record.error=error;await this.runs.save(record);
     }
+  };
+  readonly artifacts:ArtifactStorePort={
+    get:async id=>{const row=this.database.prepare('SELECT data FROM artifacts WHERE id=?').get(id) as {data:string}|undefined;return row?JSON.parse(row.data) as ArtifactRecord:null;},
+    save:async record=>{this.checkWorkspace(record.workspaceId);this.database.prepare('INSERT INTO artifacts(id,session_id,data) VALUES(?,?,?)').run(record.id,record.sessionId,JSON.stringify(record));},
+    list:async sessionId=>{const rows=sessionId?this.database.prepare('SELECT data FROM artifacts WHERE session_id=? ORDER BY rowid').all(sessionId):this.database.prepare('SELECT data FROM artifacts ORDER BY rowid').all();return(rows as {data:string}[]).map(row=>JSON.parse(row.data) as ArtifactRecord);}
   };
   private checkWorkspace(workspaceId:WorkspaceId){if(workspaceId!==this.workspaceId)throw new Error('Workspace mismatch');}
   private database:DatabaseSync;private closed=false;

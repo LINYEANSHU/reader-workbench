@@ -1,0 +1,8 @@
+import {z} from 'zod';
+const text=z.string().max(1024*1024),base64=z.string().max(16*1024*1024).regex(/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/).transform(value=>new Uint8Array(Buffer.from(value,'base64')));
+const imageBytes=z.union([z.instanceof(Uint8Array),z.array(z.number().int().min(0).max(255)).max(12*1024*1024).transform(value=>new Uint8Array(value)),base64]);
+const documentRef={workspaceId:z.string().min(1).max(128),documentId:z.string().min(1).max(128),version:z.string().regex(/^[a-f0-9]{64}$/)};
+export const anchorSchema=z.object({...documentRef,location:z.discriminatedUnion('kind',[z.object({kind:z.literal('page'),page:z.number().int().min(1),rect:z.tuple([z.number(),z.number(),z.number(),z.number()]).optional()}),z.object({kind:z.literal('block'),blockId:z.string().max(256),start:z.number().int().min(0),end:z.number().int().min(0)})])});
+export const artifactInputSchema=z.object({format:z.enum(['md','txt','docx','pptx','pdf','binary']),name:z.string().min(1).max(128),blocks:z.array(z.discriminatedUnion('kind',[
+ z.object({kind:z.literal('heading'),level:z.number().int().min(1).max(6),text}),z.object({kind:z.enum(['paragraph','formula']),text}),z.object({kind:z.literal('list'),items:z.array(text).max(1000)}),z.object({kind:z.literal('table'),rows:z.array(z.array(text).max(100)).max(1000)}),z.object({kind:z.literal('image'),data:imageBytes,mime:z.enum(['image/png','image/jpeg']),alt:z.string().max(1000)})
+])).max(10000),sourceAnchors:z.array(anchorSchema).max(2000),coverage:z.object({status:z.enum(['complete','partial']),sourceBlockIds:z.array(z.string().max(256)).max(100000),note:z.string().max(1000).optional()}).optional(),bytes:imageBytes.optional(),mime:z.string().max(256).optional()});

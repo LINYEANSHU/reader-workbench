@@ -12,7 +12,7 @@ export interface ModelProvider {capabilities:ModelCapabilities;ocrToolId?:string
 export interface DocumentAdapter {supports(mime:string,extension:string):boolean;parse(input:VersionedFile,signal:AbortSignal):Promise<ParsedDocument>}
 export interface ViewerProvider {describe(document:DocumentRecord):ViewerDescriptor}
 export interface ToolProvider {tools:ToolDefinition[]}
-export interface ArtifactExporter {export(input:ArtifactInput,scope:RunScope,signal:AbortSignal):Promise<ExportedBytes>}
+export interface ArtifactExporter {formats?:ArtifactInput['format'][];export(input:ArtifactInput,scope:RunScope,signal:AbortSignal):Promise<ExportedBytes>}
 export interface MemoryProvider {summarize(turns:ReadonlyArray<CommittedTurn>,budget:number,signal:AbortSignal):Promise<MemorySummary>}
 export interface ContextTransform {transform(input:Readonly<ContextEnvelope>,signal:AbortSignal):Promise<ContextEnvelope>}
 export interface StorageProvider {open(root:string):Promise<WorkspaceStore>}

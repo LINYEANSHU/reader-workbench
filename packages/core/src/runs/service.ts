@@ -5,10 +5,12 @@ import {ReaderError,publicError} from '../../../contracts/src/errors.js';
 import {RunRepository} from './repository.js';import {KeyedQueue} from './queue.js';import {terminal,replayEvents} from './events.js';import {toolLoop} from './tool-loop.js';import {ToolExecutor} from '../tools/executor.js';
 import {builtinTools} from '../tools/builtins.js';
 import type {ModelProvider} from '../../../sdk/src/capabilities.js';
-interface Dependencies{workspaces:WorkspaceService;repository:SessionRepository;context:ContextBuilder;tools:ToolRegistry;documents:DocumentService;capabilities:CapabilityRegistry}
+import type {ArtifactService} from '../artifacts/service.js';
+import {artifactTools} from '../tools/artifacts.js';
+interface Dependencies{workspaces:WorkspaceService;repository:SessionRepository;context:ContextBuilder;tools:ToolRegistry;documents:DocumentService;capabilities:CapabilityRegistry;artifacts?:ArtifactService}
 export class RunService{
  readonly records:RunRepository;readonly executor:ToolExecutor;private queue=new KeyedQueue();private recovery=new KeyedQueue();private controllers=new Map<RunId,AbortController>();private liveRecords=new Map<RunId,RunRecord>();private modelLeases=new Map<RunId,{value:ModelProvider;release:()=>void}>();private tasks=new Map<RunId,Promise<void>>();private closed=false;
- constructor(readonly dependencies:Dependencies){this.records=new RunRepository(dependencies.workspaces);this.executor=new ToolExecutor(dependencies.tools,dependencies.workspaces);dependencies.context.attachToolExecutor(this.executor);if(!dependencies.capabilities.list('*' as WorkspaceId,'tool').includes('core.reading'))dependencies.capabilities.register('*','tool','core.reading',builtinTools(dependencies.documents,dependencies.repository));}
+ constructor(readonly dependencies:Dependencies){this.records=new RunRepository(dependencies.workspaces);this.executor=new ToolExecutor(dependencies.tools,dependencies.workspaces);dependencies.context.attachToolExecutor(this.executor);if(!dependencies.capabilities.list('*' as WorkspaceId,'tool').includes('core.reading'))dependencies.capabilities.register('*','tool','core.reading',builtinTools(dependencies.documents,dependencies.repository));if(dependencies.artifacts)dependencies.capabilities.register('*','tool','core.artifacts',artifactTools(dependencies.artifacts));}
  async submit(request:AskRequest,actor:Actor):Promise<{runId:RunId}>{
   if(this.closed)throw new ReaderError('SERVER_CLOSING','服务正在退出',503);
   if(!request.requestId||request.requestId.length>200||typeof request.question!=='string'||!request.question.trim()||Buffer.byteLength(request.question)>1024*1024)throw new ReaderError('INVALID_REQUEST','问题或请求标识无效');

@@ -23,6 +23,8 @@ import {runRoutes} from './routes/runs.js';
 import {ModelSettingsService} from '../../../packages/core/src/models/settings.js';
 import {demoProvider} from '../../../packages/core/src/models/demo.js';
 import {settingsRoutes} from './routes/settings.js';
+import {ArtifactService} from '../../../packages/core/src/artifacts/service.js';
+import {artifactRoutes} from './routes/artifacts.js';
 export async function startServer(config:RuntimeConfig){
   const app=Fastify({logger:false,bodyLimit:16*1024*1024,forceCloseConnections:true});
   const auth=new Authentication();
@@ -35,15 +37,17 @@ export async function startServer(config:RuntimeConfig){
   const plugins=new PluginManager(capabilities,workspaces);
   const sessionRepository=new SessionRepository(workspaces);
   const sessions=new SessionService(sessionRepository);
+  const artifacts=new ArtifactService(workspaces,sessionRepository,documents,capabilities);
   const context=new ContextBuilder(sessionRepository,documents,capabilities);
   const tools=new ToolRegistry(capabilities,scope=>sessionRepository.authorizeScope(scope));
-  const runs=new RunService({workspaces,repository:sessionRepository,context,tools,documents,capabilities});
+  const runs=new RunService({workspaces,repository:sessionRepository,context,tools,documents,capabilities,artifacts});
   workspaceRoutes(app,workspaces,auth);uiStateRoutes(app,workspaces);
   documentRoutes(app,documents);
   sessionRoutes(app,sessions,auth);
   runRoutes(app,runs,auth);
   settingsRoutes(app,models);
-  app.addHook('preClose',async()=>{await runs.close();await documents.close();});
+  artifactRoutes(app,artifacts,auth);
+  app.addHook('preClose',async()=>{await runs.close();await artifacts.close();await documents.close();});
   app.addHook('onClose',async()=>{await workspaces.close();});
   app.setErrorHandler((error,_request,reply)=>{
     const status=error instanceof ReaderError?error.status:(error as {statusCode?:number}).statusCode??500;
@@ -63,6 +67,6 @@ export async function startServer(config:RuntimeConfig){
     await writePrivateJson(join(config.configDir,'connection.json'),{url,token:auth.token,pid:process.pid});
     if(config.workspace)await workspaces.select(config.workspace,{callerId:'local-owner',transport:'internal'});
     await models.loadRecent();
-    return {url,bootstrapUrl:url+'/#bootstrap='+auth.code,app,auth,workspaces,documents,capabilities,plugins,sessionRepository,sessions,context,runs,tools,models,close:async()=>{await app.close();}};
+    return {url,bootstrapUrl:url+'/#bootstrap='+auth.code,app,auth,workspaces,documents,capabilities,plugins,sessionRepository,sessions,context,runs,tools,models,artifacts,close:async()=>{await app.close();}};
   }catch(error){await app.close();if((error as NodeJS.ErrnoException).code==='EADDRINUSE')throw new ReaderError('PORT_IN_USE','端口 '+config.port+' 已被占用，请使用 --port 指定其他端口');throw error;}
 }

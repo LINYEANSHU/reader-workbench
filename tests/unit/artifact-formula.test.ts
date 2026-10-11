@@ -1,0 +1,2 @@
+import {expect,it} from 'vitest';import {loadImage} from '@napi-rs/canvas';import {formulaImage} from '../../packages/core/src/artifacts/formula.js';
+it('exports formula pixels at a print-ready density relative to their display size',async()=>{const rendered=await formulaImage('\\frac{1}{2} + x^2',new AbortController().signal),image=await loadImage(rendered.data);expect(image.width/rendered.width).toBeGreaterThanOrEqual(2);expect(image.height/rendered.height).toBeGreaterThanOrEqual(2);});

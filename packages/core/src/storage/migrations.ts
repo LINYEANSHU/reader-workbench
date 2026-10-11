@@ -11,5 +11,6 @@ export function migrate(database:DatabaseSync){
     CREATE TABLE IF NOT EXISTS session_tool_state(session_id TEXT PRIMARY KEY REFERENCES sessions(id), data TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS runs(id TEXT PRIMARY KEY, session_id TEXT NOT NULL REFERENCES sessions(id), request_key TEXT UNIQUE NOT NULL, data TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS run_events(run_id TEXT NOT NULL REFERENCES runs(id), seq INTEGER NOT NULL, data TEXT NOT NULL, PRIMARY KEY(run_id,seq));
-    PRAGMA user_version=4; COMMIT;`);
+    CREATE TABLE IF NOT EXISTS artifacts(id TEXT PRIMARY KEY, session_id TEXT NOT NULL REFERENCES sessions(id), data TEXT NOT NULL);
+    PRAGMA user_version=5; COMMIT;`);
 }
