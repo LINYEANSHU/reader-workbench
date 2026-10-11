@@ -18,7 +18,7 @@ export class CapabilityRegistry {
   private key(workspaceId:string,kind:keyof CapabilityMap,id:string){return workspaceId+'\0'+kind+'\0'+id;}
   register<K extends keyof CapabilityMap>(workspaceId:WorkspaceId|'*',kind:K,id:string,value:CapabilityMap[K],owner='core'):()=>void{
     const key=this.key(workspaceId,kind,id);
-    if(this.entries.has(key))throw new ReaderError('CAPABILITY_DUPLICATE','能力重复注册: '+id);
+    if(this.entries.get(key)?.active)throw new ReaderError('CAPABILITY_DUPLICATE','能力重复注册: '+id);
     if(kind==='tool'){
       const tools=(value as CapabilityMap['tool']).tools.map(tool=>Object.freeze({...tool,inputSchema:structuredClone(tool.inputSchema)}));
       value=Object.freeze({tools:Object.freeze(tools)}) as unknown as CapabilityMap[K];

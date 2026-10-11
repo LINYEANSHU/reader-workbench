@@ -29,6 +29,7 @@ describe('scoped agent runs',()=>{
   const resumed:RunEvent[]=[];for await(const event of f.runs.events(f.workspace.id,first.runId,3,new AbortController().signal))resumed.push(event);expect(resumed).toEqual(events.filter(event=>event.seq>3));
   expect((await f.sessions.getHistory(f.workspace.id,f.main.id)).turns).toHaveLength(1);
   expect((await f.runs.submit(request,actor)).runId).toBe(first.runId);
+  await f.capabilities.retireOwner(f.workspace.id,'core');expect((await f.runs.submit(request,actor)).runId).toBe(first.runId);
  });
  it('serializes one session while independent temporary branches execute in parallel',async()=>{
   const active=new Set<string>();let simultaneousSame=false,maxActive=0;

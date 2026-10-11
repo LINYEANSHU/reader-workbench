@@ -20,6 +20,9 @@ import {sessionRoutes} from './routes/sessions.js';
 import {ToolRegistry} from '../../../packages/core/src/tools/registry.js';
 import {RunService} from '../../../packages/core/src/runs/service.js';
 import {runRoutes} from './routes/runs.js';
+import {ModelSettingsService} from '../../../packages/core/src/models/settings.js';
+import {demoProvider} from '../../../packages/core/src/models/demo.js';
+import {settingsRoutes} from './routes/settings.js';
 export async function startServer(config:RuntimeConfig){
   const app=Fastify({logger:false,bodyLimit:16*1024*1024,forceCloseConnections:true});
   const auth=new Authentication();
@@ -27,6 +30,7 @@ export async function startServer(config:RuntimeConfig){
   auth.attach(app);
   const workspaces=new WorkspaceService(config.configDir);
   const capabilities=new CapabilityRegistry();
+  const models=new ModelSettingsService(workspaces,capabilities);if(config.demo)capabilities.register('*','model','demo',demoProvider);
   const documents=new DocumentService(workspaces,capabilities);
   const plugins=new PluginManager(capabilities,workspaces);
   const sessionRepository=new SessionRepository(workspaces);
@@ -38,10 +42,13 @@ export async function startServer(config:RuntimeConfig){
   documentRoutes(app,documents);
   sessionRoutes(app,sessions,auth);
   runRoutes(app,runs,auth);
+  settingsRoutes(app,models);
   app.addHook('preClose',async()=>{await runs.close();await documents.close();});
   app.addHook('onClose',async()=>{await workspaces.close();});
   app.setErrorHandler((error,_request,reply)=>{
-    reply.code(error instanceof ReaderError?error.status:(error as {statusCode?:number}).statusCode??500).send({error:publicError(error)});
+    const status=error instanceof ReaderError?error.status:(error as {statusCode?:number}).statusCode??500;
+    const exposed=error instanceof ReaderError?error.public():status===400?{code:'INVALID_REQUEST',message:'请求参数或 JSON 格式无效',retryable:false}:status===413?{code:'PAYLOAD_TOO_LARGE',message:'请求内容超过大小限制',retryable:false}:publicError(error);
+    reply.code(status).send({error:exposed});
   });
   app.get('/health',async()=>({status:'ok'}));
   app.get('/api/v1/config',async()=>({host:config.host,port:Number(new URL(auth.url).port),demo:config.demo,workspace:config.workspace??null}));
@@ -55,6 +62,7 @@ export async function startServer(config:RuntimeConfig){
     const url=await app.listen({host:config.host,port:config.port});auth.url=url;
     await writePrivateJson(join(config.configDir,'connection.json'),{url,token:auth.token,pid:process.pid});
     if(config.workspace)await workspaces.select(config.workspace,{callerId:'local-owner',transport:'internal'});
-    return {url,bootstrapUrl:url+'/#bootstrap='+auth.code,app,auth,workspaces,documents,capabilities,plugins,sessionRepository,sessions,context,runs,tools,close:async()=>{await app.close();}};
+    await models.loadRecent();
+    return {url,bootstrapUrl:url+'/#bootstrap='+auth.code,app,auth,workspaces,documents,capabilities,plugins,sessionRepository,sessions,context,runs,tools,models,close:async()=>{await app.close();}};
   }catch(error){await app.close();if((error as NodeJS.ErrnoException).code==='EADDRINUSE')throw new ReaderError('PORT_IN_USE','端口 '+config.port+' 已被占用，请使用 --port 指定其他端口');throw error;}
 }

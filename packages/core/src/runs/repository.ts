@@ -6,6 +6,10 @@ import {KeyedQueue} from './queue.js';
 export class RunRepository{
  private submissions=new KeyedQueue();
  constructor(readonly workspaces:WorkspaceService){}
+ async previous(workspaceId:WorkspaceId,sessionId:string,callerId:string,requestId:string,request:unknown):Promise<RunRecord|undefined>{
+  const record=(await(await this.workspaces.storeFor(workspaceId)).runs.list()).find(run=>run.sessionId===sessionId&&run.callerId===callerId&&run.requestId===requestId);
+  if(record&&JSON.stringify(record.request)!==JSON.stringify(request))throw new ReaderError('REQUEST_ID_REUSED','同一请求标识不能用于不同问题',409);return record;
+ }
  async createOrGet(record:RunRecord):Promise<{record:RunRecord;created:boolean}>{
   return this.submissions.enqueue(record.workspaceId,async()=>{
    const port=(await this.workspaces.storeFor(record.workspaceId)).runs;

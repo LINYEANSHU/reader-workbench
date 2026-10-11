@@ -1,7 +1,7 @@
 import {createHash} from 'node:crypto';
 import {Ajv} from 'ajv';
 import type {RunScope} from '../../../contracts/src/ids.js';
-import type {ToolResult} from '../../../contracts/src/tools.js';
+import type {ToolResult,ToolEffect} from '../../../contracts/src/tools.js';
 import type {WorkspaceService} from '../workspaces/service.js';
 import type {ToolRegistry} from './registry.js';
 import {ReaderError} from '../../../contracts/src/errors.js';
@@ -10,11 +10,12 @@ type Execution={status:'started'|'completed'|'failed';name:string;inputHash:stri
 export class ToolExecutor{
  private queue=new KeyedQueue();private ajv=new Ajv({strict:false,allErrors:true,removeAdditional:false,coerceTypes:false});
  constructor(private tools:ToolRegistry,private workspaces:WorkspaceService){}
- execute(name:string,input:unknown,scope:RunScope,executionId:string,signal:AbortSignal):Promise<ToolResult>{
+ execute(name:string,input:unknown,scope:RunScope,executionId:string,signal:AbortSignal,requiredEffect?:ToolEffect):Promise<ToolResult>{
   if(!executionId.startsWith(scope.runId+':'))return Promise.reject(new ReaderError('TOOL_SCOPE_DENIED','工具执行标识不属于此运行',403));
   return this.queue.enqueue(scope.workspaceId+'/'+executionId,async()=>{
    signal.throwIfAborted();const lease=await this.tools.acquire(name,scope);
    try{
+    if(requiredEffect&&lease.definition.effect!==requiredEffect)throw new ReaderError('TOOL_SCOPE_DENIED','此能力仅允许只读工具',403);
     const store=await this.workspaces.storeFor(scope.workspaceId),hash=createHash('sha256').update(JSON.stringify(input)??'null').digest('hex');
     const previous=store.getRecord<Execution>('tool-executions',executionId);
     if(previous){if(previous.status!=='completed')throw new ReaderError('TOOL_EXECUTION_UNCERTAIN','上次工具执行未确认完成，禁止自动重放');if(previous.name!==name||previous.inputHash!==hash)throw new ReaderError('TOOL_EXECUTION_CONFLICT','同一工具调用标识的输入不一致');return structuredClone(previous.result!);}

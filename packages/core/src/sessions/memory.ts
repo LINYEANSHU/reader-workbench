@@ -12,11 +12,13 @@ export class ModelMemoryProvider implements MemoryProvider {
   for(let index=0;index<characters.length;index+=count)chunks.push(characters.slice(index,index+count).join(''));
   if(!chunks.length)return {text:'',turnIds:[],revision:0};
   const summarize=async(value:string,output:number)=>{
-   let result='';
-   for await(const event of model.generate({messages:[{role:'system',content:instruction},{role:'user',content:value}],tools:[],maxOutputTokens:Math.max(32,Math.min(model.capabilities.maxOutputTokens,output))},signal)){
-    signal.throwIfAborted();if(event.kind==='delta')result+=event.text;
+   let result='',done=false;
+   const maxOutputTokens=Math.max(1,Math.min(model.capabilities.maxOutputTokens,Math.floor(output/4)));
+   const reasoningEffort=model.capabilities.reasoningEfforts?.includes('none')?'none':undefined;
+   for await(const event of model.generate({messages:[{role:'system',content:instruction+' Limit the summary to '+maxOutputTokens+' Chinese characters.'},{role:'user',content:value}],tools:[],maxOutputTokens,reasoningEffort},signal)){
+    signal.throwIfAborted();if(event.kind==='delta')result+=event.text;else if(event.kind==='done')done=true;
    }
-   if(!result.trim())throw new ReaderError('MEMORY_SUMMARY_FAILED','模型未返回记忆摘要，请检查模型连接');
+   if(!done||!result.trim())throw new ReaderError('MEMORY_SUMMARY_FAILED','模型未完整返回记忆摘要，请检查模型连接');
    return result;
   };
   let results:string[]=[];

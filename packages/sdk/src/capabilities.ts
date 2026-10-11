@@ -8,7 +8,7 @@ import type {WorkspaceStore} from '../../contracts/src/storage.js';
 import type {DirectoryEntry} from '../../contracts/src/workspaces.js';
 import type {LifecycleEvent} from '../../contracts/src/runs.js';
 import type {UiContribution,LayoutPreset,LayoutNode,HotkeyBinding,HotkeyRegistration} from '../../contracts/src/layout.js';
-export interface ModelProvider {capabilities:ModelCapabilities;generate(request:ModelRequest,signal:AbortSignal):AsyncIterable<ModelEvent>}
+export interface ModelProvider {capabilities:ModelCapabilities;ocrToolId?:string;generate(request:ModelRequest,signal:AbortSignal):AsyncIterable<ModelEvent>}
 export interface DocumentAdapter {supports(mime:string,extension:string):boolean;parse(input:VersionedFile,signal:AbortSignal):Promise<ParsedDocument>}
 export interface ViewerProvider {describe(document:DocumentRecord):ViewerDescriptor}
 export interface ToolProvider {tools:ToolDefinition[]}

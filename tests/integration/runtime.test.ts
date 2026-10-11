@@ -35,6 +35,8 @@ describe('authenticated runtime',()=>{
     expect(JSON.stringify(maskedConfiguration)).not.toContain(testKey);
     expect(JSON.stringify(maskedConfiguration)).not.toContain(runtime.connection.token);
     expect(await new CredentialStore(runtime.config.configDir).getSecret('test-provider')).toBe(testKey);
+    const invalid=await fetch(runtime.url+'/api/v1/workspaces',{method:'POST',headers:{authorization:'Bearer '+runtime.connection.token,'content-type':'application/json'},body:''});
+    expect(invalid.status).toBe(400);expect(await invalid.json()).toMatchObject({error:{code:'INVALID_REQUEST',retryable:false}});
   });
   it('exchanges the fragment code once for a protected browser cookie',async()=>{
     const runtime=await boot();

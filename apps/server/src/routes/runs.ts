@@ -7,7 +7,7 @@ import {ReaderError} from '../../../../packages/contracts/src/errors.js';
 import type {Authentication} from '../auth.js';
 const id=z.string().min(1).max(200),ref=z.object({workspaceId:id,documentId:id,version:id});
 const location=z.discriminatedUnion('kind',[z.object({kind:z.literal('page'),page:z.number().int().min(1),rect:z.tuple([z.number(),z.number(),z.number(),z.number()]).optional()}),z.object({kind:z.literal('block'),blockId:id,start:z.number().int().min(0),end:z.number().int().min(0)})]);
-const ask=z.object({workspaceId:id,sessionId:id,question:z.string().min(1).max(1000000),documents:z.array(ref).max(100),selection:z.object({text:z.string().max(1000000),anchors:z.array(ref.extend({location})).max(100)}).optional(),attachmentIds:z.array(id).max(4),providerId:id,requestId:id,allowArtifactWrites:z.boolean()});
+const ask=z.object({workspaceId:id,sessionId:id,question:z.string().min(1).max(1000000),documents:z.array(ref).max(100),selection:z.object({text:z.string().max(1000000),anchors:z.array(ref.extend({location})).max(100)}).optional(),attachmentIds:z.array(id).max(4),providerId:id,requestId:id,allowArtifactWrites:z.boolean(),reasoningEffort:z.string().max(32).optional()});
 interface Params{id:RunId}interface Query{workspaceId:WorkspaceId;afterSeq?:string}
 export function runRoutes(app:FastifyInstance,runs:RunService,auth:Authentication){
  const workspace=(query:Query)=>{if(!query.workspaceId)throw new ReaderError('WORKSPACE_REQUIRED','运行接口需要 workspaceId');return query.workspaceId;};

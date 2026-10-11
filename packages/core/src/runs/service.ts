@@ -4,20 +4,23 @@ import type {AskRequest} from '../../../contracts/src/sessions.js';import type {
 import {ReaderError,publicError} from '../../../contracts/src/errors.js';
 import {RunRepository} from './repository.js';import {KeyedQueue} from './queue.js';import {terminal,replayEvents} from './events.js';import {toolLoop} from './tool-loop.js';import {ToolExecutor} from '../tools/executor.js';
 import {builtinTools} from '../tools/builtins.js';
+import type {ModelProvider} from '../../../sdk/src/capabilities.js';
 interface Dependencies{workspaces:WorkspaceService;repository:SessionRepository;context:ContextBuilder;tools:ToolRegistry;documents:DocumentService;capabilities:CapabilityRegistry}
 export class RunService{
- readonly records:RunRepository;readonly executor:ToolExecutor;private queue=new KeyedQueue();private recovery=new KeyedQueue();private controllers=new Map<RunId,AbortController>();private liveRecords=new Map<RunId,RunRecord>();private tasks=new Map<RunId,Promise<void>>();private closed=false;
- constructor(readonly dependencies:Dependencies){this.records=new RunRepository(dependencies.workspaces);this.executor=new ToolExecutor(dependencies.tools,dependencies.workspaces);if(!dependencies.capabilities.list('*' as WorkspaceId,'tool').includes('core.reading'))dependencies.capabilities.register('*','tool','core.reading',builtinTools(dependencies.documents,dependencies.repository));}
+ readonly records:RunRepository;readonly executor:ToolExecutor;private queue=new KeyedQueue();private recovery=new KeyedQueue();private controllers=new Map<RunId,AbortController>();private liveRecords=new Map<RunId,RunRecord>();private modelLeases=new Map<RunId,{value:ModelProvider;release:()=>void}>();private tasks=new Map<RunId,Promise<void>>();private closed=false;
+ constructor(readonly dependencies:Dependencies){this.records=new RunRepository(dependencies.workspaces);this.executor=new ToolExecutor(dependencies.tools,dependencies.workspaces);dependencies.context.attachToolExecutor(this.executor);if(!dependencies.capabilities.list('*' as WorkspaceId,'tool').includes('core.reading'))dependencies.capabilities.register('*','tool','core.reading',builtinTools(dependencies.documents,dependencies.repository));}
  async submit(request:AskRequest,actor:Actor):Promise<{runId:RunId}>{
   if(this.closed)throw new ReaderError('SERVER_CLOSING','服务正在退出',503);
   if(!request.requestId||request.requestId.length>200||typeof request.question!=='string'||!request.question.trim()||Buffer.byteLength(request.question)>1024*1024)throw new ReaderError('INVALID_REQUEST','问题或请求标识无效');
   const session=await this.dependencies.repository.getSession(request.workspaceId,request.sessionId);if(session.callerId!==actor.callerId)throw new ReaderError('TOOL_SCOPE_DENIED','会话不属于此调用者',403);
-  this.dependencies.capabilities.get(request.workspaceId,'model',request.providerId);
+  const previous=await this.records.previous(request.workspaceId,request.sessionId,actor.callerId,request.requestId,request);if(previous)return{runId:previous.id};
+  const model=this.dependencies.capabilities.acquire(request.workspaceId,'model',request.providerId);
+  if(request.reasoningEffort!==undefined&&!model.value.capabilities.reasoningEfforts?.includes(request.reasoningEffort)){model.release();throw new ReaderError('REASONING_UNSUPPORTED','所选模型不支持此思考档位');}
   const record:RunRecord={id:randomUUID() as RunId,kind:'agent',workspaceId:request.workspaceId,sessionId:request.sessionId,status:'queued',requestId:request.requestId,request:structuredClone(request),callerId:actor.callerId,createdAt:new Date().toISOString(),partialText:''};
-  const result=await this.records.createOrGet(record);if(!result.created)return{runId:result.record.id};
+  let result;try{result=await this.records.createOrGet(record);}catch(error){model.release();throw error;}if(!result.created){model.release();return{runId:result.record.id};}this.modelLeases.set(record.id,model);
   const controller=new AbortController();this.controllers.set(record.id,controller);this.liveRecords.set(record.id,record);await this.records.emit(record,'state',{status:'queued'});
   const task=this.queue.enqueue(record.workspaceId+'/'+record.sessionId,()=>this.perform(record,actor,controller.signal));this.tasks.set(record.id,task);
-  const cleanup=()=>{this.tasks.delete(record.id);this.controllers.delete(record.id);this.liveRecords.delete(record.id);};void task.then(cleanup,cleanup);return{runId:record.id};
+  const cleanup=()=>{this.modelLeases.get(record.id)?.release();this.modelLeases.delete(record.id);this.tasks.delete(record.id);this.controllers.delete(record.id);this.liveRecords.delete(record.id);};void task.then(cleanup,cleanup);return{runId:record.id};
  }
  private async perform(record:RunRecord,actor:Actor,signal:AbortSignal){
   if(terminal(record))return;
@@ -26,8 +29,8 @@ export class RunService{
    signal.throwIfAborted();
    const initialScope:RunScope={actor:structuredClone(actor),workspaceId:record.workspaceId,sessionId:record.sessionId,runId:record.id,allowArtifactWrites:record.request.allowArtifactWrites};release=await this.dependencies.repository.registerScope(initialScope);
    record.status='running';await this.records.save(record);await this.records.emit(record,'state',{status:'running'});
-   const model=this.dependencies.capabilities.acquire(record.workspaceId,'model',record.request.providerId);releaseModel=model.release;
-   const envelope=await this.dependencies.context.build(record.request,signal,model.value);record.contextRevision=envelope.mainRevision;record.context=envelope;await this.records.save(record);await this.records.emit(record,'context',{mainRevision:envelope.mainRevision,ownRevision:envelope.ownRevision,budget:envelope.budget,summaryCoverage:envelope.summaryCoverage});
+   const model=this.modelLeases.get(record.id)!;releaseModel=model.release;
+   const envelope=await this.dependencies.context.build(record.request,signal,model.value,initialScope);record.contextRevision=envelope.mainRevision;record.context=envelope;await this.records.save(record);await this.records.emit(record,'context',{mainRevision:envelope.mainRevision,ownRevision:envelope.ownRevision,budget:envelope.budget,summaryCoverage:envelope.summaryCoverage});
    const sessionRecord=await this.dependencies.repository.getSession(record.workspaceId,record.sessionId);
    const readRevisions:Record<string,number>={[record.sessionId]:envelope.ownRevision??sessionRecord.revision};if(sessionRecord.parentMainSessionId)readRevisions[sessionRecord.parentMainSessionId]=envelope.mainRevision;
    const scope=await this.dependencies.repository.setReadRevisions(initialScope,readRevisions);
@@ -37,7 +40,7 @@ export class RunService{
    const tools=model.value.capabilities.tools?definitions.map(tool=>({type:'function' as const,function:{name:tool.name,description:tool.description,parameters:tool.inputSchema}})):[];
    const result=await toolLoop(model.value,envelope,tools,scope,this.executor,async(kind,data)=>{
     if(kind==='delta'){record.partialText+=(data as {text:string}).text;await this.records.save(record);}await this.records.emit(record,kind,data);
-   },signal);signal.throwIfAborted();
+   },signal,record.request.reasoningEffort);signal.throwIfAborted();
    for(const anchor of envelope.sourceRanges)await this.records.emit(record,'citation',anchor);
    const content=record.request.question+(record.request.selection?'\n选区：'+record.request.selection.text+'\n来源：'+JSON.stringify(record.request.selection.anchors):'');
    await this.dependencies.repository.completeOwnTurn(scope,{id:randomUUID(),runId:record.id,question:record.request.question,answer:result.answer,messages:[{role:'user',content},...result.ownMessages],sourceAnchors:[...envelope.sourceRanges,...result.anchors],attachmentIds:record.request.attachmentIds});
@@ -59,7 +62,7 @@ export class RunService{
  async cancel(workspaceId:WorkspaceId,id:RunId,actor:Actor):Promise<void>{
   const record=await this.get(workspaceId,id);if(record.kind==='document'){await this.dependencies.documents.jobs.cancel(workspaceId,id);return;}
   if(record.callerId!==actor.callerId)throw new ReaderError('TOOL_SCOPE_DENIED','不能取消其他调用者运行',403);this.controllers.get(id)?.abort();
-  const live=this.liveRecords.get(id);if(live?.status==='queued'){live.status='cancelled';live.error=new ReaderError('CANCELLED','排队请求已取消').public();await this.records.save(live);await this.records.emit(live,'error',live.error);await this.records.emit(live,'state',{status:'cancelled'});return;}
+  const live=this.liveRecords.get(id);if(live?.status==='queued'){live.status='cancelled';live.error=new ReaderError('CANCELLED','排队请求已取消').public();this.modelLeases.get(id)?.release();this.modelLeases.delete(id);await this.records.save(live);await this.records.emit(live,'error',live.error);await this.records.emit(live,'state',{status:'cancelled'});return;}
   await this.tasks.get(id);
  }
  async close(){this.closed=true;for(const controller of this.controllers.values())controller.abort();await Promise.allSettled([...this.tasks.values()]);}
