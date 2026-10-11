@@ -1,4 +1,9 @@
 import { build } from 'esbuild';
 import { mkdir } from 'node:fs/promises';
+import {rollup} from 'rollup';
+import {dts} from 'rollup-plugin-dts';
 await mkdir('dist',{recursive:true});
 await build({entryPoints:['apps/cli/src/index.ts'],outfile:'dist/cli.mjs',bundle:true,platform:'node',target:'node24',format:'esm',packages:'external',sourcemap:true});
+await build({entryPoints:['packages/sdk/src/index.ts'],outfile:'dist/sdk.mjs',bundle:true,platform:'node',target:'node24',format:'esm',packages:'external'});
+const declarations=await rollup({input:'packages/sdk/src/index.ts',plugins:[dts({compilerOptions:{noEmit:false}})]});
+await declarations.write({file:'dist/sdk.d.ts',format:'es'});await declarations.close();
