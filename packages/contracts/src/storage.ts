@@ -1,5 +1,6 @@
-import type { WorkspaceId } from './ids.js';
+import type {WorkspaceId,SessionId,RunScope,Actor} from './ids.js';
 import type {DocumentRef,StoredDocument,DocumentBlock,SearchHit} from './documents.js';
+import type {SessionRecord,SessionSnapshot,CommittedTurn,CompletedTurn,MemorySummary} from './sessions.js';
 export interface DocumentStorePort {
   get(ref:DocumentRef):Promise<StoredDocument|null>;
   save(document:StoredDocument):Promise<void>;
@@ -7,4 +8,15 @@ export interface DocumentStorePort {
   index(ref:DocumentRef,blocks:DocumentBlock[]):Promise<void>;
   search(ref:DocumentRef,query:string,limit:number):Promise<SearchHit[]>;
 }
-export interface WorkspaceStore {workspaceId:WorkspaceId;documents:DocumentStorePort;close():Promise<void>}
+export interface SessionStorePort {
+  createSession(session:SessionRecord):Promise<void>;
+  listSessions():Promise<SessionRecord[]>;
+  getSession(id:SessionId):Promise<SessionRecord>;
+  getCommittedTurns(id:SessionId,atRevision?:number):Promise<CommittedTurn[]>;
+  snapshot(id:SessionId):Promise<SessionSnapshot>;
+  completeOwnTurn(scope:RunScope,turn:CompletedTurn):Promise<number>;
+  saveOwnSummary(scope:RunScope,summary:MemorySummary):Promise<void>;
+  saveOwnToolState(scope:RunScope,state:Record<string,unknown>):Promise<void>;
+  clearTemporary(id:SessionId,actor:Actor):Promise<void>;
+}
+export interface WorkspaceStore {workspaceId:WorkspaceId;documents:DocumentStorePort;sessions:SessionStorePort;close():Promise<void>}

@@ -13,6 +13,10 @@ import {CapabilityRegistry} from '../../../packages/core/src/plugins/registry.js
 import {PluginManager} from '../../../packages/core/src/plugins/manager.js';
 import {DocumentService} from '../../../packages/core/src/documents/service.js';
 import {documentRoutes} from './routes/documents.js';
+import {SessionRepository} from '../../../packages/core/src/sessions/repository.js';
+import {SessionService} from '../../../packages/core/src/sessions/service.js';
+import {ContextBuilder} from '../../../packages/core/src/sessions/context.js';
+import {sessionRoutes} from './routes/sessions.js';
 export async function startServer(config:RuntimeConfig){
   const app=Fastify({logger:false,bodyLimit:16*1024*1024});
   const auth=new Authentication();
@@ -22,8 +26,12 @@ export async function startServer(config:RuntimeConfig){
   const capabilities=new CapabilityRegistry();
   const documents=new DocumentService(workspaces,capabilities);
   const plugins=new PluginManager(capabilities,workspaces);
+  const sessionRepository=new SessionRepository(workspaces);
+  const sessions=new SessionService(sessionRepository);
+  const context=new ContextBuilder(sessionRepository,documents,capabilities);
   workspaceRoutes(app,workspaces,auth);uiStateRoutes(app,workspaces);
   documentRoutes(app,documents);
+  sessionRoutes(app,sessions,auth);
   app.addHook('onClose',async()=>{await documents.close();await workspaces.close();});
   app.setErrorHandler((error,_request,reply)=>{
     reply.code(error instanceof ReaderError?error.status:(error as {statusCode?:number}).statusCode??500).send({error:publicError(error)});
@@ -40,6 +48,6 @@ export async function startServer(config:RuntimeConfig){
     const url=await app.listen({host:config.host,port:config.port});auth.url=url;
     await writePrivateJson(join(config.configDir,'connection.json'),{url,token:auth.token,pid:process.pid});
     if(config.workspace)await workspaces.select(config.workspace,{callerId:'local-owner',transport:'internal'});
-    return {url,bootstrapUrl:url+'/#bootstrap='+auth.code,app,auth,workspaces,documents,capabilities,plugins,close:async()=>{await app.close();}};
+    return {url,bootstrapUrl:url+'/#bootstrap='+auth.code,app,auth,workspaces,documents,capabilities,plugins,sessionRepository,sessions,context,close:async()=>{await app.close();}};
   }catch(error){await app.close();if((error as NodeJS.ErrnoException).code==='EADDRINUSE')throw new ReaderError('PORT_IN_USE','端口 '+config.port+' 已被占用，请使用 --port 指定其他端口');throw error;}
 }

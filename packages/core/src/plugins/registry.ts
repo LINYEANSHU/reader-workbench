@@ -6,9 +6,10 @@ import type {ContextEnvelope} from '../../../contracts/src/sessions.js';
 export function validateContextTransform(before:ContextEnvelope,after:ContextEnvelope):void{
   const key=(reference:{workspaceId:string;documentId:string;version:string})=>reference.workspaceId+'/'+reference.documentId+'/'+reference.version;
   const allowed=new Set([...before.documents,...before.sourceRanges].map(key));
-  if(after.workspaceId!==before.workspaceId||after.sessionId!==before.sessionId||after.mainRevision!==before.mainRevision||
+  if(after.workspaceId!==before.workspaceId||after.sessionId!==before.sessionId||after.mainRevision!==before.mainRevision||after.ownRevision!==before.ownRevision||
     [...after.documents,...after.sourceRanges].some(ref=>ref.workspaceId!==before.workspaceId||!allowed.has(key(ref)))||
-    after.summaryCoverage.some(turn=>!before.summaryCoverage.includes(turn)))
+    after.summaryCoverage.some(turn=>!before.summaryCoverage.includes(turn))||
+    after.memory&&(!before.memory||after.memory.revision!==before.memory.revision||after.memory.parentRevision!==before.memory.parentRevision||[...after.memory.turnIds,...after.memory.parentTurnIds??[]].some(id=>!before.summaryCoverage.includes(id))))
     throw new ReaderError('TOOL_SCOPE_DENIED','上下文变换越过已授权的文档或会话权限',403);
 }
 interface Entry {workspaceId:string;kind:keyof CapabilityMap;id:string;value:unknown;owner:string;active:boolean;leases:number;idle:Array<()=>void>}
