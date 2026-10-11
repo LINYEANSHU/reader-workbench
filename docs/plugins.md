@@ -41,8 +41,11 @@
 | Capture | 默认浏览器 provider；可选原生插件捕获桥 | capture.spec 实际浏览器像素；plugin-consumers 受控 native provider |
 | Hotkey | 默认网页内热键；可选全局注册/事件/注销桥 | hotkeys、capture.spec；plugin-consumers 实际注册回调与注销 |
 | Process | ToolRegistry 进程 provider → 独立 argv/stdin JSON 进程 | plugin-extension：真实 Python、中文、错误、取消、超时和进程树清理 |
+| Speech | 已认证会话的 SpeechService → 两个输入框的离线转写 | speech、speech-native、voice-input：真实模型、音频、取消、草稿与麦克风释放 |
 
 Viewer/UI 返回受控描述，不能向页面注入任意 HTML 或执行插件脚本。视图支持 Markdown/纯文本，Markdown HTML 与远程图片不执行/加载。
+
+SpeechProvider 必须声明 `processingLocation: "local"` 和支持语言，提供 `prepare(signal, onProgress)`、`transcribe({samples, sampleRate:16000, seconds}, language, signal)`、`dispose()`。任务持有 provider lease，按引擎实例串行执行；识别结果只返回文字和计时，不写任何会话。插件必须响应取消信号。内置 `core.sensevoice` 用受管理的原生子进程，可硬取消正在进行的推理。HTTP 路径为 `/api/v1/workspaces/:id/sessions/:sessionId/speech/{catalog,prepare,transcribe,jobs/:jobId,jobs/:jobId/cancel}`，`requestId` 由客户端生成；录音按严格的单声道 16 kHz PCM16 WAV 限制验证，最长 120 秒且不落盘。
 
 ### Storage
 

@@ -7,3 +7,4 @@ import './styles/selection.css';
 
 import './styles/capture.css';
 import './styles/plugins.css';
+import './styles/voice.css';

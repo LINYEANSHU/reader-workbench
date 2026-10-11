@@ -8,6 +8,7 @@ import type {WorkspaceStore} from '../../contracts/src/storage.js';
 import type {DirectoryEntry} from '../../contracts/src/workspaces.js';
 import type {LifecycleEvent} from '../../contracts/src/runs.js';
 import type {UiContribution,LayoutPreset,LayoutNode,HotkeyBinding,HotkeyRegistration} from '../../contracts/src/layout.js';
+import type {SpeechProgress,SpeechAudio,SpeechResult} from '../../contracts/src/speech.js';
 export interface ModelProvider {capabilities:ModelCapabilities;ocrToolId?:string;generate(request:ModelRequest,signal:AbortSignal):AsyncIterable<ModelEvent>}
 export interface DocumentAdapter {supports(mime:string,extension:string):boolean;parse(input:VersionedFile,signal:AbortSignal):Promise<ParsedDocument>}
 export interface ViewerProvider {describe(document:DocumentRecord):ViewerDescriptor}
@@ -25,4 +26,5 @@ export interface SelectionAction {invoke(selection:SelectionContext,scope:Action
 export interface CaptureProvider {platforms:string[];authorization:'browser'|'native';range:'document'|'screen';capture(request:CaptureRequest):Promise<CaptureResult>}
 export interface HotkeyProvider {platforms:string[];scope:'page'|'global';register(binding:HotkeyBinding,handler:()=>void):HotkeyRegistration}
 export interface ProcessToolProvider {specs:ProcessToolSpec[]}
-export interface CapabilityMap {model:ModelProvider;document:DocumentAdapter;viewer:ViewerProvider;tool:ToolProvider;exporter:ArtifactExporter;memory:MemoryProvider;context:ContextTransform;storage:StorageProvider;lifecycle:LifecycleHooks;ui:UIContribution;workspace:WorkspaceProvider;layout:LayoutContribution;selection:SelectionAction;capture:CaptureProvider;hotkey:HotkeyProvider;process:ProcessToolProvider}
+export interface SpeechProvider {processingLocation:'local';languages:string[];prepare(signal:AbortSignal,onProgress:(progress:SpeechProgress)=>void):Promise<void>;transcribe(audio:SpeechAudio,language:string,signal:AbortSignal):Promise<SpeechResult>;dispose():Promise<void>}
+export interface CapabilityMap {model:ModelProvider;document:DocumentAdapter;viewer:ViewerProvider;tool:ToolProvider;exporter:ArtifactExporter;memory:MemoryProvider;context:ContextTransform;storage:StorageProvider;lifecycle:LifecycleHooks;ui:UIContribution;workspace:WorkspaceProvider;layout:LayoutContribution;selection:SelectionAction;capture:CaptureProvider;hotkey:HotkeyProvider;process:ProcessToolProvider;speech:SpeechProvider}

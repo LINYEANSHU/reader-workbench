@@ -34,6 +34,7 @@ import {ExternalMcpManager} from '../../../packages/core/src/plugins/external-mc
 import {UiBridge} from '../../../packages/core/src/plugins/ui-bridge.js';import {pluginRoutes} from './routes/plugins.js';
 import {LifecycleDispatcher} from '../../../packages/core/src/plugins/lifecycle.js';
 import {NativeInteractions} from '../../../packages/core/src/plugins/native-interactions.js';
+import {SpeechService} from '../../../packages/core/src/speech/service.js';import {SpeechAssets} from '../../../packages/core/src/speech/assets.js';import {NativeSpeechProvider} from '../../../packages/core/src/speech/native-provider.js';import {speechRoutes} from './routes/speech.js';
 export async function startServer(config:RuntimeConfig){
   const app=Fastify({logger:false,bodyLimit:16*1024*1024,forceCloseConnections:true});
   const auth=new Authentication();
@@ -47,6 +48,7 @@ export async function startServer(config:RuntimeConfig){
   const plugins=new PluginManager(capabilities,workspaces);
   const sessionRepository=new SessionRepository(workspaces);
   const sessions=new SessionService(sessionRepository);
+  const nativeSpeech=new NativeSpeechProvider(new SpeechAssets(process.env.READER_SPEECH_ASSET_DIR??join(config.configDir,'speech','sensevoice-small-int8')));capabilities.register('*','speech','core.sensevoice',nativeSpeech);const speech=new SpeechService(capabilities,sessionRepository);speechRoutes(app,speech,auth);
   const selections=new SelectionService(capabilities,sessionRepository,documents);
   const artifacts=new ArtifactService(workspaces,sessionRepository,documents,capabilities);
   const attachments=new AttachmentService(workspaces,sessionRepository,documents);
@@ -67,7 +69,7 @@ export async function startServer(config:RuntimeConfig){
   layoutRoutes(app,workspaces,capabilities);
   selectionRoutes(app,selections,auth);attachmentRoutes(app,attachments,auth);
   const services={workspaces,documents,sessions,runs,artifacts,plugins};await attachMcpHttp(app,services,auth);attachReaderOpenApi(app,services,auth);
-  app.addHook('preClose',async()=>{native.close();await runs.close();await artifacts.close();await documents.close();await lifecycle.close();await externalMcp.close();await plugins.close();});
+  app.addHook('preClose',async()=>{native.close();await speech.close();await nativeSpeech.dispose();await runs.close();await artifacts.close();await documents.close();await lifecycle.close();await externalMcp.close();await plugins.close();});
   app.addHook('onClose',async()=>{await workspaces.close();});
   app.setErrorHandler((error,_request,reply)=>{
     const status=error instanceof ReaderError?error.status:(error as {statusCode?:number}).statusCode??500;
@@ -88,7 +90,7 @@ export async function startServer(config:RuntimeConfig){
     if(config.workspace)await workspaces.select(config.workspace,{callerId:'local-owner',transport:'internal'});
     await plugins.loadRecent();await externalMcp.loadRecent();await models.loadRecent();
     for(const workspace of await workspaces.listRecent({callerId:'local-owner',transport:'internal'}))lifecycle.emit({workspaceId:workspace.id,kind:'server.started',data:{version:'0.1.0'}});
-    return {url,bootstrapUrl:url+'/#bootstrap='+auth.code,app,auth,workspaces,documents,capabilities,plugins,externalMcp,ui,sessionRepository,sessions,context,runs,tools,models,artifacts,attachments,selections,close:async()=>{await app.close();}};
+    return {url,bootstrapUrl:url+'/#bootstrap='+auth.code,app,auth,workspaces,documents,capabilities,plugins,externalMcp,ui,speech,sessionRepository,sessions,context,runs,tools,models,artifacts,attachments,selections,close:async()=>{await app.close();}};
   }catch(error){await app.close();if((error as NodeJS.ErrnoException).code==='EADDRINUSE')throw new ReaderError('PORT_IN_USE','端口 '+config.port+' 已被占用，请使用 --port 指定其他端口');throw error;}
 }
 

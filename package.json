@@ -66,6 +66,7 @@
     "remark-gfm": "4.0.1",
     "remark-math": "6.0.0",
     "semver": "7.8.5",
+    "sherpa-onnx-node": "1.13.8",
     "zod": "4.6.5"
   },
   "devDependencies": {
@@ -81,5 +82,13 @@
     "typescript": "5.9.3",
     "vite": "7.3.7",
     "vitest": "4.0.18"
+  },
+  "optionalDependencies": {
+    "sherpa-onnx-darwin-arm64": "1.13.8",
+    "sherpa-onnx-darwin-x64": "1.13.8",
+    "sherpa-onnx-linux-arm64": "1.13.8",
+    "sherpa-onnx-linux-x64": "1.13.8",
+    "sherpa-onnx-win-ia32": "1.13.8",
+    "sherpa-onnx-win-x64": "1.13.8"
   }
 }

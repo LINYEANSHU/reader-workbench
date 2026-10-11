@@ -1,6 +1,10 @@
-import {spawn} from 'node:child_process';
+import {spawn,type ChildProcess} from 'node:child_process';
 import {ReaderError} from '../../../contracts/src/errors.js';
 export interface ProcessResult {stdout:string;stderr:string;exitCode:number}
+export async function stopProcessTree(child:ChildProcess):Promise<void>{
+ if(!child.pid||child.exitCode!==null||child.signalCode!==null)return;const closed=new Promise<void>(resolve=>child.once('close',()=>resolve()));
+ if(process.platform==='win32'){const killer=spawn('taskkill.exe',['/PID',String(child.pid),'/T','/F'],{windowsHide:true,stdio:'ignore'});await new Promise<void>(resolve=>{killer.once('error',()=>{child.kill();resolve();});killer.once('exit',code=>{if(code!==0)child.kill();resolve();});});}else{try{process.kill(-child.pid,'SIGKILL');}catch{child.kill('SIGKILL');}}await closed;
+}
 export async function runProcess(command:string,args:string[],signal:AbortSignal,timeoutMs:number,input?:string,environment?:NodeJS.ProcessEnv):Promise<ProcessResult>{
   signal.throwIfAborted();
   return new Promise((resolve,reject)=>{
@@ -8,10 +12,7 @@ export async function runProcess(command:string,args:string[],signal:AbortSignal
     let stdout='',stderr='',failure:Error|undefined;
     child.stdout.setEncoding('utf8');child.stderr.setEncoding('utf8');
     const terminate=()=>{
-      if(!child.pid)return;
-      if(process.platform==='win32'){
-        const killer=spawn('taskkill.exe',['/PID',String(child.pid),'/T','/F'],{windowsHide:true,stdio:'ignore'});killer.on('error',()=>child.kill());killer.on('exit',code=>{if(code!==0)child.kill();});
-      }else {try{process.kill(-child.pid,'SIGKILL');}catch{child.kill('SIGKILL');}}
+      void stopProcessTree(child);
     };
     const abort=()=>{failure=new ReaderError('CANCELLED','操作已取消');terminate();};
     const timeout=setTimeout(()=>{failure=new ReaderError('PROCESS_TIMEOUT','后台转换或工具超过时间限制',408);terminate();},timeoutMs);

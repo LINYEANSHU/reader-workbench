@@ -20,10 +20,20 @@
     "reader.pptx": "6f86d7538389199eeff365a16b52f654d6823b6d55d8b6921546aeda1b2b0f34",
     "scan.pdf": "d34d9a4fc35a7c38d176a6bc10ccd87ec54142aa476075d23ac2ad0e16604394",
     "unknown.bin": "3d1f57c984978ef98a18378c8166c1cb8ede02c03eeb6aee7e2f121dfeee3e56",
-    "assets/diagram.png": "4a8add1cf1d444a3b1e9589973db9c59fa23387811619c6a9a0320551c71426e"
+    "assets/diagram.png": "4a8add1cf1d444a3b1e9589973db9c59fa23387811619c6a9a0320551c71426e",
+    "voice-zh.wav": "58ce0d26f5f140e9d1e56a8b7654cd7ff1c44edba682cd2e2a9b0aced2422c79",
+    "voice-en.wav": "b8279409ee1c94a0799a317d7ecb579893911aee8be818c6fbecfb0968cc01ac"
   },
   "legacyEngine": {
     "name": "LibreOffice",
     "version": "LibreOffice 26.2.6.3 8221e31b3ac356a1623c672912a3d2b492f7e3d1"
+  },
+  "voice": {
+    "channels": 1,
+    "sampleRate": 16000,
+    "englishVoice": "Microsoft David Desktop",
+    "source": "Self-generated offline Windows SAPI; no user microphone audio",
+    "chineseVoice": "Microsoft Huihui Desktop",
+    "encoding": "PCM16"
   }
 }
