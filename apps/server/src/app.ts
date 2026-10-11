@@ -6,11 +6,17 @@ import { ReaderError,publicError } from '../../../packages/contracts/src/errors.
 import { writePrivateJson } from '../../../packages/core/src/runtime/secure-file.js';
 import { doctor } from '../../../packages/core/src/runtime/doctor.js';
 import { Authentication } from './auth.js';
+import {WorkspaceService} from '../../../packages/core/src/workspaces/service.js';
+import {workspaceRoutes} from './routes/workspaces.js';
+import {uiStateRoutes} from './routes/ui-state.js';
 export async function startServer(config:RuntimeConfig){
   const app=Fastify({logger:false,bodyLimit:16*1024*1024});
   const auth=new Authentication();
   auth.url='http://'+(config.host.includes(':')?'['+config.host+']':config.host)+':'+config.port;
   auth.attach(app);
+  const workspaces=new WorkspaceService(config.configDir);
+  workspaceRoutes(app,workspaces,auth);uiStateRoutes(app,workspaces);
+  app.addHook('onClose',async()=>workspaces.close());
   app.setErrorHandler((error,_request,reply)=>{
     reply.code(error instanceof ReaderError?error.status:(error as {statusCode?:number}).statusCode??500).send({error:publicError(error)});
   });
@@ -25,6 +31,7 @@ export async function startServer(config:RuntimeConfig){
   try{
     const url=await app.listen({host:config.host,port:config.port});auth.url=url;
     await writePrivateJson(join(config.configDir,'connection.json'),{url,token:auth.token,pid:process.pid});
-    return {url,bootstrapUrl:url+'/#bootstrap='+auth.code,app,auth,close:async()=>{await app.close();}};
+    if(config.workspace)await workspaces.select(config.workspace,{callerId:'local-owner',transport:'internal'});
+    return {url,bootstrapUrl:url+'/#bootstrap='+auth.code,app,auth,workspaces,close:async()=>{await app.close();}};
   }catch(error){await app.close();if((error as NodeJS.ErrnoException).code==='EADDRINUSE')throw new ReaderError('PORT_IN_USE','端口 '+config.port+' 已被占用，请使用 --port 指定其他端口');throw error;}
 }
