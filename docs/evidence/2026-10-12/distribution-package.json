@@ -1,0 +1,12 @@
+{
+  "stage": "final reviewed distribution",
+  "path": "release/reader-workbench-0.1.0.tgz",
+  "bytes": 3818283,
+  "sha256": "8c00628fbf135f4dfa290e098ab8e09a4199b325229534f832c5f3582f050d72",
+  "entries": 288,
+  "privateRuntimeEntries": 0,
+  "privateCredentialMatches": 0,
+  "packageVersion": "0.1.0",
+  "installedWithoutSource": true,
+  "installedTestEvidence": "docs/evidence/2026-10-12/final-review-fixes/review/final-distribution.log"
+}

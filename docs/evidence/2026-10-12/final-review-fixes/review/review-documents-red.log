@@ -1,0 +1,47 @@
+
+> reader-workbench@0.1.0 test
+> vitest run tests/integration/documents.test.ts -t resource keys|copied workspace
+
+
+ RUN  v4.0.18 G:/My_project/try/.worktrees/reader-workbench
+
+ ❯ tests/integration/documents.test.ts (11 tests | 2 failed | 9 skipped) 611ms
+     × snapshots Unicode, spaced and reference images using the same resource keys as the viewer 163ms
+     × opens, asks and writes in a copied workspace without reusing or changing its original metadata 447ms
+     ↓ converts Office in a deeply nested workspace without a long LibreOffice profile
+     ↓ reads office pages and keeps versioned originals
+     ↓ keeps older references readable and searches Chinese short terms and RI safely
+     ↓ renders PDF pages and scanned pages without claiming OCR text
+     ↓ reports invalid PDF and reads text, image and unsupported binary honestly
+     ↓ maps notes using presentation order and relationships rather than note filenames
+     ↓ reports a configured missing converter and persists cancellation events
+     ↓ serves versioned documents and authorized assets over authenticated HTTP
+     ↓ terminates actual child processes on timeout and cancellation without shell expansion
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/integration/documents.test.ts > versioned document parsing > snapshots Unicode, spaced and reference images using the same resource keys as the viewer
+ReaderError: 引用资源不存在或未授权
+ ❯ DocumentService.resource packages/core/src/documents/service.ts:121:122
+
+ ❯ tests/integration/documents.test.ts:26:128
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  tests/integration/documents.test.ts > versioned document parsing > opens, asks and writes in a copied workspace without reusing or changing its original metadata
+AssertionError: expected '15d96f73b2b42adfdcb8ab34' to be '399676f09a28cc3ba590aa71' // Object.is equality
+
+Expected: "399676f09a28cc3ba590aa71"
+Received: "15d96f73b2b42adfdcb8ab34"
+
+ ❯ tests/integration/documents.test.ts:34:133
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 9 skipped (11)
+   Start at  04:01:47
+   Duration  1.74s (transform 488ms, setup 0ms, import 994ms, tests 611ms, environment 0ms)
+

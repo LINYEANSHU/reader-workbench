@@ -13,9 +13,11 @@ import {DocumentIndex} from './index.js';
 import {markdownAdapter} from './markdown.js';import {textAdapter} from './text.js';import {pdfAdapter,renderPdfPage} from './pdf.js';
 import {officeAdapter} from './office.js';import {imageAdapter} from './image.js';import {binaryAdapter} from './binary.js';
 import {isWithin} from '../workspaces/path-guard.js';
+import {markdownResources} from './markdown-resources.js';import {resourceUri} from '../../../contracts/src/resource-uri.js';import {KeyedQueue} from '../runs/queue.js';
 type SavedDocument=StoredDocument;
 export class DocumentService {
  readonly registry:CapabilityRegistry;readonly jobs:DocumentJobService;
+ private resourceRepairs=new KeyedQueue();
  constructor(readonly workspaces:WorkspaceService,registry?:CapabilityRegistry){
   this.registry=registry??new CapabilityRegistry();this.jobs=new DocumentJobService(workspaces);
   const builtins={markdown:markdownAdapter,text:textAdapter,pdf:pdfAdapter,office:officeAdapter,image:imageAdapter,binary:binaryAdapter};
@@ -32,8 +34,8 @@ export class DocumentService {
  }
  async open(workspaceId:WorkspaceId,relativePath:string,signal:AbortSignal):Promise<DocumentRecord>{
   const input=await snapshot(this.workspaces,workspaceId,relativePath,signal);const store=await this.workspaces.storeFor(workspaceId);
-  const old=await store.documents.get(input);
-  if(old&&old.record.parseState==='ready')return old.record;
+  const previous=await store.documents.get(input),old=previous?.record.workspaceId===workspaceId?previous:null;
+  if(old&&old.record.workspaceId===workspaceId&&old.record.parseState==='ready')return this.get(input);
   if(old&&['queued','converting','indexing'].includes(old.record.parseState)){
    const job=await this.jobs.get(workspaceId,old.record.processingRunId);
    if(['queued','running'].includes(job.status))return old.record;
@@ -54,17 +56,17 @@ export class DocumentService {
    try{
     saved.parsed=await lease.value.parse(input,jobSignal);jobSignal.throwIfAborted();
     publicRecord.pageCount=saved.parsed.pages.length;publicRecord.warnings=saved.parsed.warnings;
-    if(input.mime==='text/markdown')saved.resources=await this.snapshotResources(input.workspaceId,relativePath,input.cacheDir,saved.parsed.pages[0]?.text??'',jobSignal);
+    if(input.mime==='text/markdown'){saved.resources=await this.snapshotResources(input.workspaceId,relativePath,input.cacheDir,saved.parsed.pages[0]?.text??'',jobSignal);saved.resourceVersion=1;}
     await new DocumentIndex(store).replace(input,saved.parsed.blocks);publicRecord.parseState='ready';
    }catch(error){publicRecord.parseState=jobSignal.aborted?'cancelled':'failed';throw error;}
    finally{lease.release();await store.documents.save(saved);}
   },signal);
   await store.documents.save(saved);this.workspaces.onLifecycle?.({workspaceId,kind:'document.opened',data:{documentId:input.documentId,version:input.version}});return structuredClone(publicRecord);
  }
- private async snapshotResources(workspaceId:WorkspaceId,relativePath:string,cacheDir:string,text:string,signal:AbortSignal){
-  const resources:Record<string,{path:string;mime:string}>={};
-  for(const match of text.matchAll(/!\[[^\]]*\]\(([^\s)]+)(?:\s+[^)]*)?\)/g)){
-   const name=match[1]!;if(/^[a-z]+:/i.test(name)||name.startsWith('//'))continue;
+ private async snapshotResources(workspaceId:WorkspaceId,relativePath:string,cacheDir:string,text:string,signal:AbortSignal,previous:SavedDocument['resources']={}){
+  const resources:Record<string,{path:string;mime:string}>=Object.fromEntries(Object.entries(previous).map(([name,resource])=>[resourceUri(name),resource]));
+  for(const name of markdownResources(text)){
+   if(resources[name]||/^[a-z][a-z0-9+.-]*:/i.test(name)||name.startsWith('/'))continue;
    try{const relative=join(dirname(relativePath),decodeURIComponent(name));const path=await this.workspaces.resolvePath(workspaceId,relative,'read');
     const mime=mimeFor(path);if(!['image/png','image/jpeg','image/webp'].includes(mime))continue;
     const bytes=await readFile(path,{signal});if(bytes.length>12*1024*1024)continue;
@@ -83,7 +85,8 @@ export class DocumentService {
   await writeFile(path,bytes,{flag:'wx',signal});return this.open(workspaceId,relative,signal);
  }
  async get(ref:DocumentRef):Promise<DocumentRecord>{
-  const saved=await this.saved(ref);
+  let saved=await this.saved(ref);
+  if(saved.record.parseState==='ready'&&saved.record.mime==='text/markdown'&&saved.resourceVersion!==1){await this.resourceRepairs.enqueue(ref.workspaceId+':'+this.key(ref),async()=>{const current=await this.saved(ref);if(current.resourceVersion===1)return;const previous=current.resources??{},repaired=await this.snapshotResources(ref.workspaceId,current.record.relativePath,await safeCacheDirectory(this.workspaces,ref.workspaceId,['cache',ref.documentId,ref.version]),current.parsed?.pages[0]?.text??'',new AbortController().signal,previous);if(Object.keys(repaired).length>Object.keys(previous).length)current.record.warnings.push('旧版未快照的图片已补充为修复时的本地版本；原有图片快照已保留。');current.resources=repaired;current.resourceVersion=1;await(await this.workspaces.storeFor(ref.workspaceId)).documents.save(current);});saved=await this.saved(ref);}
   if(['queued','converting','indexing'].includes(saved.record.parseState)){
    const job=await this.jobs.get(ref.workspaceId,saved.record.processingRunId);
    if(job.status==='failed'||job.status==='cancelled'){saved.record.parseState=job.status;await(await this.workspaces.storeFor(ref.workspaceId)).documents.save(saved);}
@@ -118,6 +121,6 @@ export class DocumentService {
   const path=preview?saved.parsed?.pdfPath??saved.path:saved.path;
   return {path:await this.authorizedFile(ref,path),mime:preview&&saved.parsed?.pdfPath?'application/pdf':saved.record.mime};
  }
- async resource(ref:DocumentRef,name:string){const resource=(await this.saved(ref)).resources?.[name];if(!resource)throw new ReaderError('RESOURCE_UNAVAILABLE','引用资源不存在或未授权',404);return {...resource,path:await this.authorizedFile(ref,resource.path)};}
+ async resource(ref:DocumentRef,name:string){await this.get(ref);const resource=(await this.saved(ref)).resources?.[resourceUri(name)];if(!resource)throw new ReaderError('RESOURCE_UNAVAILABLE','引用资源不存在或未授权',404);return {...resource,path:await this.authorizedFile(ref,resource.path)};}
  async close(){await this.jobs.close();}
 }

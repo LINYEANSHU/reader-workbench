@@ -1,0 +1,598 @@
+{
+  "status": "passed",
+  "date": "2026-10-11T20:36:33.242Z",
+  "platform": "win32",
+  "architecture": "x64",
+  "node": "v24.21.0",
+  "packageJsonSha256": "e772cfcf6c008cd23b9db1349f3147a1bd1ac310c86bd9c1256b9b1da71abc39",
+  "platforms": [
+    {
+      "platform": "win32",
+      "status": "passed"
+    },
+    {
+      "platform": "darwin",
+      "status": "not-tested"
+    },
+    {
+      "platform": "linux",
+      "status": "not-tested"
+    }
+  ],
+  "manualChecks": [
+    {
+      "name": "Physical microphone and manual OS picker",
+      "status": "not-tested"
+    },
+    {
+      "name": "Optional OS global hotkey helper",
+      "status": "not-tested",
+      "reason": "No native helper bundled; browser hotkeys and the plugin bridge are tested"
+    }
+  ],
+  "receipts": [
+    {
+      "name": "fresh-install",
+      "command": "C:\\nvm4w\\nodejs\\node.exe D:\\NVM\\nvm\\v24.21.0\\node_modules\\npm\\bin\\npm-cli.js ci --no-audit --no-fund",
+      "platform": "win32",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "docs/evidence/2026-10-12/final-review-fixes/commands/fresh-install.log",
+      "sha256": "3f0045812d30d1659e6617054233fe5aaca65edebb1771624fdf0928b8b2c3f4"
+    },
+    {
+      "name": "fixture-hashes",
+      "command": "C:\\nvm4w\\nodejs\\node.exe scripts/fixture-manifest.mjs",
+      "platform": "win32",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "docs/evidence/2026-10-12/final-review-fixes/commands/fixture-hashes.log",
+      "sha256": "796ae30342cdf94cbbe2b4008e8af8fd8d13056cc6462fc214c11f6750b364cd"
+    },
+    {
+      "name": "typecheck",
+      "command": "C:\\nvm4w\\nodejs\\node.exe D:\\NVM\\nvm\\v24.21.0\\node_modules\\npm\\bin\\npm-cli.js run typecheck",
+      "platform": "win32",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "docs/evidence/2026-10-12/final-review-fixes/commands/typecheck.log",
+      "sha256": "1ac82ca2ac0d1e5668cb7581bbfc19506587600a52568fc090c87a681c90ef65"
+    },
+    {
+      "name": "build",
+      "command": "C:\\nvm4w\\nodejs\\node.exe D:\\NVM\\nvm\\v24.21.0\\node_modules\\npm\\bin\\npm-cli.js run build",
+      "platform": "win32",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "docs/evidence/2026-10-12/final-review-fixes/commands/build.log",
+      "sha256": "be7a4df267171dca4a61045cab86eaf8c6d98fc33fe828ea0e3f45bcf9e4ad88"
+    },
+    {
+      "name": "core",
+      "command": "C:\\nvm4w\\nodejs\\node.exe D:\\NVM\\nvm\\v24.21.0\\node_modules\\npm\\bin\\npm-cli.js test",
+      "platform": "win32",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "docs/evidence/2026-10-12/final-review-fixes/commands/core.log",
+      "sha256": "dc651bc5702b0e16868f7140e20715760f769260f6a4c859b1799b97d0944a63"
+    },
+    {
+      "name": "browser",
+      "command": "C:\\nvm4w\\nodejs\\node.exe D:\\NVM\\nvm\\v24.21.0\\node_modules\\npm\\bin\\npm-cli.js run test:e2e",
+      "platform": "win32",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "docs/evidence/2026-10-12/final-review-fixes/commands/browser.log",
+      "sha256": "bdcc5d4332dfb11144ebc4e31fb431bac334ac0992a69ba7247a48c0050873fa"
+    },
+    {
+      "name": "render-pages",
+      "command": "C:\\nvm4w\\nodejs\\node.exe scripts/render-acceptance.mjs --workspace G:\\My_project\\try\\.worktrees\\reader-workbench\\.reader-runtime\\review-final-acceptance\\workspace --output G:\\My_project\\try\\.worktrees\\reader-workbench\\docs\\evidence\\2026-10-12\\final-review-fixes\\rendered",
+      "platform": "win32",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "docs/evidence/2026-10-12/final-review-fixes/commands/render-pages.log",
+      "sha256": "2b1022e30dbaa59ab470d925bf8d61ba026b685419bfea2227a221f49ba130ef"
+    },
+    {
+      "name": "voice-cli",
+      "command": "C:\\nvm4w\\nodejs\\node.exe scripts/voice-smoke.mjs --workspace G:\\My_project\\try\\.worktrees\\reader-workbench\\.reader-runtime\\review-final-acceptance\\workspace\\voice-cli --config-dir G:\\My_project\\try\\.worktrees\\reader-workbench\\.reader-runtime\\review-final-acceptance\\voice-private-config --output G:\\My_project\\try\\.worktrees\\reader-workbench\\docs\\evidence\\2026-10-12\\final-review-fixes\\voice-cli.json",
+      "platform": "win32",
+      "status": "passed",
+      "exitCode": 0,
+      "evidence": "docs/evidence/2026-10-12/final-review-fixes/commands/voice-cli.log",
+      "sha256": "e9e7e477651f987d5a369a2b19cf7d570e707a215f1c31bc35c8579084c031ca"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "R01",
+      "status": "passed",
+      "platform": "win32",
+      "commands": [
+        "C:\\nvm4w\\nodejs\\node.exe D:\\NVM\\nvm\\v24.21.0\\node_modules\\npm\\bin\\npm-cli.js test"
+      ],
+      "evidence": [
+        {
+          "path": "docs/evidence/2026-10-12/final-review-fixes/commands/core.log",
+          "sha256": "dc651bc5702b0e16868f7140e20715760f769260f6a4c859b1799b97d0944a63"
+        }
+      ]
+    },
+    {
+      "id": "R02",
+      "status": "not-tested",
+      "platform": "win32",
+      "commands": [
+        "C:\\nvm4w\\nodejs\\node.exe D:\\NVM\\nvm\\v24.21.0\\node_modules\\npm\\bin\\npm-cli.js test"
+      ],
+      "evidence": [
+        {
+          "path": "docs/evidence/2026-10-12/final-review-fixes/commands/core.log",
+          "sha256": "dc651bc5702b0e16868f7140e20715760f769260f6a4c859b1799b97d0944a63"
+        }
+      ],
+      "reason": "Only win32 was run here; other platforms remain not-tested"
+    },
+    {
+      "id": "R03",
+      "status": "passed",
+      "platform": "win32",
+      "commands": [
+        "C:\\nvm4w\\nodejs\\node.exe D:\\NVM\\nvm\\v24.21.0\\node_modules\\npm\\bin\\npm-cli.js run test:e2e"
+      ],
+      "evidence": [
+        {
+          "path": "docs/evidence/2026-10-12/final-review-fixes/commands/browser.log",
+          "sha256": "bdcc5d4332dfb11144ebc4e31fb431bac334ac0992a69ba7247a48c0050873fa"
+        }
+      ]
+    },
+    {
+      "id": "R04",
+      "status": "passed",
+      "platform": "win32",
+      "commands": [
+        "C:\\nvm4w\\nodejs\\node.exe D:\\NVM\\nvm\\v24.21.0\\node_modules\\npm\\bin\\npm-cli.js test"
+      ],
+      "evidence": [
+        {
+          "path": "docs/evidence/2026-10-12/final-review-fixes/commands/core.log",
+          "sha256": "dc651bc5702b0e16868f7140e20715760f769260f6a4c859b1799b97d0944a63"
+        }
+      ]
+    },
+    {
+      "id": "R05",
+      "status": "passed",
+      "platform": "win32",
+      "commands": [
+        "C:\\nvm4w\\nodejs\\node.exe D:\\NVM\\nvm\\v24.21.0\\node_modules\\npm\\bin\\npm-cli.js test"
+      ],
+      "evidence": [
+        {
+          "path": "docs/evidence/2026-10-12/final-review-fixes/commands/core.log",
+          "sha256": "dc651bc5702b0e16868f7140e20715760f769260f6a4c859b1799b97d0944a63"
+        }
+      ]
+    },
+    {
+      "id": "R06",
+      "status": "not-tested",
+      "platform": "win32",
+      "commands": [
+        "C:\\nvm4w\\nodejs\\node.exe D:\\NVM\\nvm\\v24.21.0\\node_modules\\npm\\bin\\npm-cli.js test",
+        "C:\\nvm4w\\nodejs\\node.exe D:\\NVM\\nvm\\v24.21.0\\node_modules\\npm\\bin\\npm-cli.js run test:e2e"
+      ],
+      "evidence": [
+        {
+          "path": "docs/evidence/2026-10-12/final-review-fixes/commands/core.log",
+          "sha256": "dc651bc5702b0e16868f7140e20715760f769260f6a4c859b1799b97d0944a63"
+        },
+        {
+          "path": "docs/evidence/2026-10-12/final-review-fixes/commands/browser.log",
+          "sha256": "bdcc5d4332dfb11144ebc4e31fb431bac334ac0992a69ba7247a48c0050873fa"
+        }
+      ]
+    },
+    {
+      "id": "R07",
+      "status": "passed",
+      "platform": "win32",
+      "commands": [
+        "C:\\nvm4w\\nodejs\\node.exe D:\\NVM\\nvm\\v24.21.0\\node_modules\\npm\\bin\\npm-cli.js test"
+      ],
+      "evidence": [
+        {
+          "path": "docs/evidence/2026-10-12/final-review-fixes/commands/core.log",
+          "sha256": "dc651bc5702b0e16868f7140e20715760f769260f6a4c859b1799b97d0944a63"
+        }
+      ]
+    },
+    {
+      "id": "R08",
+      "status": "passed",
+      "platform": "win32",
+      "commands": [
+        "C:\\nvm4w\\nodejs\\node.exe D:\\NVM\\nvm\\v24.21.0\\node_modules\\npm\\bin\\npm-cli.js test"
+      ],
+      "evidence": [
+        {
+          "path": "docs/evidence/2026-10-12/final-review-fixes/commands/core.log",
+          "sha256": "dc651bc5702b0e16868f7140e20715760f769260f6a4c859b1799b97d0944a63"
+        }
+      ]
+    },
+    {
+      "id": "R09",
+      "status": "passed",
+      "platform": "win32",
+      "commands": [
+        "C:\\nvm4w\\nodejs\\node.exe D:\\NVM\\nvm\\v24.21.0\\node_modules\\npm\\bin\\npm-cli.js test"
+      ],
+      "evidence": [
+        {
+          "path": "docs/evidence/2026-10-12/final-review-fixes/commands/core.log",
+          "sha256": "dc651bc5702b0e16868f7140e20715760f769260f6a4c859b1799b97d0944a63"
+        }
+      ]
+    },
+    {
+      "id": "R10",
+      "status": "passed",
+      "platform": "win32",
+      "commands": [
+        "C:\\nvm4w\\nodejs\\node.exe D:\\NVM\\nvm\\v24.21.0\\node_modules\\npm\\bin\\npm-cli.js test"
+      ],
+      "evidence": [
+        {
+          "path": "docs/evidence/2026-10-12/final-review-fixes/commands/core.log",
+          "sha256": "dc651bc5702b0e16868f7140e20715760f769260f6a4c859b1799b97d0944a63"
+        }
+      ]
+    },
+    {
+      "id": "R11",
+      "status": "passed",
+      "platform": "win32",
+      "commands": [
+        "C:\\nvm4w\\nodejs\\node.exe D:\\NVM\\nvm\\v24.21.0\\node_modules\\npm\\bin\\npm-cli.js test"
+      ],
+      "evidence": [
+        {
+          "path": "docs/evidence/2026-10-12/final-review-fixes/commands/core.log",
+          "sha256": "dc651bc5702b0e16868f7140e20715760f769260f6a4c859b1799b97d0944a63"
+        }
+      ]
+    },
+    {
+      "id": "R12",
+      "status": "passed",
+      "platform": "win32",
+      "commands": [
+        "C:\\nvm4w\\nodejs\\node.exe D:\\NVM\\nvm\\v24.21.0\\node_modules\\npm\\bin\\npm-cli.js test"
+      ],
+      "evidence": [
+        {
+          "path": "docs/evidence/2026-10-12/final-review-fixes/commands/core.log",
+          "sha256": "dc651bc5702b0e16868f7140e20715760f769260f6a4c859b1799b97d0944a63"
+        }
+      ]
+    },
+    {
+      "id": "R13",
+      "status": "passed",
+      "platform": "win32",
+      "commands": [
+        "C:\\nvm4w\\nodejs\\node.exe D:\\NVM\\nvm\\v24.21.0\\node_modules\\npm\\bin\\npm-cli.js test"
+      ],
+      "evidence": [
+        {
+          "path": "docs/evidence/2026-10-12/final-review-fixes/commands/core.log",
+          "sha256": "dc651bc5702b0e16868f7140e20715760f769260f6a4c859b1799b97d0944a63"
+        }
+      ]
+    },
+    {
+      "id": "R14",
+      "status": "passed",
+      "platform": "win32",
+      "commands": [
+        "C:\\nvm4w\\nodejs\\node.exe D:\\NVM\\nvm\\v24.21.0\\node_modules\\npm\\bin\\npm-cli.js test"
+      ],
+      "evidence": [
+        {
+          "path": "docs/evidence/2026-10-12/final-review-fixes/commands/core.log",
+          "sha256": "dc651bc5702b0e16868f7140e20715760f769260f6a4c859b1799b97d0944a63"
+        }
+      ]
+    },
+    {
+      "id": "R15",
+      "status": "passed",
+      "platform": "win32",
+      "commands": [
+        "C:\\nvm4w\\nodejs\\node.exe D:\\NVM\\nvm\\v24.21.0\\node_modules\\npm\\bin\\npm-cli.js test"
+      ],
+      "evidence": [
+        {
+          "path": "docs/evidence/2026-10-12/final-review-fixes/commands/core.log",
+          "sha256": "dc651bc5702b0e16868f7140e20715760f769260f6a4c859b1799b97d0944a63"
+        }
+      ]
+    },
+    {
+      "id": "R16",
+      "status": "passed",
+      "platform": "win32",
+      "commands": [
+        "C:\\nvm4w\\nodejs\\node.exe D:\\NVM\\nvm\\v24.21.0\\node_modules\\npm\\bin\\npm-cli.js test"
+      ],
+      "evidence": [
+        {
+          "path": "docs/evidence/2026-10-12/final-review-fixes/commands/core.log",
+          "sha256": "dc651bc5702b0e16868f7140e20715760f769260f6a4c859b1799b97d0944a63"
+        }
+      ]
+    },
+    {
+      "id": "R17",
+      "status": "passed",
+      "platform": "win32",
+      "commands": [
+        "C:\\nvm4w\\nodejs\\node.exe D:\\NVM\\nvm\\v24.21.0\\node_modules\\npm\\bin\\npm-cli.js test"
+      ],
+      "evidence": [
+        {
+          "path": "docs/evidence/2026-10-12/final-review-fixes/commands/core.log",
+          "sha256": "dc651bc5702b0e16868f7140e20715760f769260f6a4c859b1799b97d0944a63"
+        }
+      ]
+    },
+    {
+      "id": "R18",
+      "status": "passed",
+      "platform": "win32",
+      "commands": [
+        "C:\\nvm4w\\nodejs\\node.exe D:\\NVM\\nvm\\v24.21.0\\node_modules\\npm\\bin\\npm-cli.js run test:e2e"
+      ],
+      "evidence": [
+        {
+          "path": "docs/evidence/2026-10-12/final-review-fixes/commands/browser.log",
+          "sha256": "bdcc5d4332dfb11144ebc4e31fb431bac334ac0992a69ba7247a48c0050873fa"
+        }
+      ]
+    },
+    {
+      "id": "R19",
+      "status": "passed",
+      "platform": "win32",
+      "commands": [
+        "C:\\nvm4w\\nodejs\\node.exe D:\\NVM\\nvm\\v24.21.0\\node_modules\\npm\\bin\\npm-cli.js run test:e2e"
+      ],
+      "evidence": [
+        {
+          "path": "docs/evidence/2026-10-12/final-review-fixes/commands/browser.log",
+          "sha256": "bdcc5d4332dfb11144ebc4e31fb431bac334ac0992a69ba7247a48c0050873fa"
+        }
+      ]
+    },
+    {
+      "id": "R20",
+      "status": "passed",
+      "platform": "win32",
+      "commands": [
+        "C:\\nvm4w\\nodejs\\node.exe D:\\NVM\\nvm\\v24.21.0\\node_modules\\npm\\bin\\npm-cli.js run test:e2e"
+      ],
+      "evidence": [
+        {
+          "path": "docs/evidence/2026-10-12/final-review-fixes/commands/browser.log",
+          "sha256": "bdcc5d4332dfb11144ebc4e31fb431bac334ac0992a69ba7247a48c0050873fa"
+        }
+      ]
+    },
+    {
+      "id": "R21",
+      "status": "passed",
+      "platform": "win32",
+      "commands": [
+        "C:\\nvm4w\\nodejs\\node.exe D:\\NVM\\nvm\\v24.21.0\\node_modules\\npm\\bin\\npm-cli.js run test:e2e"
+      ],
+      "evidence": [
+        {
+          "path": "docs/evidence/2026-10-12/final-review-fixes/commands/browser.log",
+          "sha256": "bdcc5d4332dfb11144ebc4e31fb431bac334ac0992a69ba7247a48c0050873fa"
+        }
+      ]
+    },
+    {
+      "id": "R22",
+      "status": "passed",
+      "platform": "win32",
+      "commands": [
+        "C:\\nvm4w\\nodejs\\node.exe D:\\NVM\\nvm\\v24.21.0\\node_modules\\npm\\bin\\npm-cli.js run test:e2e"
+      ],
+      "evidence": [
+        {
+          "path": "docs/evidence/2026-10-12/final-review-fixes/commands/browser.log",
+          "sha256": "bdcc5d4332dfb11144ebc4e31fb431bac334ac0992a69ba7247a48c0050873fa"
+        }
+      ]
+    },
+    {
+      "id": "R23",
+      "status": "passed",
+      "platform": "win32",
+      "commands": [
+        "C:\\nvm4w\\nodejs\\node.exe D:\\NVM\\nvm\\v24.21.0\\node_modules\\npm\\bin\\npm-cli.js test"
+      ],
+      "evidence": [
+        {
+          "path": "docs/evidence/2026-10-12/final-review-fixes/commands/core.log",
+          "sha256": "dc651bc5702b0e16868f7140e20715760f769260f6a4c859b1799b97d0944a63"
+        }
+      ]
+    },
+    {
+      "id": "R24",
+      "status": "not-tested",
+      "platform": "win32",
+      "commands": [
+        "C:\\nvm4w\\nodejs\\node.exe D:\\NVM\\nvm\\v24.21.0\\node_modules\\npm\\bin\\npm-cli.js test",
+        "C:\\nvm4w\\nodejs\\node.exe D:\\NVM\\nvm\\v24.21.0\\node_modules\\npm\\bin\\npm-cli.js run test:e2e"
+      ],
+      "evidence": [
+        {
+          "path": "docs/evidence/2026-10-12/final-review-fixes/commands/core.log",
+          "sha256": "dc651bc5702b0e16868f7140e20715760f769260f6a4c859b1799b97d0944a63"
+        },
+        {
+          "path": "docs/evidence/2026-10-12/final-review-fixes/commands/browser.log",
+          "sha256": "bdcc5d4332dfb11144ebc4e31fb431bac334ac0992a69ba7247a48c0050873fa"
+        }
+      ]
+    },
+    {
+      "id": "R25",
+      "status": "passed",
+      "platform": "win32",
+      "commands": [
+        "C:\\nvm4w\\nodejs\\node.exe D:\\NVM\\nvm\\v24.21.0\\node_modules\\npm\\bin\\npm-cli.js test",
+        "C:\\nvm4w\\nodejs\\node.exe D:\\NVM\\nvm\\v24.21.0\\node_modules\\npm\\bin\\npm-cli.js run test:e2e",
+        "C:\\nvm4w\\nodejs\\node.exe scripts/voice-smoke.mjs --workspace G:\\My_project\\try\\.worktrees\\reader-workbench\\.reader-runtime\\review-final-acceptance\\workspace\\voice-cli --config-dir G:\\My_project\\try\\.worktrees\\reader-workbench\\.reader-runtime\\review-final-acceptance\\voice-private-config --output G:\\My_project\\try\\.worktrees\\reader-workbench\\docs\\evidence\\2026-10-12\\final-review-fixes\\voice-cli.json"
+      ],
+      "evidence": [
+        {
+          "path": "docs/evidence/2026-10-12/final-review-fixes/commands/core.log",
+          "sha256": "dc651bc5702b0e16868f7140e20715760f769260f6a4c859b1799b97d0944a63"
+        },
+        {
+          "path": "docs/evidence/2026-10-12/final-review-fixes/commands/browser.log",
+          "sha256": "bdcc5d4332dfb11144ebc4e31fb431bac334ac0992a69ba7247a48c0050873fa"
+        },
+        {
+          "path": "docs/evidence/2026-10-12/final-review-fixes/commands/voice-cli.log",
+          "sha256": "e9e7e477651f987d5a369a2b19cf7d570e707a215f1c31bc35c8579084c031ca"
+        }
+      ]
+    }
+  ],
+  "savedEvidence": [
+    {
+      "path": "docs/evidence/2026-10-12/final-review-fixes/screenshots/capture-cross-page.png",
+      "sha256": "e7846c9b0ffb58c205c4aa5e4b16018077b9fc8630cf7d372ae4df0d6a50006d"
+    },
+    {
+      "path": "docs/evidence/2026-10-12/final-review-fixes/screenshots/capture-markdown.png",
+      "sha256": "7d284127110da66a97c64919e79fff3699202fffc2dfd4b568b789c3dec0da86"
+    },
+    {
+      "path": "docs/evidence/2026-10-12/final-review-fixes/screenshots/capture-native-tab.png",
+      "sha256": "bb60470120a8a4a0c785316b7f5e325cbbf85f6d7aa7c150f3d2f3607262f219"
+    },
+    {
+      "path": "docs/evidence/2026-10-12/final-review-fixes/screenshots/capture-office.png",
+      "sha256": "3a743bc2fc5339b14e8e9275b8463e817ef420a95a21357156f8fc55300a9127"
+    },
+    {
+      "path": "docs/evidence/2026-10-12/final-review-fixes/screenshots/capture-source-175.png",
+      "sha256": "2b6123a250d2bdab6ca23735041b34419089e7440770278b67d2b90b1c13d813"
+    },
+    {
+      "path": "docs/evidence/2026-10-12/final-review-fixes/screenshots/capture-source-75.png",
+      "sha256": "c2fcc26a03af47cf983f9a08ea69e987ef857267471701bbfc63b6091f9869ea"
+    },
+    {
+      "path": "docs/evidence/2026-10-12/final-review-fixes/distribution-evidence.json",
+      "sha256": "f6a41ce4fd136f90ff844108aa1539268445cfca7c6f98236c632320778accf0"
+    },
+    {
+      "path": "docs/evidence/2026-10-12/final-review-fixes/screenshots/full-flow.png",
+      "sha256": "618e82bacfc2ef4069e812e826dadc18b01191e2b83f6b17ffddd6829f0aa6f3"
+    },
+    {
+      "path": "docs/evidence/2026-10-12/final-review-fixes/screenshots/layout-custom.png",
+      "sha256": "9ed48e4944247190eb8cf614b50d253fad90631b3782c753b7af72afa06e8c31"
+    },
+    {
+      "path": "docs/evidence/2026-10-12/final-review-fixes/screenshots/layout-mixed.png",
+      "sha256": "113a5fecc39d41ecc11cc259cbbc55539e26e6d877d469e98f248f72c484f98f"
+    },
+    {
+      "path": "docs/evidence/2026-10-12/final-review-fixes/screenshots/layout-narrow-rows.png",
+      "sha256": "e3259c7c8f95cca7bfb9eec70371ec3e0a001617b1fb7beb6f552ee00f13ba9c"
+    },
+    {
+      "path": "docs/evidence/2026-10-12/final-review-fixes/screenshots/layout-pdf-hidpi.png",
+      "sha256": "8f7f0f865e8f60f1ea33a4954af1bc6f18c7f14bbd7b55964737e503f6c7cd3b"
+    },
+    {
+      "path": "docs/evidence/2026-10-12/final-review-fixes/screenshots/native-raw-frame.png",
+      "sha256": "1a6e1987790604b57bf8a3b7c85da62b26be47743505607ace9487b90e96818d"
+    },
+    {
+      "path": "docs/evidence/2026-10-12/final-review-fixes/screenshots/pages-contact-1.png",
+      "sha256": "42daa2f59776b9f800b98286e6f62f69089d44494fd91e886529d67a6817ec64"
+    },
+    {
+      "path": "docs/evidence/2026-10-12/final-review-fixes/screenshots/pages-contact-2.png",
+      "sha256": "e5fd1d4ce138ddd76d473ef689fd58168b4b306a51178837e0b1dfcc9b1c4ab5"
+    },
+    {
+      "path": "docs/evidence/2026-10-12/final-review-fixes/screenshots/pages-contact-3.png",
+      "sha256": "42f7fc22f286e9af76e98fa05ffce6ffea8ad882023337d83235a6d744d86396"
+    },
+    {
+      "path": "docs/evidence/2026-10-12/final-review-fixes/screenshots/pages-contact-4.png",
+      "sha256": "5d8b360b26b6f5339e5b3a3bbed82608659ba8c7fb8307f2463d84264009ac67"
+    },
+    {
+      "path": "docs/evidence/2026-10-12/final-review-fixes/screenshots/pages-contact-5.png",
+      "sha256": "7dcdfb06cec27ed33665eeb83dc8217ecb7365f1a4355255f9811172d4ecb839"
+    },
+    {
+      "path": "docs/evidence/2026-10-12/final-review-fixes/screenshots/plugins-settings.png",
+      "sha256": "3b5350e7225647b5abe1ab2d7f9b7e4859d5c3b5e1d72032cb887248780adbee"
+    },
+    {
+      "path": "docs/evidence/2026-10-12/final-review-fixes/screenshots/reference-harness.png",
+      "sha256": "91f5db7b9f8a5706cc8649f017ca9cca00d2f772d8ecbd4e535b9ba6502fc0fc"
+    },
+    {
+      "path": "docs/evidence/2026-10-12/final-review-fixes/screenshots/review-markdown-images.png",
+      "sha256": "4f34b3d3e720850aa7b167ad785e7942ba9d2bf4f46e056987de4bc4e85f63d1"
+    },
+    {
+      "path": "docs/evidence/2026-10-12/final-review-fixes/screenshots/review-temporary-branches.png",
+      "sha256": "e68b4d116ae29cbe5bf7232c5732b2e9a16dad52d32fbc061b3467bc1e43c122"
+    },
+    {
+      "path": "docs/evidence/2026-10-12/final-review-fixes/screenshots/selection-cross-page.png",
+      "sha256": "b12d1c95197ebe430f5f2ab81dbf4def03e654ca3782840d87a215c12ba1eb48"
+    },
+    {
+      "path": "docs/evidence/2026-10-12/final-review-fixes/screenshots/voice-drafts.png",
+      "sha256": "ff055d599c7f5d28c66efe9bd8367b2fd5501beed29580476606c90783550136"
+    },
+    {
+      "path": "docs/evidence/2026-10-12/final-review-fixes/voice-native-evidence.json",
+      "sha256": "a626b873e719118788140982ca556d686d2884ab24874b8c46f32b37eab9274c"
+    },
+    {
+      "path": "docs/evidence/2026-10-12/final-review-fixes/screenshots/workbench-markdown.png",
+      "sha256": "af185767d1b629618cacb826746cccddbc38f8fdb3c44a3a52151a2831f16426"
+    },
+    {
+      "path": "docs/evidence/2026-10-12/final-review-fixes/screenshots/workbench-reader.docx.png",
+      "sha256": "0e591bf0a4f8887420eb20327ff906f1c0f2832ddd584629bfe23bc6b20de2f3"
+    },
+    {
+      "path": "docs/evidence/2026-10-12/final-review-fixes/screenshots/workbench-reader.pdf.png",
+      "sha256": "dc16c445380f7c0ab5cc9646a9f620e4e4eaaf94039c9745e3388dffdf9c3be4"
+    },
+    {
+      "path": "docs/evidence/2026-10-12/final-review-fixes/screenshots/workbench-reader.pptx.png",
+      "sha256": "e13621a047dcf5481aa945868762a910ef7e5b71398d12a6dc652de24a2fdefc"
+    }
+  ]
+}

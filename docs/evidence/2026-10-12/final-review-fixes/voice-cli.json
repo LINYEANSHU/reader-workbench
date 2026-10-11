@@ -1,0 +1,23 @@
+{
+  "status": "passed",
+  "platform": "win32",
+  "architecture": "x64",
+  "node": "v24.21.0",
+  "source": "built CLI + managed packaged worker + actual authenticated HTTP + actual model",
+  "network": "cached local model; separate native test blocks Node outgoing network APIs",
+  "conversationWrites": 0,
+  "results": [
+    {
+      "fixture": "voice-zh.wav",
+      "text": "请帮我阅读这篇文档。",
+      "audioSeconds": 2.78,
+      "inferenceSeconds": 0.0515467000000001
+    },
+    {
+      "fixture": "voice-en.wav",
+      "text": "Hello, please help me read this document.",
+      "audioSeconds": 3.475,
+      "inferenceSeconds": 0.06069270000000006
+    }
+  ]
+}

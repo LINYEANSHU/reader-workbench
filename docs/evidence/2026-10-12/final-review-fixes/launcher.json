@@ -1,0 +1,12 @@
+{
+  "status": "passed",
+  "port": 4317,
+  "launcherPid": 48020,
+  "applicationPid": 46576,
+  "healthStatus": 200,
+  "workspaceCount": 0,
+  "configWithinWorkspace": true,
+  "ownerIdentityVerified": true,
+  "script": "Start-Reader.ps1",
+  "keptRunning": true
+}

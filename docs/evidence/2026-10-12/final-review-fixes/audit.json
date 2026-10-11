@@ -1,0 +1,66 @@
+{
+  "status": "passed",
+  "receiptCount": 37,
+  "renderedPages": 20,
+  "identicalToInspectedPages": 20,
+  "uiImagesInspected": [
+    "review-markdown-images.png",
+    "review-temporary-branches.png"
+  ],
+  "publicFilesCredentialScan": 440,
+  "runtimeFilesScanned": 268,
+  "privateCredentialsPrinted": false,
+  "realLlmCalled": false,
+  "commands": [
+    {
+      "name": "fresh-install",
+      "status": "passed"
+    },
+    {
+      "name": "fixture-hashes",
+      "status": "passed"
+    },
+    {
+      "name": "typecheck",
+      "status": "passed"
+    },
+    {
+      "name": "build",
+      "status": "passed"
+    },
+    {
+      "name": "core",
+      "status": "passed"
+    },
+    {
+      "name": "browser",
+      "status": "passed"
+    },
+    {
+      "name": "render-pages",
+      "status": "passed"
+    },
+    {
+      "name": "voice-cli",
+      "status": "passed"
+    }
+  ],
+  "notTestedRequirements": [
+    "R02",
+    "R06",
+    "R24"
+  ],
+  "packageJsonAtFullAcceptance": "e772cfcf6c008cd23b9db1349f3147a1bd1ac310c86bd9c1256b9b1da71abc39",
+  "packageJsonAtPackaging": "e43a26aeb806f6bf22bd9b970a60e2df32e0e4e01057db4ac0941b089b33e463",
+  "postAcceptanceChanges": "Only final delivery docs and inclusion of docs/final-review.md in package files; production unchanged. Actual installed-distribution integration passed again.",
+  "supplementaryEvidence": [
+    {
+      "path": "docs/evidence/2026-10-12/final-review-fixes/review/final-distribution.log",
+      "sha256": "71c6b0911b5eea8245f7420ea2d74a8de7c743777f3f29f6a4653a2677acc641"
+    },
+    {
+      "path": "docs/evidence/2026-10-12/final-review-fixes/launcher.json",
+      "sha256": "88747d839b9c9feb485d4ff905958fbbde79364c798e1ac6da71ff99a486108a"
+    }
+  ]
+}

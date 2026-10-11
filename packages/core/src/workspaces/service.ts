@@ -7,6 +7,7 @@ import type {UiState} from '../../../contracts/src/ui-state.js';
 import {ReaderError} from '../../../contracts/src/errors.js';
 import {writePrivateJson} from '../runtime/secure-file.js';
 import {SqliteWorkspaceStore} from '../storage/workspace-store.js';
+import {databaseWorkspaceId} from '../storage/identity.js';
 import {isWithin,resolveScopedPath} from './path-guard.js';
 import {browseDirectories} from './directory-browser.js';
 import type {CapabilityRegistry} from '../plugins/registry.js';import {StorageConsumer} from '../plugins/storage-consumer.js';import type {LifecycleEvent} from '../../../contracts/src/runs.js';
@@ -17,6 +18,7 @@ export class WorkspaceService {
   private capabilities?:CapabilityRegistry;private storage?:StorageConsumer;private wrapped=new Map<WorkspaceId,SqliteWorkspaceStore>();
   attachCapabilities(registry:CapabilityRegistry){this.capabilities=registry;this.storage=new StorageConsumer(registry);}
   private workspaces=new Map<WorkspaceId,SavedWorkspace>();private stores=new Map<WorkspaceId,SqliteWorkspaceStore>();private ready:Promise<void>;
+  private internals=new Map<WorkspaceId,string>();
   private selecting:Promise<unknown>=Promise.resolve();
   private configRoot:string;
   constructor(readonly configDir:string){this.configRoot=resolve(configDir);this.ready=this.load();}
@@ -42,25 +44,28 @@ export class WorkspaceService {
     });
     this.selecting=operation;return operation;
   }
-  private async ensureStorage(root:string){
-    const internal=join(root,'.reader-workbench');
+  private async ensureStorage(root:string,segments:string[]=[]){
+    let internal=join(root,'.reader-workbench');
     try{
-      try{if((await lstat(internal)).isSymbolicLink())throw new ReaderError('PATH_OUTSIDE_WORKSPACE','内部存储目录不能是链接',403);}
-      catch(error){if(error instanceof ReaderError)throw error;if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;}
-      await mkdir(internal,{recursive:true});
-      if(await realpath(internal)!==internal)throw new ReaderError('PATH_OUTSIDE_WORKSPACE','内部存储目录路径异常',403);
+      for(const segment of ['',...segments]){if(segment){if(!/^[a-zA-Z0-9_-]+$/.test(segment))throw new ReaderError('PATH_OUTSIDE_WORKSPACE','存储身份路径无效',403);internal=join(internal,segment);}
+       try{if((await lstat(internal)).isSymbolicLink())throw new ReaderError('PATH_OUTSIDE_WORKSPACE','内部存储目录不能是链接',403);}
+       catch(error){if(error instanceof ReaderError)throw error;if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;}
+       await mkdir(internal,{recursive:true});if(await realpath(internal)!==internal)throw new ReaderError('PATH_OUTSIDE_WORKSPACE','内部存储目录路径异常',403);
+      }
       for(const name of ['state.sqlite','state.sqlite-wal','state.sqlite-shm']){
         try{if((await lstat(join(internal,name))).isSymbolicLink())throw new ReaderError('PATH_OUTSIDE_WORKSPACE','数据库不能指向链接',403);}
         catch(error){if(error instanceof ReaderError)throw error;if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;}
       }
       const probe=join(internal,'.write-'+randomUUID());await writeFile(probe,'',{flag:'wx',mode:0o600});await rm(probe);
+      return internal;
     }catch(error){if(error instanceof ReaderError)throw error;throw new ReaderError('WORKSPACE_NOT_WRITABLE','工作区不可写，请选择可写目录',403);}
   }
   async storeFor(id:WorkspaceId):Promise<SqliteWorkspaceStore>{
     const workspace=await this.get(id);let store=this.stores.get(id);
-    if(!store){await this.ensureStorage(workspace.root);store=new SqliteWorkspaceStore(id,join(workspace.root,'.reader-workbench','state.sqlite'));this.stores.set(id,store);}
+    if(!store){let internal=await this.ensureStorage(workspace.root);const owner=databaseWorkspaceId(join(internal,'state.sqlite'));if(owner&&owner!==id)internal=await this.ensureStorage(workspace.root,['identities',id]);store=new SqliteWorkspaceStore(id,join(internal,'state.sqlite'));this.stores.set(id,store);this.internals.set(id,internal);}
     if(!this.storage)return store;let wrapped=this.wrapped.get(id);if(!wrapped){wrapped=this.storage.wrap(store,workspace.root);this.wrapped.set(id,wrapped);}return wrapped;
   }
+  async internalDirectory(id:WorkspaceId):Promise<string>{await this.storeFor(id);return this.internals.get(id)!;}
   async listRecent(actor:Actor):Promise<Workspace[]>{await this.ready;return [...this.workspaces.values()].filter(w=>w.callerId===actor.callerId).map(({callerId,...workspace})=>workspace);}
   async browseDirectories(input:string,actor:Actor,workspaceId?:WorkspaceId):Promise<DirectoryEntry[]>{if(workspaceId){if(!(await this.listRecent(actor)).some(workspace=>workspace.id===workspaceId))throw new ReaderError('WORKSPACE_DENIED','工作区不属于此调用者',403);const id=this.capabilities?.list(workspaceId,'workspace').at(-1);if(id){const lease=this.capabilities!.acquire(workspaceId,'workspace',id);try{const result=await lease.value.browse(input,structuredClone(actor));if(!Array.isArray(result)||result.length>2000||result.some(entry=>typeof entry.name!=='string'||typeof entry.path!=='string'))throw new ReaderError('WORKSPACE_PROVIDER_INVALID','工作区扩展返回的目录无效');return result;}finally{lease.release();}}}return browseDirectories(input);}
   async resolvePath(id:WorkspaceId,input:string,mode:'read'|'create'):Promise<string>{

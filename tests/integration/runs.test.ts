@@ -20,6 +20,18 @@ async function fixture(model:ModelProvider){
 }
 async function finish(runs:RunService,request:AskRequest){const {runId}=await runs.submit(request,actor);const events:RunEvent[]=[];for await(const event of runs.events(request.workspaceId,runId,0,new AbortController().signal))events.push(event);return{runId,events,record:await runs.get(request.workspaceId,runId)};}
 describe('scoped agent runs',()=>{
+ it.each(['citation','commit'] as const)('does not commit a cancelled temporary turn at the %s boundary',async boundary=>{
+  let modelSignal!:AbortSignal;const f=await fixture(provider(async function*(_request,signal){modelSignal=signal;yield{kind:'delta',text:'last answer'};yield{kind:'done'};}));
+  await writeFile(join(f.directory,'A','late.md'),'# Source\n\nA cited passage.');const doc=await f.documents.open(f.workspace.id,'late.md',new AbortController().signal);await f.documents.waitReady(doc,new AbortController().signal);
+  const parent=await f.repository.snapshot(f.workspace.id,f.main.id),own=await f.repository.snapshot(f.workspace.id,f.temporary.id);let release!:()=>void,reached!:()=>void;
+  const gate=new Promise<void>(resolve=>{release=resolve;}),entered=new Promise<void>(resolve=>{reached=resolve;});
+  if(boundary==='citation'){const emit=f.runs.records.emit.bind(f.runs.records);f.runs.records.emit=async(...args)=>{if(args[1]==='citation'){reached();await gate;}return emit(...args);};}
+  else{const commit=f.repository.completeOwnTurn.bind(f.repository);f.repository.completeOwnTurn=async(...args)=>{reached();await gate;return commit(...args);};}
+  const {runId}=await f.runs.submit({...ask(f.temporary),documents:[doc]},actor);
+  try{await entered;const cancellation=f.runs.cancel(f.workspace.id,runId,actor);await expect.poll(()=>modelSignal.aborted).toBe(true);release();await cancellation;
+   expect((await f.runs.get(f.workspace.id,runId)).status).toBe('cancelled');expect(await f.repository.snapshot(f.workspace.id,f.temporary.id)).toEqual(own);expect(await f.repository.snapshot(f.workspace.id,f.main.id)).toEqual(parent);
+  }finally{release();}
+ });
  it('keeps repeated source citations unique across completed main and temporary turns',async()=>{const f=await fixture(provider(async function*(){yield{kind:'delta',text:'RI explanation'};yield{kind:'done'};}));await writeFile(join(f.directory,'A','reading.md'),'# RI\n\nRI is rank indicator.\n');const document=await f.documents.open(f.workspace.id,'reading.md',new AbortController().signal);for(const session of [f.main,f.main,f.temporary,f.temporary]){const result=await finish(f.runs,{...ask(session,'RI'),documents:[document]}),record=result.record as RunRecord;expect(record.status).toBe('completed');const anchors=record.context!.sourceRanges;expect(new Set(anchors.map(anchor=>JSON.stringify(anchor))).size).toBe(anchors.length);const turn=(await f.sessions.getHistory(f.workspace.id,session.id)).turns.at(-1)!;expect(new Set(turn.sourceAnchors.map(anchor=>JSON.stringify(anchor))).size).toBe(turn.sourceAnchors.length);}});
  it('deduplicates requests and persists monotonic resumable events with one side effect',async()=>{
   let generations=0,effects=0;const f=await fixture(provider(async function*(){if(generations++===0){yield{kind:'tool-call',id:'call1',name:'write_once',input:{value:'hello'}};}else yield{kind:'delta',text:'已生成'};yield{kind:'done'};}));

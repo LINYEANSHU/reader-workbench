@@ -1,0 +1,37 @@
+warning: in the working copy of 'apps/cli/src/index.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/server/src/app.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/server/src/routes/runs.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'packages/core/src/documents/jobs.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'packages/core/src/runs/service.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/cli/src/mcp.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/server/src/mcp/http.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/server/src/mcp/resources.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/server/src/mcp/server.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/server/src/openapi.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/api.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/mcp.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'packages/contracts/src/validation.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'scripts/http-client.mjs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'scripts/mcp-client.mjs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/integration/mcp-server.test.ts', LF will be replaced by CRLF the next time Git touches it
+[codex/reader-workbench 868cc95] feat: expose reader services through HTTP and MCP
+ 18 files changed, 502 insertions(+), 6 deletions(-)
+ create mode 100644 apps/cli/src/mcp.ts
+ create mode 100644 apps/server/src/mcp/http.ts
+ create mode 100644 apps/server/src/mcp/resources.ts
+ create mode 100644 apps/server/src/mcp/server.ts
+ create mode 100644 apps/server/src/openapi.ts
+ create mode 100644 docs/api.md
+ create mode 100644 docs/mcp.md
+ create mode 100644 packages/contracts/src/validation.ts
+ create mode 100644 scripts/http-client.mjs
+ create mode 100644 scripts/mcp-client.mjs
+ create mode 100644 tests/integration/mcp-server.test.ts
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  23:24:38
+   Duration  5.05s (transform 662ms, setup 0ms, import 1.27s, tests 3.62s, environment 0ms)
+
+ledger: Task 13: complete (commits cd41bff..868cc95, tests: npm test -- tests/integration/mcp-server.test.ts →    Duration  5.05s (transform 662ms, setup 0ms, import 1.27s, tests 3.62s, environment 0ms))
+brief: /g/My_project/try/.worktrees/reader-workbench/.superpowers/sdd/2026-10-11-reader-workbench/task-14-brief.md
+base: 868cc9526ab8eadfc326b3d4dfd1bfc54d106709

@@ -1,7 +1,7 @@
 import {afterEach,expect,it} from 'vitest';
 import {mkdtemp,mkdir,writeFile,readFile,rm,access} from 'node:fs/promises';import {join,resolve} from 'node:path';import {tmpdir} from 'node:os';import {randomUUID} from 'node:crypto';
 import {startServer} from '../../apps/server/src/app.js';
-import {connectExternalMcp} from '../../packages/core/src/plugins/external-mcp.js';
+import {connectExternalMcp,ExternalMcpManager} from '../../packages/core/src/plugins/external-mcp.js';
 import {processTool} from '../../packages/core/src/plugins/process-tools.js';
 import {UiBridge} from '../../packages/core/src/plugins/ui-bridge.js';
 import type {RunScope,RunId} from '../../packages/contracts/src/ids.js';
@@ -9,6 +9,16 @@ import {spawn} from 'node:child_process';import {once} from 'node:events';import
 const cleanup:Array<()=>Promise<unknown>>=[];afterEach(async()=>{for(const close of cleanup.splice(0).reverse())await close();});
 async function setup(){const directory=await mkdtemp(join(tmpdir(),'reader plugins 中文 '));cleanup.push(()=>rm(directory,{recursive:true,force:true}));const root=join(directory,'工作区');await mkdir(root);await writeFile(join(root,'text.md'),'# RI\n\nRI 表示秩指示。');const host=await startServer({host:'127.0.0.1',port:0,configDir:join(directory,'config'),demo:true,noOpen:true});cleanup.push(()=>host.close());const workspace=await host.workspaces.select(root,{callerId:'local-owner',transport:'internal'}),main=await host.sessions.createMain(workspace.id,'插件阅读'),temporary=await host.sessions.createTemporary(workspace.id,main.id),scope:RunScope={workspaceId:workspace.id,sessionId:temporary.id,runId:randomUUID() as RunId,actor:{callerId:'local-owner',transport:'internal'},allowArtifactWrites:false};const release=await host.sessionRepository.registerScope(scope);cleanup.push(async()=>release());return{directory,root,host,workspace,main,temporary,scope};}
 const python=process.env.READER_TEST_PYTHON??(process.platform==='win32'?'C:/Espressif/tools/python/python.exe':'python3');
+it('configures credential-free stdio and HTTP MCP through the manager and restores them after restart',async()=>{
+ const {host,workspace,scope}=await setup();
+ const child=spawn(process.execPath,[resolve('tests/fixtures/mcp-tool-server.mjs'),'--http'],{stdio:['pipe','pipe','pipe'],windowsHide:true}),stopped=once(child,'exit');cleanup.push(async()=>{if(child.exitCode===null){child.stdin.end();await stopped;}});
+ const lines=createInterface({input:child.stdout}),[line]=await once(lines,'line'),url=JSON.parse(line).url as string;
+ const configs=[{id:'publicStdio',transport:'stdio' as const,command:process.execPath,args:[resolve('tests/fixtures/mcp-tool-server.mjs')],effects:{lookup:'read' as const}},{id:'publicHttp',transport:'http' as const,url,effects:{lookup:'read' as const}}];
+ for(const config of configs){await host.externalMcp.configure(workspace.id,config);expect(host.externalMcp.list(workspace.id).find(item=>item.config.id===config.id)).toMatchObject({enabled:true,toolCount:6});expect(host.externalMcp.list(workspace.id).find(item=>item.config.id===config.id)!.config.credentialRef).toBeUndefined();expect((await host.runs.executor.execute('mcp_'+config.id+'_lookup',{term:'RI'},scope,scope.runId+':'+randomUUID(),new AbortController().signal)).content).toContain('RI');}
+ await host.externalMcp.configure(workspace.id,configs[1]!,'fixture-only-secret');await host.externalMcp.configure(workspace.id,configs[1]!);expect(host.externalMcp.list(workspace.id).find(item=>item.config.id==='publicHttp')!.config.credentialRef).toBeTruthy();
+ await host.externalMcp.close();const restored=new ExternalMcpManager(host.capabilities,host.workspaces);cleanup.push(()=>restored.close());await restored.loadWorkspace(workspace.id);
+ expect(restored.list(workspace.id).filter(item=>item.enabled)).toHaveLength(2);for(const config of configs)expect((await host.runs.executor.execute('mcp_'+config.id+'_lookup',{term:'after restart'},scope,scope.runId+':'+randomUUID(),new AbortController().signal)).content).toContain('after restart');
+},30000);
 it('installs, configures, invokes and persistently reloads a reader plugin without changing its parent',async()=>{
  const {host,workspace,main,temporary,scope}=await setup(),before=await host.sessionRepository.snapshot(workspace.id,main.id);
  await host.plugins.install(resolve('plugins/reader-helper'),workspace.id);await host.plugins.enable('reader-helper',workspace.id);

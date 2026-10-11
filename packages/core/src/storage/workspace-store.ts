@@ -55,11 +55,12 @@ export class SqliteWorkspaceStore implements WorkspaceStore {
       const state=this.database.prepare('SELECT data FROM session_tool_state WHERE session_id=?').get(id) as {data:string}|undefined;
       return {session,turns,summary:summary?JSON.parse(summary.data):null,toolState:state?JSON.parse(state.data):{}} as SessionSnapshot;
     }),
-    completeOwnTurn:async(scope,turn)=>{
+    completeOwnTurn:async(scope,turn,signal)=>{
       await this.authorizeScope(scope);
       if(turn.runId!==scope.runId)throw new ReaderError('TOOL_SCOPE_DENIED','轮次不属于该运行',403);
       if(turn.sourceAnchors.some(anchor=>anchor.workspaceId!==scope.workspaceId))throw new ReaderError('TOOL_SCOPE_DENIED','来源引用不能越过工作区',403);
       return this.transaction(()=>{
+        signal?.throwIfAborted();
         const session=this.readSession(scope.sessionId);
         const previous=this.database.prepare('SELECT session_id,revision FROM session_turns WHERE run_id=?').get(scope.runId) as {session_id:string;revision:number}|undefined;
         if(previous){if(previous.session_id!==scope.sessionId)throw new ReaderError('TOOL_SCOPE_DENIED','轮次不能写入其他会话',403);return previous.revision;}
@@ -100,7 +101,7 @@ export class SqliteWorkspaceStore implements WorkspaceStore {
     }
   };
   readonly documents:DocumentStorePort={
-    get:async ref=>{this.checkWorkspace(ref.workspaceId);return this.getRecord<StoredDocument>('documents',ref.documentId+':'+ref.version);},
+    get:async ref=>{this.checkWorkspace(ref.workspaceId);const saved=this.getRecord<StoredDocument>('documents',ref.documentId+':'+ref.version);return saved?.record.workspaceId===this.workspaceId?saved:null;},
     save:async document=>{this.checkWorkspace(document.record.workspaceId);this.putRecord('documents',document.record.documentId+':'+document.record.version,document);},
     list:async()=>this.listRecords<StoredDocument>('documents'),
     index:async(ref,blocks)=>this.indexDocument(ref,blocks),
@@ -138,7 +139,7 @@ export class SqliteWorkspaceStore implements WorkspaceStore {
   readonly attachments:AttachmentStorePort={get:async id=>this.getRecord<Attachment>('attachments',id),save:async record=>{this.checkWorkspace(record.workspaceId);this.putRecord('attachments',record.id,record);},list:async sessionId=>this.listRecords<Attachment>('attachments').filter(record=>record.sessionId===sessionId)};
   private checkWorkspace(workspaceId:WorkspaceId){if(workspaceId!==this.workspaceId)throw new Error('Workspace mismatch');}
   private database:DatabaseSync;private closed=false;
-  constructor(readonly workspaceId:WorkspaceId,file:string){this.database=openDatabase(file);}
+  constructor(readonly workspaceId:WorkspaceId,file:string){this.database=openDatabase(file);const identity=this.getRecord<{workspaceId:WorkspaceId}>('workspace','identity');if(identity&&identity.workspaceId!==workspaceId){this.database.close();throw new ReaderError('WORKSPACE_STORAGE_MISMATCH','内部存储属于其他工作区，原记录已保留');}if(!identity)this.putRecord('workspace','identity',{workspaceId});}
   async saveUiState(clientId:string,state:UiState){
     this.database.prepare('INSERT INTO ui_state(client_id,data) VALUES(?,?) ON CONFLICT(client_id) DO UPDATE SET data=excluded.data').run(clientId,JSON.stringify(state));
   }

@@ -1,0 +1,19 @@
+
+> reader-workbench@0.1.0 test:e2e
+> playwright test tests/e2e/review-regressions.spec.ts
+
+
+Running 8 tests using 1 worker
+
+(node:37776) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 [chromium] › tests\e2e\review-regressions.spec.ts:8:1 › persists a large Chinese draft before refresh (1.6s)
+  ok 2 [chromium] › tests\e2e\review-regressions.spec.ts:11:57 › retries a lost first response for an immediate selection ask (1.5s)
+  ok 3 [chromium] › tests\e2e\review-regressions.spec.ts:11:57 › retries a lost first response for an immediate screenshot ask (1.8s)
+  ok 4 [chromium] › tests\e2e\review-regressions.spec.ts:18:1 › temporary ordinary, selection and screenshot asks are read-only until an explicit generation action (2.0s)
+  ok 5 [chromium] › tests\e2e\review-regressions.spec.ts:25:52 › keeps one run, turn and artifact when the first response is lost: retry (844ms)
+  ok 6 [chromium] › tests\e2e\review-regressions.spec.ts:25:52 › keeps one run, turn and artifact when the first response is lost: refresh (962ms)
+  ok 7 [chromium] › tests\e2e\review-regressions.spec.ts:30:1 › creates and restores independent temporary branches with drafts, scroll and a running answer (1.4s)
+  ok 8 [chromium] › tests\e2e\review-regressions.spec.ts:35:1 › renders Unicode, spaced and reference images and captures their actual pixels (1.4s)
+
+  8 passed (13.4s)

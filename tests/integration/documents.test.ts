@@ -19,6 +19,24 @@ async function setup(){
 }
 const digest=(bytes:Uint8Array)=>createHash('sha256').update(bytes).digest('hex');
 describe('versioned document parsing',()=>{
+ it('snapshots Unicode, spaced and reference images using the same resource keys as the viewer',async()=>{
+  const {root,workspace,documents}=await setup(),bytes=await readFile(join(root,'assets/diagram.png'));for(const name of ['图.png','图 1.png','引用.png'])await writeFile(join(root,'assets',name),bytes);
+  await writeFile(join(root,'images.md'),'![中文](assets/图.png)\n\n![空格](<assets/图 1.png>)\n\n![引用][figure]\n\n[figure]: assets/引用.png "Figure"\n');
+  const ref=await documents.open(workspace.id,'images.md',signal());await documents.waitReady(ref,signal());
+  for(const name of ['assets/%E5%9B%BE.png','assets/%E5%9B%BE%201.png','assets/%E5%BC%95%E7%94%A8.png'])expect(await readFile((await documents.resource(ref,name)).path)).toEqual(bytes);
+  const store=await documents.workspaces.storeFor(workspace.id),saved=(await store.documents.get(ref))!;saved.resources={'assets/图.png':saved.resources!['assets/%E5%9B%BE.png']!};delete (saved as typeof saved&{resourceVersion?:number}).resourceVersion;await store.documents.save(saved);await writeFile(join(root,'assets/图.png'),'changed source');
+  await documents.open(workspace.id,'images.md',signal());expect(await readFile((await documents.resource(ref,'assets/%E5%9B%BE.png')).path)).toEqual(bytes);expect(await documents.resource(ref,'assets/%E5%BC%95%E7%94%A8.png')).toBeTruthy();
+ });
+ it('opens, asks and writes in a copied workspace without reusing or changing its original metadata',async()=>{
+  const {root}=await setup(),actor={callerId:'local-owner',transport:'internal' as const},host=await startServer({host:'127.0.0.1',port:0,configDir:join(root,'..','copy-config'),demo:true,noOpen:true});cleanup.push(()=>host.close());
+  const a=await host.workspaces.select(root,actor),source=await host.documents.open(a.id,'reader.md',signal());await host.documents.waitReady(source,signal());const parent=await host.sessions.createMain(a.id,'original');const before=await host.sessionRepository.snapshot(a.id,parent.id);
+  const database=join(root,'.reader-workbench','state.sqlite');await(await host.workspaces.storeFor(a.id)).close();const originalHash=digest(await readFile(database)),copy=join(root,'..','copied');await cp(root,copy,{recursive:true});const copiedHash=digest(await readFile(join(copy,'.reader-workbench','state.sqlite')));
+  const b=await host.workspaces.select(copy,actor),doc=await host.documents.open(b.id,'reader.md',signal());expect(doc.workspaceId).toBe(b.id);await host.documents.waitReady(doc,signal());expect((await host.documents.readPage(doc,1)).text).toContain('RI');expect((await host.documents.resource(doc,'assets/diagram.png')).path.startsWith(copy)).toBe(true);
+  const main=await host.sessions.createMain(b.id,'copy'),temporary=await host.sessions.createTemporary(b.id,main.id),{runId}=await host.runs.submit({workspaceId:b.id,sessionId:temporary.id,question:'RI',documents:[doc],attachmentIds:[],providerId:'demo',requestId:'copied-reading',allowArtifactWrites:false},actor);for await(const _event of host.runs.events(b.id,runId,0,signal())){}expect((await host.runs.get(b.id,runId)).status).toBe('completed');
+  const scope={actor,workspaceId:b.id,sessionId:main.id,runId:'copied-output' as import('../../packages/contracts/src/ids.js').RunId,allowArtifactWrites:true},release=await host.sessionRepository.registerScope(scope);try{const artifact=await host.artifacts.create({name:'copy-result.md',format:'md',blocks:[{kind:'paragraph',text:'copy output'}],sourceAnchors:[]},scope,signal());expect(await readFile(join(copy,artifact.relativePath),'utf8')).toContain('copy output');}finally{release();}
+  expect(digest(await readFile(database))).toBe(originalHash);expect(digest(await readFile(join(copy,'.reader-workbench','state.sqlite')))).toBe(copiedHash);expect(before.session.workspaceId).toBe(a.id);
+  const reopened=new WorkspaceService(join(root,'..','reopened-config'));cleanup.push(()=>reopened.close());await reopened.select(root,actor);expect(await(new (await import('../../packages/core/src/sessions/repository.js')).SessionRepository(reopened)).snapshot(a.id,parent.id)).toEqual(before);
+ });
  it('converts Office in a deeply nested workspace without a long LibreOffice profile',async()=>{
   const local=resolve('.reader-runtime/LibreOffice/program/soffice.com');try{await access(local);process.env.READER_LIBREOFFICE=local;}catch{}
   const {root,documents}=await setup();const deep=join(root,'deep workspace with spaces '.repeat(4).trimEnd());await mkdir(deep);await cp(join(root,'reader.docx'),join(deep,'中文 source.docx'));

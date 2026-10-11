@@ -8,7 +8,7 @@ export class SessionRepository{
  }
  async authorizeScope(scope:RunScope):Promise<SessionRecord>{return(await this.workspaces.storeFor(scope.workspaceId)).authorizeScope(scope);}
  async setReadRevisions(scope:RunScope,revisions:Record<string,number>):Promise<RunScope>{return(await this.workspaces.storeFor(scope.workspaceId)).setReadRevisions(scope,revisions);}
- async completeOwnTurn(scope:RunScope,turn:CompletedTurn):Promise<number>{return(await this.workspaces.storeFor(scope.workspaceId)).sessions.completeOwnTurn(scope,turn);}
+ async completeOwnTurn(scope:RunScope,turn:CompletedTurn,signal?:AbortSignal):Promise<number>{const store=await this.workspaces.storeFor(scope.workspaceId);signal?.throwIfAborted();return store.sessions.completeOwnTurn(scope,turn,signal);}
  async getSession(workspaceId:WorkspaceId,sessionId:SessionId):Promise<SessionRecord>{return(await this.workspaces.storeFor(workspaceId)).sessions.getSession(sessionId);}
  async saveOwnSummary(scope:RunScope,summary:MemorySummary):Promise<void>{return(await this.workspaces.storeFor(scope.workspaceId)).sessions.saveOwnSummary(scope,summary);}
  async saveOwnToolState(scope:RunScope,state:Record<string,unknown>):Promise<void>{return(await this.workspaces.storeFor(scope.workspaceId)).sessions.saveOwnToolState(scope,state);}

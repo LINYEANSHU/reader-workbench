@@ -27,19 +27,21 @@ G:\My_project\try\.worktrees\reader-workbench
 ## 本轮实际检查
 
 - 新鲜依赖安装、14 个自生成样例的哈希、类型检查、构建全部通过。
-- 核心单元/集成 **96/96**、浏览器 **26/26** 通过。包括空目录安装发行包、主临时隔离、Workspace 切换、插件/Python/外部 MCP、真实截图、恢复、取消、思考档位协议及语音。
+- 核心单元/集成 **101/101**、浏览器 **34/34** 通过。包括空目录安装发行包、主临时隔离、Workspace 切换、插件/Python/外部 MCP、真实截图、恢复、取消、思考档位协议及语音。
 - LibreOffice 深路径缺陷已完成回归 RED 到 GREEN。转换用短私有临时目录；持久预览仍回到原工作区，原文件不改变。
-- 全部 **20 页**源 PDF/DOCX/PPTX/DOC/PPT/扫描页与生成 DOCX/PPTX/PDF 已实际渲染并检查；中文、图片、表格、公式及来源范围可读，未发现缺字、交叠或截断。扫描页明确未执行 OCR。
+- 全部 **20 页**源 PDF/DOCX/PPTX/DOC/PPT/扫描页与生成 DOCX/PPTX/PDF 已实际渲染；本次 20 张图片逐一 SHA-256 与先前已检查的页面相同。中文、图片、表格、公式及来源范围可读，未发现缺字、交叠或截断。扫描页明确未执行 OCR。
 - 实际内置 SenseVoice 识别中文与英文合成音频，两个会话历史均未改写。浏览器麦克风管道重放、拒绝授权、修改草稿、取消和切换释放资源都有测试。
 - 新增 PowerShell 启动脚本从实际失败修正后，真实进程身份与 HTTP 验证通过；用户应用保留运行。
 
-原始证据见 [验收索引](evidence/2026-10-12/manifest.json)、[启动检查](evidence/2026-10-12/launcher.json)、[逐页清单](evidence/2026-10-12/rendered/pages.json)和 [语音 CLI](evidence/2026-10-12/voice-cli.json)。完整流程使用协议模型的结果单列，不代替真实 LLM 验收。
+独立审查已完成，七项 Important 加一项复现后升级的草稿问题均经 RED→GREEN 修复，并通过上述完整验收。主要变化包括：临时询问默认只读、请求重试与刷新去重、临时多分支入口、取消提交边界、Markdown 图片、复制工作区身份和长草稿恢复。详细行为及代价见 [最终审查与修复](final-review.md)。
+
+原始证据保存在源码仓库的 [最终验收索引](evidence/2026-10-12/final-review-fixes/manifest.json)、[启动检查](evidence/2026-10-12/final-review-fixes/launcher.json)、[逐页清单](evidence/2026-10-12/final-review-fixes/rendered/pages.json)和 [语音 CLI](evidence/2026-10-12/final-review-fixes/voice-cli.json)。发行包包含使用说明，原始审计日志及截图单独保留在源码仓库。完整流程使用协议模型的结果单列，不代替真实 LLM 验收。
 
 ## 明确未测及收尾状态
 
 - 本次最终真实 API 与真实思考档位调用未执行，遵守用户“未经再次批准不得调用测试 API”的指示。早期实际 API 结果不冒充本次的新鲜验收。
 - macOS/Linux 平台入口、原生依赖和 CI matrix 已提供；本轮没有真实机器/CI 结果，仍标记 not-tested。
 - 人工物理麦克风、OS 手工选择器与可选全局快捷键 helper 未实测；网页热键与实际浏览器捕获已测。没有声称内置系统全局 helper。
-- 最终独立全分支代码审查即将进行，沿用用户指定的当前模型；正式源码提交、发行包和本地集成决定将在收尾记录中补充。
+- 最终独立全分支代码审查沿用用户指定的当前模型，只进行一次；全部八项实际问题已修复。发行包位于 `release/reader-workbench-0.1.0.tgz`，最终校验记录保存在源码仓库的 `docs/evidence/2026-10-12/distribution-package.json`。Git 分支为 `codex/reader-workbench`，集成到 `main` 或推送由用户选择。
 
 先前自动审批用量限制已经解除；本轮命令均继续通过环境正常审批。仅按后来授权清理已核实的测试进程；未关闭 Codex 或其他既有进程，用户应用仍运行。

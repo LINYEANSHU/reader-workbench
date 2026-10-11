@@ -1,0 +1,11 @@
+
+ RUN  v4.0.18 G:/My_project/try/.worktrees/reader-workbench
+
+ ✓ tests/integration/cli-distribution.test.ts (1 test) 21262ms
+   ✓ starts the installed package with no source workspace links  21261ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  04:44:32
+   Duration  21.53s (transform 36ms, setup 0ms, import 137ms, tests 21.26s, environment 0ms)
+

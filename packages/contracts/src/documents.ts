@@ -19,4 +19,4 @@ export interface ViewportRect {x:number;y:number;width:number;height:number}
 export interface CaptureResult {blob:Blob;width:number;height:number;anchors:SourceAnchor[]}
 export interface CaptureRequest {rect?:ViewportRect;document?:DocumentRef;signal:AbortSignal}
 export interface ViewerHandle {navigate(anchor:SourceAnchor):Promise<void>;getSelection():SelectionContext|null;capture(rect:ViewportRect):Promise<CaptureResult>}
-export interface StoredDocument {record:DocumentRecord;path:string;cacheDir:string;parsed?:ParsedDocument;resources?:Record<string,{path:string;mime:string}>}
+export interface StoredDocument {record:DocumentRecord;path:string;cacheDir:string;parsed?:ParsedDocument;resources?:Record<string,{path:string;mime:string}>;resourceVersion?:number}

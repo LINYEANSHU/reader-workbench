@@ -21,7 +21,8 @@ export interface SessionStorePort {
   getSession(id:SessionId):Promise<SessionRecord>;
   getCommittedTurns(id:SessionId,atRevision?:number):Promise<CommittedTurn[]>;
   snapshot(id:SessionId):Promise<SessionSnapshot>;
-  completeOwnTurn(scope:RunScope,turn:CompletedTurn):Promise<number>;
+  /** Check cancellation immediately before the atomic commit. A committed turn remains completed. */
+  completeOwnTurn(scope:RunScope,turn:CompletedTurn,signal?:AbortSignal):Promise<number>;
   saveOwnSummary(scope:RunScope,summary:MemorySummary):Promise<void>;
   saveOwnToolState(scope:RunScope,state:Record<string,unknown>):Promise<void>;
   clearTemporary(id:SessionId,actor:Actor):Promise<void>;

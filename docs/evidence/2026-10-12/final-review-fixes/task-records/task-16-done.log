@@ -1,0 +1,58 @@
+warning: in the working copy of 'apps/server/src/app.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/web/src/workbench/Composer.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/plugins.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'packages/contracts/src/index.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'packages/core/src/runtime/process.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'packages/sdk/src/capabilities.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'scripts/build.mjs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/fixtures/README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/server/src/routes/speech.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/web/public/voice/recorder-worklet.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/web/src/styles/voice.css', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/web/src/voice/VoiceInput.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/web/src/voice/recorder.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/installation.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'packages/contracts/src/speech.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'packages/core/src/speech/assets.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'packages/core/src/speech/native-provider.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'packages/core/src/speech/service.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'packages/core/src/speech/wave.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'packages/core/src/speech/worker.mjs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'scripts/voice-smoke.mjs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/e2e/voice-input.spec.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/fixtures/speech-offline-worker.mjs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/integration/speech-assets.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/integration/speech-native.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/integration/speech.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/unit/wave.test.ts', LF will be replaced by CRLF the next time Git touches it
+[codex/reader-workbench 1be0f02] feat: embed offline SenseVoice dictation
+ 34 files changed, 486 insertions(+), 12 deletions(-)
+ create mode 100644 apps/server/src/routes/speech.ts
+ create mode 100644 apps/web/public/voice/recorder-worklet.js
+ create mode 100644 apps/web/src/styles/voice.css
+ create mode 100644 apps/web/src/voice/VoiceInput.tsx
+ create mode 100644 apps/web/src/voice/recorder.ts
+ create mode 100644 docs/installation.md
+ create mode 100644 packages/contracts/src/speech.ts
+ create mode 100644 packages/core/src/speech/assets.ts
+ create mode 100644 packages/core/src/speech/native-provider.ts
+ create mode 100644 packages/core/src/speech/service.ts
+ create mode 100644 packages/core/src/speech/wave.ts
+ create mode 100644 packages/core/src/speech/worker.mjs
+ create mode 100644 scripts/voice-smoke.mjs
+ create mode 100644 tests/e2e/voice-input.spec.ts
+ create mode 100644 tests/fixtures/speech-offline-worker.mjs
+ create mode 100644 tests/fixtures/voice-en.wav
+ create mode 100644 tests/fixtures/voice-zh.wav
+ create mode 100644 tests/integration/speech-assets.test.ts
+ create mode 100644 tests/integration/speech-native.test.ts
+ create mode 100644 tests/integration/speech.test.ts
+ create mode 100644 tests/unit/wave.test.ts
+  ok 1 [chromium] › tests\e2e\voice-input.spec.ts:10:1 › real microphone dictation reaches both editable drafts, protects edited text and stops every track (21.1s)
+  ok 2 [chromium] › tests\e2e\voice-input.spec.ts:19:1 › real permission refusal preserves the draft and reports a useful error (1.6s)
+  ok 3 [chromium] › tests\e2e\voice-input.spec.ts:23:1 › late microphone permission and a workspace switch release actual tracks without writing another draft (6.0s)
+
+  3 passed (30.4s)
+ledger: Task 16: complete (commits 1e3d1eb..1be0f02, tests: bash -c 'npm test -- tests/unit/wave.test.ts tests/integration/speech.test.ts tests/integration/speech-assets.test.ts tests/integration/speech-native.test.ts && npm run test:e2e -- tests/e2e/voice-input.spec.ts' →   3 passed (30.4s))
+brief: /g/My_project/try/.worktrees/reader-workbench/.superpowers/sdd/2026-10-11-reader-workbench/task-15-brief.md
+base: 1be0f0274d1105ac2c7d1a6e092f63411c2f5385

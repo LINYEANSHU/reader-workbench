@@ -46,7 +46,7 @@ export class RunService{
    },signal,record.request.reasoningEffort);signal.throwIfAborted();
    for(const anchor of envelope.sourceRanges)await this.records.emit(record,'citation',anchor);
    const content=record.request.question+(record.request.selection?'\n选区：'+record.request.selection.text+'\n来源：'+JSON.stringify(record.request.selection.anchors):'');
-   await this.dependencies.repository.completeOwnTurn(scope,{id:randomUUID(),runId:record.id,question:record.request.question,answer:result.answer,messages:[{role:'user',content},...result.ownMessages],sourceAnchors:uniqueAnchors([...envelope.sourceRanges,...result.anchors]),attachmentIds:record.request.attachmentIds,...(record.request.selection?{selection:structuredClone(record.request.selection)}:{})});
+   signal.throwIfAborted();await this.dependencies.repository.completeOwnTurn(scope,{id:randomUUID(),runId:record.id,question:record.request.question,answer:result.answer,messages:[{role:'user',content},...result.ownMessages],sourceAnchors:uniqueAnchors([...envelope.sourceRanges,...result.anchors]),attachmentIds:record.request.attachmentIds,...(record.request.selection?{selection:structuredClone(record.request.selection)}:{})},signal);
    record.result=result.answer;record.status='completed';
   }catch(error){record.status=signal.aborted?'cancelled':'failed';record.error=signal.aborted?new ReaderError('CANCELLED','本次回答已取消，部分输出未加入会话记忆').public():publicError(error);await this.records.emit(record,'error',record.error);}
   finally{release?.();releaseModel?.();await this.records.save(record);await this.records.emit(record,'state',{status:record.status});}

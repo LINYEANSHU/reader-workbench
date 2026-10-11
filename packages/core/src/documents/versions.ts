@@ -8,7 +8,7 @@ import {ReaderError} from '../../../contracts/src/errors.js';
 const types:Record<string,string>={'.md':'text/markdown','.markdown':'text/markdown','.txt':'text/plain','.pdf':'application/pdf','.doc':'application/msword','.docx':'application/vnd.openxmlformats-officedocument.wordprocessingml.document','.ppt':'application/vnd.ms-powerpoint','.pptx':'application/vnd.openxmlformats-officedocument.presentationml.presentation','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp'};
 export function mimeFor(path:string){return types[extname(path).toLowerCase()]??'application/octet-stream';}
 export async function safeCacheDirectory(workspaces:WorkspaceService,id:WorkspaceId,segments:string[]):Promise<string>{
-  let directory=join((await workspaces.get(id)).root,'.reader-workbench');await workspaces.storeFor(id);
+  let directory=await workspaces.internalDirectory(id);
   if((await lstat(directory)).isSymbolicLink())throw new ReaderError('PATH_OUTSIDE_WORKSPACE','内部缓存不能指向链接',403);
   for(const segment of segments){if(!/^[a-zA-Z0-9._-]+$/.test(segment)||segment==='..')throw new ReaderError('PATH_OUTSIDE_WORKSPACE','缓存路径无效',403);
     directory=join(directory,segment);try{if((await lstat(directory)).isSymbolicLink())throw new ReaderError('PATH_OUTSIDE_WORKSPACE','缓存不能指向链接',403);}

@@ -1,0 +1,29 @@
+
+> reader-workbench@0.1.0 test
+> vitest run tests/integration/plugin-extension.test.ts tests/integration/runs.test.ts
+
+
+ RUN  v4.0.18 G:/My_project/try/.worktrees/reader-workbench
+
+ ❯ tests/integration/plugin-extension.test.ts (6 tests | 1 failed) 3617ms
+   ✓ configures credential-free stdio and HTTP MCP through the manager and restores them after restart  1281ms
+   ✓ installs, configures, invokes and persistently reloads a reader plugin without changing its parent 251ms
+   ✓ reloads dependencies even when the dependent package was installed first 194ms
+   × manages actual HTTP MCP discovery, schema notifications, aborts and authenticated settings 10ms
+   ✓ calls a real Python process with Unicode and shell characters, and terminates timed-out and cancelled process trees  1400ms
+   ✓ discovers real external MCP tools, refreshes schemas, and refuses undeclared writes in a temporary run  481ms
+ ✓ tests/integration/runs.test.ts (13 tests) 2762ms
+     ✓ inherits completed main turns during a real concurrent stream and freezes archive tool reads  325ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/integration/plugin-extension.test.ts > manages actual HTTP MCP discovery, schema notifications, aborts and authenticated settings
+Error: listen ENOBUFS: no buffer space available 127.0.0.1
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  1 failed | 18 passed (19)
+   Start at  03:59:10
+   Duration  8.16s (transform 525ms, setup 0ms, import 1.51s, tests 6.38s, environment 0ms)
+

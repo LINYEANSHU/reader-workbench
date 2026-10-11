@@ -17,7 +17,7 @@ export class StorageConsumer{
     const lease=this.registry.acquire(core.workspaceId,'storage',id);try{
      let providers=this.opened.get(core.workspaceId);if(!providers){providers=new Map();this.opened.set(core.workspaceId,providers);}let opening=providers.get(lease.value);if(!opening){opening=lease.value.open(root,{workspaceId:core.workspaceId,base:Object.freeze(base)});providers.set(lease.value,opening);void opening.catch(()=>{if(providers!.get(lease.value)===opening)providers!.delete(lease.value);});}
      const extension=await opening;if(extension.workspaceId!==core.workspaceId||typeof extension[port]?.[method as keyof typeof extension[typeof port]]!=='function')throw new ReaderError('STORAGE_PROVIDER_INVALID','存储扩展没有提供当前工作区的端口');
-     const invoke=(extension[port] as unknown as Record<string,(...args:unknown[])=>unknown>)[method]!,cloned=structuredClone(args),result=await invoke.apply(extension[port],cloned);if(port==='runs'&&method==='appendEvent')(args[0] as {seq:number}).seq=(cloned[0] as {seq:number}).seq;return result;
+     const invoke=(extension[port] as unknown as Record<string,(...args:unknown[])=>unknown>)[method]!,cloned=args.map(value=>value instanceof AbortSignal?value:structuredClone(value));if(port==='sessions'&&method==='completeOwnTurn')(args[2] as AbortSignal|undefined)?.throwIfAborted();const result=await invoke.apply(extension[port],cloned);if(port==='runs'&&method==='appendEvent')(args[0] as {seq:number}).seq=(cloned[0] as {seq:number}).seq;return result;
     }finally{lease.release();}
    };
   }}));

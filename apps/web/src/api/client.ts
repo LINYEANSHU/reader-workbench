@@ -42,7 +42,7 @@ export class ApiClient{
  run(id:WorkspaceId,run:RunId){return this.request<RunRecord|DocumentJobRecord>('/runs/'+run+'?workspaceId='+id);}
  cancel(id:WorkspaceId,run:RunId){return this.request('/runs/'+run+'/cancel',{method:'POST',body:{workspaceId:id}});}
  uiState(id:WorkspaceId,client:string){return this.request<UiState|null>('/ui-state/'+client+'?workspaceId='+id);}
- saveUiState(id:WorkspaceId,client:string,state:UiState){return this.request('/ui-state/'+client,{method:'PUT',body:{workspaceId:id,state},keepalive:true});}
+ saveUiState(id:WorkspaceId,client:string,state:UiState,unloading=false){const body={workspaceId:id,state},keepalive=unloading&&new TextEncoder().encode(JSON.stringify(body)).byteLength<60*1024;return this.request('/ui-state/'+client,{method:'PUT',body,keepalive});}
  artifacts(id:WorkspaceId){return this.request<ArtifactRecord[]>('/artifacts?workspaceId='+id);}
  openArtifact(id:WorkspaceId,artifact:ArtifactId){return this.request<DocumentRecord>('/artifacts/'+artifact+'/open?workspaceId='+id,{method:'POST',body:{}});}
 }
