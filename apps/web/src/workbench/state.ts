@@ -1,0 +1,4 @@
+import type {UiState} from '../../../../packages/contracts/src/ui-state.js';import type {WorkspaceId,SessionId,RunId} from '../../../../packages/contracts/src/ids.js';import type {DocumentRef} from '../../../../packages/contracts/src/documents.js';
+export interface WorkbenchState extends UiState{workspaceId:WorkspaceId;mainSessionId:SessionId|null;temporarySessionId:SessionId|null;tabs:DocumentRef[];activeTab:DocumentRef|null;drafts:Record<string,string>;activeRuns:Record<string,RunId>;providers:Record<string,string>;efforts:Record<string,string>;positions:Record<string,number>;chatPositions:Record<string,number>}
+export const refKey=(ref:DocumentRef)=>ref.documentId+':'+ref.version;
+export function initialState(workspaceId:WorkspaceId):WorkbenchState{return{workspaceId,mainSessionId:null,temporarySessionId:null,tabs:[],activeTab:null,drafts:{},activeRuns:{},providers:{},efforts:{},positions:{},chatPositions:{}};}

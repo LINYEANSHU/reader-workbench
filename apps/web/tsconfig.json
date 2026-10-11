@@ -1,6 +1,5 @@
 {
   "extends": "../../tsconfig.json",
-  "include": [
-    "src/**/*.ts"
-  ]
+  "compilerOptions":{"module":"ESNext","moduleResolution":"Bundler","jsx":"react-jsx","types":["vite/client"],"allowSyntheticDefaultImports":true},
+  "include": ["src/**/*.ts","src/**/*.tsx","vite.config.ts"]
 }

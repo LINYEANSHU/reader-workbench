@@ -7,3 +7,4 @@ playwright-report/
 *.tgz
 coverage/
 .reader-runtime/
+apps/web/public/pdfjs/

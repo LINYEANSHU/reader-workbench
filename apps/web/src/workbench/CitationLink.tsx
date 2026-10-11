@@ -1,0 +1,2 @@
+import {Quote} from 'lucide-react';import type {SourceAnchor} from '../../../../packages/contracts/src/documents.js';
+export function CitationLink({anchor,onOpen}:{anchor:SourceAnchor;onOpen:(anchor:SourceAnchor)=>Promise<void>}){return<button className="citation" title={'源版本 '+anchor.version.slice(0,12)} onClick={()=>void onOpen(anchor)}><Quote size={11}/>来源 · {anchor.location.kind==='page'?'第 '+anchor.location.page+' 页':'文本片段'}</button>;}

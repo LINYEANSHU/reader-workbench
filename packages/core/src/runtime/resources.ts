@@ -1,0 +1,2 @@
+import {dirname,join} from 'node:path';import {fileURLToPath} from 'node:url';import {readFile} from 'node:fs/promises';
+export async function packageRoot(){let directory=dirname(fileURLToPath(import.meta.url));for(let level=0;level<10;level++){try{if(JSON.parse(await readFile(join(directory,'package.json'),'utf8')).name==='reader-workbench')return directory;}catch{}const parent=dirname(directory);if(parent===directory)break;directory=parent;}throw new Error('Reader Workbench package resources are missing');}

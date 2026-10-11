@@ -1,4 +1,5 @@
 import {readFile} from 'node:fs/promises';import {createHash} from 'node:crypto';import {basename,extname} from 'node:path';
+import {join} from 'node:path';
 import type {ArtifactInput,ArtifactRecord,ContentBlock} from '../../../contracts/src/artifacts.js';import type {RunScope,WorkspaceId,ArtifactId,SessionId} from '../../../contracts/src/ids.js';import type {SourceAnchor,DocumentRef} from '../../../contracts/src/documents.js';import type {ArtifactExporter} from '../../../sdk/src/capabilities.js';
 import type {WorkspaceService} from '../workspaces/service.js';import type {SessionRepository} from '../sessions/repository.js';import type {DocumentService} from '../documents/service.js';import {CapabilityRegistry} from '../plugins/registry.js';import {ReaderError} from '../../../contracts/src/errors.js';import {KeyedQueue} from '../runs/queue.js';
 import {artifactInputSchema} from './input.js';import {atomicWrite} from './atomic-write.js';import {markdownExporter} from './markdown.js';import {docxExporter} from './docx.js';import {pptxExporter} from './pptx.js';import {pdfExporter} from './pdf.js';
@@ -14,6 +15,13 @@ export class ArtifactService{
   const controller=new AbortController(),task=this.createOperation(raw,scope,AbortSignal.any([signal,controller.signal]));this.pending.set(controller,task);return task.finally(()=>this.pending.delete(controller));
  }
  async close(){this.closed=true;for(const controller of this.pending.keys())controller.abort();await Promise.allSettled([...this.pending.values()]);}
+ async getOutputDirectory(workspaceId:WorkspaceId){return(await this.workspaces.storeFor(workspaceId)).getRecord<{directory:string}>('settings','output')?.directory??'outputs';}
+ async setOutputDirectory(workspaceId:WorkspaceId,input:string){
+  if(typeof input!=='string'||input.length>400)throw new ReaderError('PATH_OUTSIDE_WORKSPACE','输出目录无效',403);const directory=input.replaceAll('\\','/');
+  if(!directory||directory.split('/').some(segment=>!segment||segment==='.'||segment==='..'||/[\\:*?"<>|\u0000-\u001f]/.test(segment)||/[. ]$/.test(segment)))throw new ReaderError('PATH_OUTSIDE_WORKSPACE','请输入工作区内的相对输出目录',403);
+  const workspace=await this.workspaces.get(workspaceId),path=await this.workspaces.resolvePath(workspaceId,directory,'create');if(path!==join(workspace.root,directory))throw new ReaderError('PATH_OUTSIDE_WORKSPACE','输出目录不能重定向',403);
+  (await this.workspaces.storeFor(workspaceId)).putRecord('settings','output',{directory});return{directory};
+ }
  private async createOperation(raw:ArtifactInput,scope:RunScope,signal:AbortSignal):Promise<ArtifactRecord>{
   await this.repository.authorizeScope(scope);if(!scope.allowArtifactWrites)throw new ReaderError('TOOL_SCOPE_DENIED','本次运行未允许生成文件',403);
   const parsed=artifactInputSchema.safeParse(raw);if(!parsed.success)throw new ReaderError('ARTIFACT_INPUT_INVALID','生成内容格式无效');const input=parsed.data as ArtifactInput;

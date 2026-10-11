@@ -5,6 +5,7 @@ import type {DocumentService} from '../../../../packages/core/src/documents/serv
 import type {DocumentRef} from '../../../../packages/contracts/src/documents.js';
 import type {WorkspaceId,DocumentId,DocumentVersion} from '../../../../packages/contracts/src/ids.js';
 import {ReaderError} from '../../../../packages/contracts/src/errors.js';
+import {mimeFor} from '../../../../packages/core/src/documents/versions.js';
 interface VersionRequest {Params:{id:DocumentId;version:DocumentVersion};Querystring:{workspaceId:WorkspaceId;q?:string;limit?:string;path?:string}}
 export async function sendDocumentFile(reply:FastifyReply,path:string,mime:string,range?:string){
   const info=await stat(path);reply.header('x-content-type-options','nosniff').header('content-security-policy',"default-src 'none'; sandbox").type(mime);
@@ -44,7 +45,7 @@ export function documentRoutes(app:FastifyInstance,documents:DocumentService){
   app.get<VersionRequest&{Params:VersionRequest['Params']&{page:string}}>(prefix+'/pages/:page/image',async(request,reply)=>{
     const page=await documents.readPage(ref(request),Number(request.params.page));
     if(!page.imagePath)throw new ReaderError('PAGE_IMAGE_UNAVAILABLE','此页没有图像预览',404);
-    return sendDocumentFile(reply,await documents.authorizedFile(ref(request),page.imagePath),'image/png');
+    return sendDocumentFile(reply,await documents.authorizedFile(ref(request),page.imagePath),mimeFor(page.imagePath));
   });
   app.get<VersionRequest&{Params:VersionRequest['Params']&{blockId:string}}>(prefix+'/blocks/:blockId',request=>documents.readBlock(ref(request),request.params.blockId));
   app.get<VersionRequest>(prefix+'/search',request=>documents.search(ref(request),request.query.q??'',Number(request.query.limit??20)));

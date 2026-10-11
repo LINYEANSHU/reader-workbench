@@ -25,6 +25,7 @@ import {demoProvider} from '../../../packages/core/src/models/demo.js';
 import {settingsRoutes} from './routes/settings.js';
 import {ArtifactService} from '../../../packages/core/src/artifacts/service.js';
 import {artifactRoutes} from './routes/artifacts.js';
+import {serveWeb} from './static.js';
 export async function startServer(config:RuntimeConfig){
   const app=Fastify({logger:false,bodyLimit:16*1024*1024,forceCloseConnections:true});
   const auth=new Authentication();
@@ -57,7 +58,7 @@ export async function startServer(config:RuntimeConfig){
   app.get('/health',async()=>({status:'ok'}));
   app.get('/api/v1/config',async()=>({host:config.host,port:Number(new URL(auth.url).port),demo:config.demo,workspace:config.workspace??null}));
   app.get('/api/v1/doctor',async()=>doctor(config));
-  app.get('/',async(_request,reply)=>{
+  if(!await serveWeb(app))app.get('/',async(_request,reply)=>{
     const nonce=randomBytes(16).toString('base64');
     reply.header('content-security-policy',"default-src 'self'; script-src 'nonce-"+nonce+"'; style-src 'self' 'unsafe-inline'; object-src 'none'; frame-ancestors 'none'");
     return reply.type('text/html').send(`<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>Reader Workbench</title><body><h1>Reader Workbench</h1><p id="status">请选择工作区。文档阅读界面正在接入。</p><script nonce="${nonce}">const code=new URLSearchParams(location.hash.slice(1)).get('bootstrap');history.replaceState(null,'','/');if(code)fetch('/api/v1/auth/bootstrap',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})}).then(r=>{if(!r.ok)document.getElementById('status').textContent='启动链接已失效，请重新连接';});</script></body></html>`);

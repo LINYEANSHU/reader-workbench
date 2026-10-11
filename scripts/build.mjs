@@ -1,5 +1,5 @@
 import { build } from 'esbuild';
-import { mkdir } from 'node:fs/promises';
+import { mkdir,cp } from 'node:fs/promises';
 import {rollup} from 'rollup';
 import {dts} from 'rollup-plugin-dts';
 await mkdir('dist',{recursive:true});
@@ -7,3 +7,7 @@ await build({entryPoints:['apps/cli/src/index.ts'],outfile:'dist/cli.mjs',bundle
 await build({entryPoints:['packages/sdk/src/index.ts'],outfile:'dist/sdk.mjs',bundle:true,platform:'node',target:'node24',format:'esm',packages:'external'});
 const declarations=await rollup({input:'packages/sdk/src/index.ts',plugins:[dts({compilerOptions:{noEmit:false}})]});
 await declarations.write({file:'dist/sdk.d.ts',format:'es'});await declarations.close();
+await mkdir('apps/web/public/pdfjs',{recursive:true});
+for(const name of ['cmaps','standard_fonts','wasm'])await cp('node_modules/pdfjs-dist/'+name,'apps/web/public/pdfjs/'+name,{recursive:true});
+await cp('node_modules/pdfjs-dist/build/pdf.worker.min.mjs','apps/web/public/pdfjs/pdf.worker.min.mjs');
+const {build:buildWeb}=await import('vite');await buildWeb({configFile:'apps/web/vite.config.ts'});

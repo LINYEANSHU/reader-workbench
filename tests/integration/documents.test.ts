@@ -105,6 +105,8 @@ describe('versioned document parsing',()=>{
   expect((await(await request(prefix+'/search'+query+'&q='+encodeURIComponent('秩'))).json()).length).toBeGreaterThan(0);
   expect((await request(prefix+'/resources'+query+'&path=assets/diagram.png')).status).toBe(200);
   expect((await request(prefix+'/resources'+query+'&path=.reader-workbench/state.sqlite')).status).toBe(404);
+  const {createCanvas,loadImage}=await import('@napi-rs/canvas'),image=await loadImage(await readFile(join(root,'assets/diagram.png'))),canvas=createCanvas(image.width,image.height);canvas.getContext('2d').drawImage(image,0,0);const jpeg=canvas.toBuffer('image/jpeg');await writeFile(join(root,'diagram.jpg'),jpeg);
+  const picture=await runtime.documents.open(workspace.id,'diagram.jpg',signal());await runtime.documents.waitReady(picture,signal());const response=await request('/documents/'+picture.documentId+'/versions/'+picture.version+'/pages/1/image'+query);expect(response.headers.get('content-type')).toBe('image/jpeg');expect(Buffer.from(await response.arrayBuffer())).toEqual(jpeg);
  });
  it('terminates actual child processes on timeout and cancellation without shell expansion',async()=>{
   const value='中文 & $(not-a-command)';

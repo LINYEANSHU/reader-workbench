@@ -19,7 +19,7 @@ export class RunService{
   const model=this.dependencies.capabilities.acquire(request.workspaceId,'model',request.providerId);
   if(request.reasoningEffort!==undefined&&!model.value.capabilities.reasoningEfforts?.includes(request.reasoningEffort)){model.release();throw new ReaderError('REASONING_UNSUPPORTED','所选模型不支持此思考档位');}
   const record:RunRecord={id:randomUUID() as RunId,kind:'agent',workspaceId:request.workspaceId,sessionId:request.sessionId,status:'queued',requestId:request.requestId,request:structuredClone(request),callerId:actor.callerId,createdAt:new Date().toISOString(),partialText:''};
-  let result;try{result=await this.records.createOrGet(record);}catch(error){model.release();throw error;}if(!result.created){model.release();return{runId:result.record.id};}this.modelLeases.set(record.id,model);
+  let result;try{record.outputDirectory=await this.dependencies.artifacts?.getOutputDirectory(request.workspaceId);result=await this.records.createOrGet(record);}catch(error){model.release();throw error;}if(!result.created){model.release();return{runId:result.record.id};}this.modelLeases.set(record.id,model);
   const controller=new AbortController();this.controllers.set(record.id,controller);this.liveRecords.set(record.id,record);await this.records.emit(record,'state',{status:'queued'});
   const task=this.queue.enqueue(record.workspaceId+'/'+record.sessionId,()=>this.perform(record,actor,controller.signal));this.tasks.set(record.id,task);
   const cleanup=()=>{this.modelLeases.get(record.id)?.release();this.modelLeases.delete(record.id);this.tasks.delete(record.id);this.controllers.delete(record.id);this.liveRecords.delete(record.id);};void task.then(cleanup,cleanup);return{runId:record.id};
@@ -29,7 +29,7 @@ export class RunService{
   let release:(()=>void)|undefined;let releaseModel:(()=>void)|undefined;
   try{
    signal.throwIfAborted();
-   const initialScope:RunScope={actor:structuredClone(actor),workspaceId:record.workspaceId,sessionId:record.sessionId,runId:record.id,allowArtifactWrites:record.request.allowArtifactWrites};release=await this.dependencies.repository.registerScope(initialScope);
+   const initialScope:RunScope={actor:structuredClone(actor),workspaceId:record.workspaceId,sessionId:record.sessionId,runId:record.id,allowArtifactWrites:record.request.allowArtifactWrites,...(record.outputDirectory?{outputDirectory:record.outputDirectory}:{})};release=await this.dependencies.repository.registerScope(initialScope);
    record.status='running';await this.records.save(record);await this.records.emit(record,'state',{status:'running'});
    const model=this.modelLeases.get(record.id)!;releaseModel=model.release;
    const envelope=await this.dependencies.context.build(record.request,signal,model.value,initialScope);record.contextRevision=envelope.mainRevision;record.context=envelope;await this.records.save(record);await this.records.emit(record,'context',{mainRevision:envelope.mainRevision,ownRevision:envelope.ownRevision,budget:envelope.budget,summaryCoverage:envelope.summaryCoverage});

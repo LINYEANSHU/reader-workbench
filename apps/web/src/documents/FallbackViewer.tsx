@@ -1,0 +1,2 @@
+import {FileQuestion,Download} from 'lucide-react';import type {DocumentRecord} from '../../../../packages/contracts/src/documents.js';import {documentUrl} from '../api/client.js';
+export function FallbackViewer({document}:{document:DocumentRecord}){return<div className="document-empty"><FileQuestion size={36}/><h3>{document.relativePath.split(/[\\/]/).at(-1)}</h3><p>此格式暂无阅读预览，可以保存原文件并通过插件扩展。</p><a className="button" href={documentUrl(document,'/content')} download><Download size={15}/>下载原文件</a></div>;}
