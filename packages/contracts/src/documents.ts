@@ -1,8 +1,10 @@
 import type {WorkspaceId,DocumentId,DocumentVersion,RunId,AttachmentId,SessionId} from './ids.js';
 export interface DocumentRef {workspaceId:WorkspaceId;documentId:DocumentId;version:DocumentVersion}
+/** rect is normalized [left, top, width, height] within the displayed page. */
 export type PageAnchor={kind:'page';page:number;rect?:[number,number,number,number]};
 export type BlockAnchor={kind:'block';blockId:string;start:number;end:number};
 export type SourceAnchor=DocumentRef&{location:PageAnchor|BlockAnchor};
+export function uniqueAnchors(anchors:ReadonlyArray<SourceAnchor>):SourceAnchor[]{return[...new Map(anchors.map(anchor=>{const location=anchor.location,key=JSON.stringify([anchor.workspaceId,anchor.documentId,anchor.version,location.kind,...(location.kind==='page'?[location.page,location.rect??null]:[location.blockId,location.start,location.end])]);return[key,anchor] as const;})).values()];}
 export interface SelectionContext {text:string;anchors:SourceAnchor[]}
 export interface DocumentRecord extends DocumentRef {id:DocumentId;relativePath:string;mime:string;viewer:ViewerDescriptor;parseState:'queued'|'converting'|'indexing'|'ready'|'failed'|'cancelled';pageCount:number;processingRunId:RunId;warnings:string[]}
 export interface ViewerDescriptor {kind:'markdown'|'pdf'|'text'|'image'|'fallback'|'plugin';moduleKey?:string}

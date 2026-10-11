@@ -3,7 +3,7 @@ import type {DocumentRef,SelectionContext,SourceAnchor} from './documents.js';
 import type {AttachmentId} from './ids.js';
 import type {ModelMessage} from './models.js';
 export interface SessionRecord {id:SessionId;workspaceId:WorkspaceId;kind:'main'|'temporary';parentMainSessionId?:SessionId;revision:number;title?:string;createdAt?:string;epoch?:number;callerId?:string}
-export interface CompletedTurn {id:string;runId:RunId;question:string;answer:string;messages:ModelMessage[];sourceAnchors:SourceAnchor[];attachmentIds:AttachmentId[]}
+export interface CompletedTurn {id:string;runId:RunId;question:string;answer:string;messages:ModelMessage[];sourceAnchors:SourceAnchor[];attachmentIds:AttachmentId[];selection?:SelectionContext}
 export interface CommittedTurn extends CompletedTurn {revision:number}
 export interface HistoryPage {session:SessionRecord;turns:CommittedTurn[];nextCursor?:string}
 export interface MemorySummary {text:string;turnIds:string[];revision:number;parentTurnIds?:string[];parentRevision?:number}

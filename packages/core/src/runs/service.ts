@@ -7,6 +7,7 @@ import {builtinTools} from '../tools/builtins.js';
 import type {ModelProvider} from '../../../sdk/src/capabilities.js';
 import type {ArtifactService} from '../artifacts/service.js';
 import {artifactTools} from '../tools/artifacts.js';
+import {uniqueAnchors} from '../../../contracts/src/documents.js';
 interface Dependencies{workspaces:WorkspaceService;repository:SessionRepository;context:ContextBuilder;tools:ToolRegistry;documents:DocumentService;capabilities:CapabilityRegistry;artifacts?:ArtifactService}
 export class RunService{
  readonly records:RunRepository;readonly executor:ToolExecutor;private queue=new KeyedQueue();private recovery=new KeyedQueue();private controllers=new Map<RunId,AbortController>();private liveRecords=new Map<RunId,RunRecord>();private modelLeases=new Map<RunId,{value:ModelProvider;release:()=>void}>();private tasks=new Map<RunId,Promise<void>>();private closed=false;
@@ -45,7 +46,7 @@ export class RunService{
    },signal,record.request.reasoningEffort);signal.throwIfAborted();
    for(const anchor of envelope.sourceRanges)await this.records.emit(record,'citation',anchor);
    const content=record.request.question+(record.request.selection?'\n选区：'+record.request.selection.text+'\n来源：'+JSON.stringify(record.request.selection.anchors):'');
-   await this.dependencies.repository.completeOwnTurn(scope,{id:randomUUID(),runId:record.id,question:record.request.question,answer:result.answer,messages:[{role:'user',content},...result.ownMessages],sourceAnchors:[...envelope.sourceRanges,...result.anchors],attachmentIds:record.request.attachmentIds});
+   await this.dependencies.repository.completeOwnTurn(scope,{id:randomUUID(),runId:record.id,question:record.request.question,answer:result.answer,messages:[{role:'user',content},...result.ownMessages],sourceAnchors:uniqueAnchors([...envelope.sourceRanges,...result.anchors]),attachmentIds:record.request.attachmentIds,...(record.request.selection?{selection:structuredClone(record.request.selection)}:{})});
    record.result=result.answer;record.status='completed';
   }catch(error){record.status=signal.aborted?'cancelled':'failed';record.error=signal.aborted?new ReaderError('CANCELLED','本次回答已取消，部分输出未加入会话记忆').public():publicError(error);await this.records.emit(record,'error',record.error);}
   finally{release?.();releaseModel?.();await this.records.save(record);await this.records.emit(record,'state',{status:record.status});}

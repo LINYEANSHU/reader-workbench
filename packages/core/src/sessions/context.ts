@@ -10,6 +10,7 @@ import {validateContextTransform} from '../plugins/registry.js';
 import type {AskRequest,ContextEnvelope,CommittedTurn,MemorySummary} from '../../../contracts/src/sessions.js';
 import type {ModelMessage} from '../../../contracts/src/models.js';
 import type {DocumentRef,SourceAnchor} from '../../../contracts/src/documents.js';
+import {uniqueAnchors} from '../../../contracts/src/documents.js';
 import {ReaderError} from '../../../contracts/src/errors.js';
 import {ModelMemoryProvider} from './memory.js';
 export function estimateTokens(text:string):number{return Buffer.byteLength(text,'utf8');}
@@ -132,7 +133,7 @@ export class ContextBuilder{
    }finally{lease.release();}
   }
   const messages=[fixed[0]!,...historyMessages,...fixed.slice(1)];
-  let envelope:ContextEnvelope={workspaceId:request.workspaceId,sessionId:request.sessionId,mainRevision,ownRevision:own.session.revision,memory,documents,messages,sourceRanges,budget:{limit:capability.contextWindow,inputTokens:messageTokens(messages)+toolTokens+64,reservedOutputTokens,estimated:true,reservedToolTokens:toolTokens},summaryCoverage};
+  let envelope:ContextEnvelope={workspaceId:request.workspaceId,sessionId:request.sessionId,mainRevision,ownRevision:own.session.revision,memory,documents,messages,sourceRanges:uniqueAnchors(sourceRanges),budget:{limit:capability.contextWindow,inputTokens:messageTokens(messages)+toolTokens+64,reservedOutputTokens,estimated:true,reservedToolTokens:toolTokens},summaryCoverage};
   if(envelope.budget.inputTokens+reservedOutputTokens>capability.contextWindow)throw new ReaderError('CONTEXT_LIMIT','上下文摘要后仍超限，请增加容量或减少选区');
   for(const id of this.capabilities.list(request.workspaceId,'context')){
    const lease=this.capabilities.acquire(request.workspaceId,'context',id);

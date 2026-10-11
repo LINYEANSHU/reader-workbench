@@ -7,6 +7,7 @@ import type {RunRecord,DocumentJobRecord} from '../../../../packages/contracts/s
 import type {ArtifactRecord} from '../../../../packages/contracts/src/artifacts.js';
 import type {UiState} from '../../../../packages/contracts/src/ui-state.js';
 import type {LayoutPreset} from '../../../../packages/contracts/src/layout.js';
+import type {SelectionContext} from '../../../../packages/contracts/src/documents.js';import type {SelectionActionResult} from '../../../../packages/contracts/src/tools.js';
 export class ApiError extends Error{constructor(readonly code:string,message:string,readonly status:number){super(message);}}
 export class ApiClient{
  async request<T>(path:string,options:{method?:string;body?:unknown;signal?:AbortSignal;keepalive?:boolean}={}):Promise<T>{
@@ -16,6 +17,7 @@ export class ApiClient{
  }
  config(){return this.request<{demo:boolean;workspace:string|null}>('/config');}
  layoutPresets(id:WorkspaceId){return this.request<LayoutPreset[]>('/workspaces/'+id+'/layout-presets');}
+ selectionAction(id:WorkspaceId,session:SessionId,selection:SelectionContext,action='core.explain'){return this.request<SelectionActionResult>('/workspaces/'+id+'/sessions/'+session+'/selection-actions/'+encodeURIComponent(action),{method:'POST',body:{selection}});}
  workspaces(){return this.request<Workspace[]>('/workspaces');}
  directories(path:string){return this.request<DirectoryEntry[]>('/directories?path='+encodeURIComponent(path));}
  selectWorkspace(root:string){return this.request<Workspace>('/workspaces',{method:'POST',body:{root}});}

@@ -27,6 +27,7 @@ import {ArtifactService} from '../../../packages/core/src/artifacts/service.js';
 import {artifactRoutes} from './routes/artifacts.js';
 import {serveWeb} from './static.js';
 import {layoutRoutes} from './routes/layout.js';
+import {SelectionService} from '../../../packages/core/src/selection/service.js';import {selectionRoutes} from './routes/selection.js';
 export async function startServer(config:RuntimeConfig){
   const app=Fastify({logger:false,bodyLimit:16*1024*1024,forceCloseConnections:true});
   const auth=new Authentication();
@@ -39,6 +40,7 @@ export async function startServer(config:RuntimeConfig){
   const plugins=new PluginManager(capabilities,workspaces);
   const sessionRepository=new SessionRepository(workspaces);
   const sessions=new SessionService(sessionRepository);
+  const selections=new SelectionService(capabilities,sessionRepository,documents);
   const artifacts=new ArtifactService(workspaces,sessionRepository,documents,capabilities);
   const context=new ContextBuilder(sessionRepository,documents,capabilities);
   const tools=new ToolRegistry(capabilities,scope=>sessionRepository.authorizeScope(scope));
@@ -50,6 +52,7 @@ export async function startServer(config:RuntimeConfig){
   settingsRoutes(app,models);
   artifactRoutes(app,artifacts,auth);
   layoutRoutes(app,workspaces,capabilities);
+  selectionRoutes(app,selections,auth);
   app.addHook('preClose',async()=>{await runs.close();await artifacts.close();await documents.close();});
   app.addHook('onClose',async()=>{await workspaces.close();});
   app.setErrorHandler((error,_request,reply)=>{
