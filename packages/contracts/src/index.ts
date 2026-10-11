@@ -11,3 +11,4 @@ export * from './tools.js';
 export * from './runs.js';
 export * from './artifacts.js';
 export * from './layout.js';
+export * from './hotkeys.js';

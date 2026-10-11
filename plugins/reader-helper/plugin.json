@@ -1,0 +1,1 @@
+{"id":"reader-helper","version":"1.0.0","sdkRange":"^1.0.0","entry":"index.mjs","dependencies":[],"permissions":["tool:read"],"settingsSchema":{"type":"object","additionalProperties":false,"properties":{"maxCharacters":{"title":"解释字数","type":"integer","minimum":10,"maximum":500,"default":80}}}}

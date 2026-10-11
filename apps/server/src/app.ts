@@ -30,6 +30,10 @@ import {layoutRoutes} from './routes/layout.js';
 import {SelectionService} from '../../../packages/core/src/selection/service.js';import {selectionRoutes} from './routes/selection.js';
 import {AttachmentService} from '../../../packages/core/src/documents/attachments.js';import {attachmentRoutes} from './routes/attachments.js';
 import {attachMcpHttp} from './mcp/http.js';import {attachReaderOpenApi} from './openapi.js';
+import {ExternalMcpManager} from '../../../packages/core/src/plugins/external-mcp.js';
+import {UiBridge} from '../../../packages/core/src/plugins/ui-bridge.js';import {pluginRoutes} from './routes/plugins.js';
+import {LifecycleDispatcher} from '../../../packages/core/src/plugins/lifecycle.js';
+import {NativeInteractions} from '../../../packages/core/src/plugins/native-interactions.js';
 export async function startServer(config:RuntimeConfig){
   const app=Fastify({logger:false,bodyLimit:16*1024*1024,forceCloseConnections:true});
   const auth=new Authentication();
@@ -37,6 +41,7 @@ export async function startServer(config:RuntimeConfig){
   auth.attach(app);
   const workspaces=new WorkspaceService(config.configDir);
   const capabilities=new CapabilityRegistry();
+  workspaces.attachCapabilities(capabilities);const lifecycle=new LifecycleDispatcher(capabilities,workspaces);workspaces.onLifecycle=event=>lifecycle.emit(event);
   const models=new ModelSettingsService(workspaces,capabilities);if(config.demo)capabilities.register('*','model','demo',demoProvider);
   const documents=new DocumentService(workspaces,capabilities);
   const plugins=new PluginManager(capabilities,workspaces);
@@ -49,6 +54,10 @@ export async function startServer(config:RuntimeConfig){
   context.attachAttachments(attachments);
   const tools=new ToolRegistry(capabilities,scope=>sessionRepository.authorizeScope(scope));
   const runs=new RunService({workspaces,repository:sessionRepository,context,tools,documents,capabilities,artifacts});
+  const externalMcp=new ExternalMcpManager(capabilities,workspaces),ui=new UiBridge(capabilities,sessionRepository,selections);
+  const native=new NativeInteractions(capabilities,sessionRepository,attachments);plugins.onBeforeDisable=(id,owner)=>native.releaseOwner(id,owner);
+  workspaces.onSelected=async id=>{await plugins.loadWorkspace(id);await externalMcp.loadWorkspace(id);};
+  pluginRoutes(app,{plugins,externalMcp,ui,native,runs,repository:sessionRepository,workspaces},auth);
   workspaceRoutes(app,workspaces,auth);uiStateRoutes(app,workspaces);
   documentRoutes(app,documents);
   sessionRoutes(app,sessions,auth);
@@ -58,7 +67,7 @@ export async function startServer(config:RuntimeConfig){
   layoutRoutes(app,workspaces,capabilities);
   selectionRoutes(app,selections,auth);attachmentRoutes(app,attachments,auth);
   const services={workspaces,documents,sessions,runs,artifacts,plugins};await attachMcpHttp(app,services,auth);attachReaderOpenApi(app,services,auth);
-  app.addHook('preClose',async()=>{await runs.close();await artifacts.close();await documents.close();});
+  app.addHook('preClose',async()=>{native.close();await runs.close();await artifacts.close();await documents.close();await lifecycle.close();await externalMcp.close();await plugins.close();});
   app.addHook('onClose',async()=>{await workspaces.close();});
   app.setErrorHandler((error,_request,reply)=>{
     const status=error instanceof ReaderError?error.status:(error as {statusCode?:number}).statusCode??500;
@@ -77,8 +86,10 @@ export async function startServer(config:RuntimeConfig){
     const url=await app.listen({host:config.host,port:config.port});auth.url=url;
     await writePrivateJson(join(config.configDir,'connection.json'),{url,token:auth.token,pid:process.pid});
     if(config.workspace)await workspaces.select(config.workspace,{callerId:'local-owner',transport:'internal'});
-    await models.loadRecent();
-    return {url,bootstrapUrl:url+'/#bootstrap='+auth.code,app,auth,workspaces,documents,capabilities,plugins,sessionRepository,sessions,context,runs,tools,models,artifacts,attachments,close:async()=>{await app.close();}};
+    await plugins.loadRecent();await externalMcp.loadRecent();await models.loadRecent();
+    for(const workspace of await workspaces.listRecent({callerId:'local-owner',transport:'internal'}))lifecycle.emit({workspaceId:workspace.id,kind:'server.started',data:{version:'0.1.0'}});
+    return {url,bootstrapUrl:url+'/#bootstrap='+auth.code,app,auth,workspaces,documents,capabilities,plugins,externalMcp,ui,sessionRepository,sessions,context,runs,tools,models,artifacts,attachments,selections,close:async()=>{await app.close();}};
   }catch(error){await app.close();if((error as NodeJS.ErrnoException).code==='EADDRINUSE')throw new ReaderError('PORT_IN_USE','端口 '+config.port+' 已被占用，请使用 --port 指定其他端口');throw error;}
 }
+
 

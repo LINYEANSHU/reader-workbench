@@ -59,7 +59,7 @@ export class DocumentService {
    }catch(error){publicRecord.parseState=jobSignal.aborted?'cancelled':'failed';throw error;}
    finally{lease.release();await store.documents.save(saved);}
   },signal);
-  await store.documents.save(saved);return structuredClone(publicRecord);
+  await store.documents.save(saved);this.workspaces.onLifecycle?.({workspaceId,kind:'document.opened',data:{documentId:input.documentId,version:input.version}});return structuredClone(publicRecord);
  }
  private async snapshotResources(workspaceId:WorkspaceId,relativePath:string,cacheDir:string,text:string,signal:AbortSignal){
   const resources:Record<string,{path:string;mime:string}>={};

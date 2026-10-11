@@ -15,7 +15,8 @@ export interface ToolProvider {tools:ToolDefinition[]}
 export interface ArtifactExporter {formats?:ArtifactInput['format'][];export(input:ArtifactInput,scope:RunScope,signal:AbortSignal):Promise<ExportedBytes>}
 export interface MemoryProvider {summarize(turns:ReadonlyArray<CommittedTurn>,budget:number,signal:AbortSignal):Promise<MemorySummary>}
 export interface ContextTransform {transform(input:Readonly<ContextEnvelope>,signal:AbortSignal):Promise<ContextEnvelope>}
-export interface StorageProvider {open(root:string):Promise<WorkspaceStore>}
+export interface StorageOpenContext {workspaceId:WorkspaceStore['workspaceId'];base:Readonly<WorkspaceStore>}
+export interface StorageProvider {open(root:string,context:StorageOpenContext):Promise<WorkspaceStore>}
 export interface LifecycleHooks {onEvent(event:LifecycleEvent):Promise<void>}
 export interface UIContribution {contributions:UiContribution[];invokeAction(id:string,scope:ActionScope):Promise<ActionResult>}
 export interface WorkspaceProvider {browse(path:string,actor:Actor):Promise<DirectoryEntry[]>}

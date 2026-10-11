@@ -152,6 +152,7 @@ export class SqliteWorkspaceStore implements WorkspaceStore {
   }
   putRecord(domain:string,id:string,value:unknown){this.database.prepare('INSERT INTO records(domain,id,data) VALUES(?,?,?) ON CONFLICT(domain,id) DO UPDATE SET data=excluded.data').run(domain,id,JSON.stringify(value));}
   listRecords<T>(domain:string):T[]{return (this.database.prepare('SELECT data FROM records WHERE domain=? ORDER BY rowid').all(domain) as {data:string}[]).map(row=>JSON.parse(row.data) as T);}
+  recordEntries<T>(domain:string):Array<{id:string;value:T}>{return(this.database.prepare('SELECT id,data FROM records WHERE domain=? ORDER BY rowid').all(domain) as {id:string;data:string}[]).map(row=>({id:row.id,value:JSON.parse(row.data) as T}));}
   deleteRecord(domain:string,id:string){this.database.prepare('DELETE FROM records WHERE domain=? AND id=?').run(domain,id);}
   indexDocument(ref:DocumentRef,blocks:DocumentBlock[]){
     if(ref.workspaceId!==this.workspaceId)throw new Error('Workspace mismatch');

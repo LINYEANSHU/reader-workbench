@@ -44,4 +44,10 @@ describe('plugin capabilities',()=>{
     await expect(registry.emitLifecycle({kind:'test',workspaceId:workspace,data:{}})).rejects.toMatchObject({code:'LIFECYCLE_HOOK_FAILED'});
     expect(seen).toBe(1);
   });
+  it('waits for leased older generations when a refreshed capability replaces an inactive entry',async()=>{
+    const registry=new CapabilityRegistry(),manager=new PluginManager(registry);let releaseRegistration=()=>{},disposed=false;
+    await manager.enablePlugin({manifest:manifest('refreshing'),activate:async ctx=>{releaseRegistration=ctx.register('tool','refreshing.lookup',provider);},dispose:async()=>{disposed=true;}},workspace);
+    const older=registry.acquire(workspace,'tool','refreshing.lookup');releaseRegistration();registry.register(workspace,'tool','refreshing.lookup',provider,'refreshing');
+    const disabling=manager.disable('refreshing',workspace);await new Promise<void>(resolve=>setImmediate(resolve));expect(disposed).toBe(false);older.release();await disabling;expect(disposed).toBe(true);
+  });
 });

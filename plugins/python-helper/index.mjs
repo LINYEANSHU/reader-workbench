@@ -1,0 +1,2 @@
+import {fileURLToPath} from 'node:url';
+export default {async activate(context){context.register('process','python-helper.process',{specs:[{command:context.settings.python??(process.platform==='win32'?'python':'python3'),args:['-u',fileURLToPath(new URL('./tool.py',import.meta.url))],timeoutMs:15000,tool:{name:'python_word_stats',description:'通过本地 Python 标准库统计 Unicode 字符数',effect:'read',inputSchema:{type:'object',additionalProperties:false,required:['text'],properties:{text:{type:'string',maxLength:100000}}}}}]});}};

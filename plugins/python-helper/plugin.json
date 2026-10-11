@@ -1,0 +1,1 @@
+{"id":"python-helper","version":"1.0.0","sdkRange":"^1.0.0","entry":"index.mjs","dependencies":[],"permissions":["tool:read"],"settingsSchema":{"type":"object","additionalProperties":false,"properties":{"python":{"title":"Python 解释器","type":"string","maxLength":4096,"default":"python3"}}}}

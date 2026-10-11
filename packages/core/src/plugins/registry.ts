@@ -15,6 +15,7 @@ export function validateContextTransform(before:ContextEnvelope,after:ContextEnv
 interface Entry {workspaceId:string;kind:keyof CapabilityMap;id:string;value:unknown;owner:string;active:boolean;leases:number;idle:Array<()=>void>}
 export class CapabilityRegistry {
   private entries=new Map<string,Entry>();
+  private retired=new Set<Entry>();
   private key(workspaceId:string,kind:keyof CapabilityMap,id:string){return workspaceId+'\0'+kind+'\0'+id;}
   register<K extends keyof CapabilityMap>(workspaceId:WorkspaceId|'*',kind:K,id:string,value:CapabilityMap[K],owner='core'):()=>void{
     const key=this.key(workspaceId,kind,id);
@@ -23,10 +24,14 @@ export class CapabilityRegistry {
       const tools=(value as CapabilityMap['tool']).tools.map(tool=>Object.freeze({...tool,inputSchema:structuredClone(tool.inputSchema)}));
       value=Object.freeze({tools:Object.freeze(tools)}) as unknown as CapabilityMap[K];
     }
+    if(kind==='process'){
+      const specs=(value as CapabilityMap['process']).specs.map(spec=>Object.freeze({...structuredClone(spec),args:Object.freeze([...spec.args]),tool:Object.freeze({...spec.tool,inputSchema:structuredClone(spec.tool.inputSchema)})}));
+      value=Object.freeze({specs:Object.freeze(specs)}) as unknown as CapabilityMap[K];
+    }
     const entry:Entry={workspaceId,kind,id,value,owner,active:true,leases:0,idle:[]};this.entries.set(key,entry);
     return ()=>this.retire(key,entry);
   }
-  private retire(key:string,entry:Entry){entry.active=false;if(!entry.leases){if(this.entries.get(key)===entry)this.entries.delete(key);entry.idle.splice(0).forEach(fn=>fn());}}
+  private retire(key:string,entry:Entry){entry.active=false;if(entry.leases)this.retired.add(entry);else{this.retired.delete(entry);if(this.entries.get(key)===entry)this.entries.delete(key);entry.idle.splice(0).forEach(fn=>fn());}}
   private entry(workspaceId:WorkspaceId,kind:keyof CapabilityMap,id:string):Entry{
     const entry=this.entries.get(this.key(workspaceId,kind,id))??this.entries.get(this.key('*',kind,id));
     if(!entry?.active)throw new ReaderError('CAPABILITY_UNAVAILABLE','能力不可用: '+kind+'/'+id,409);return entry;
@@ -39,7 +44,7 @@ export class CapabilityRegistry {
   }
   retireOwner(workspaceId:WorkspaceId,owner:string):Promise<void>{
     const waits:Promise<void>[]=[];
-    for(const [key,entry]of this.entries){if(entry.workspaceId!==workspaceId||entry.owner!==owner)continue;
+    for(const entry of new Set([...this.entries.values(),...this.retired])){if(entry.workspaceId!==workspaceId||entry.owner!==owner)continue;const key=this.key(entry.workspaceId,entry.kind,entry.id);
       if(entry.leases)waits.push(new Promise<void>(resolve=>entry.idle.push(resolve)));this.retire(key,entry);}
     return Promise.all(waits).then(()=>{});
   }

@@ -22,7 +22,7 @@ export class RunRepository{
  async save(record:RunRecord){await(await this.workspaces.storeFor(record.workspaceId)).runs.save(record);}
  async emit(record:RunRecord,kind:RunEvent['kind'],data:unknown):Promise<RunEvent>{
   const event:RunEvent={workspaceId:record.workspaceId,runId:record.id,seq:0,scope:{kind:'agent',sessionId:record.sessionId},kind,data};
-  await(await this.workspaces.storeFor(record.workspaceId)).runs.appendEvent(event);return event;
+  await(await this.workspaces.storeFor(record.workspaceId)).runs.appendEvent(event);this.workspaces.onLifecycle?.({workspaceId:record.workspaceId,kind:'run.event',data:event});return event;
  }
  async readEvents(workspaceId:WorkspaceId,id:RunId,after:number){return(await this.workspaces.storeFor(workspaceId)).runs.readEvents(id,after);}
 }

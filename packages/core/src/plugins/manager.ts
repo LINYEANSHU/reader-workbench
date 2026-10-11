@@ -1,80 +1,51 @@
-import {readFile,cp,mkdir,realpath} from 'node:fs/promises';
-import {join,dirname,resolve} from 'node:path';
-import {pathToFileURL} from 'node:url';
-import semver from 'semver';
-import type {WorkspaceId} from '../../../contracts/src/ids.js';
-import {ReaderError} from '../../../contracts/src/errors.js';
-import {manifestSchema,SDK_VERSION} from '../../../sdk/src/manifest.js';
-import type {Plugin} from '../../../sdk/src/plugin-context.js';
-import type {CapabilityMap} from '../../../sdk/src/capabilities.js';
-import type {WorkspaceService} from '../workspaces/service.js';
-import {isWithin} from '../workspaces/path-guard.js';
-import {CapabilityRegistry} from './registry.js';
-interface Installation {plugin:Plugin;enabled:boolean;settings:Record<string,unknown>}
-export class PluginManager {
-  private installed=new Map<string,Installation>();
-  private transitions=new Map<string,Promise<unknown>>();
-  constructor(readonly registry:CapabilityRegistry,private workspaces?:WorkspaceService){}
-  private key(workspaceId:WorkspaceId,id:string){return workspaceId+'\0'+id;}
-  private validate(plugin:Plugin){
-    const manifest=manifestSchema.parse(plugin.manifest);
-    if(!semver.valid(manifest.version)||!semver.validRange(manifest.sdkRange)||!semver.satisfies(SDK_VERSION,manifest.sdkRange))throw new ReaderError('SDK_INCOMPATIBLE','插件 SDK 版本不兼容');
-    if(typeof plugin.activate!=='function')throw new ReaderError('PLUGIN_INVALID','插件缺少 activate 方法');return manifest;
-  }
-  async enablePlugin(plugin:Plugin,workspaceId:WorkspaceId,settings:Record<string,unknown>={}):Promise<void>{
-    const manifest=this.validate(plugin);const key=this.key(workspaceId,manifest.id);
-    if(this.installed.get(key)?.enabled)throw new ReaderError('PLUGIN_ALREADY_ENABLED','插件已启用');
-    this.detectCycle(workspaceId,manifest.id,manifest.dependencies);
-    for(const dependency of manifest.dependencies)if(!this.installed.get(this.key(workspaceId,dependency))?.enabled)throw new ReaderError('PLUGIN_DEPENDENCY_MISSING','请先启用依赖插件: '+dependency);
-    const previous=this.installed.get(key);
-    this.installed.set(key,{plugin,enabled:false,settings:structuredClone(settings)});
-    const context={
-      workspaceId,settings:Object.freeze(structuredClone(settings)),
-      register:<K extends keyof CapabilityMap>(kind:K,id:string,value:CapabilityMap[K])=>{
-        if(kind==='tool')for(const tool of (value as CapabilityMap['tool']).tools){
-          if(!manifest.permissions.includes('tool:'+tool.effect))throw new ReaderError('PLUGIN_PERMISSION_DENIED','插件未声明工具权限: '+tool.effect,403);
-        }
-        return this.registry.register(workspaceId,kind,id,value,manifest.id);
-      },
-      getCapability:<K extends keyof CapabilityMap>(kind:K,id:string)=>this.registry.get(workspaceId,kind,id)
-    };
-    try{await plugin.activate(context);this.installed.get(key)!.enabled=true;}
-    catch(error){await this.registry.retireOwner(workspaceId,manifest.id);await plugin.dispose?.().catch(()=>{});if(previous)this.installed.set(key,previous);else this.installed.delete(key);throw error;}
-  }
-  private detectCycle(workspaceId:WorkspaceId,id:string,dependencies:string[]){
-    const visit=(current:string,seen:Set<string>)=>{
-      if(seen.has(current))throw new ReaderError('PLUGIN_DEPENDENCY_CYCLE','插件存在环依赖');
-      const next=new Set(seen);next.add(current);
-      const deps=current===id?dependencies:this.installed.get(this.key(workspaceId,current))?.plugin.manifest.dependencies??[];
-      deps.forEach(dependency=>visit(dependency,next));
-    };visit(id,new Set());
-  }
-  async disable(id:string,workspaceId:WorkspaceId):Promise<void>{
-    const installation=this.installed.get(this.key(workspaceId,id));if(!installation?.enabled)return;
-    for(const entry of this.installed.values())if(entry.enabled&&entry.plugin.manifest.dependencies.includes(id)&&this.installed.get(this.key(workspaceId,entry.plugin.manifest.id))===entry)throw new ReaderError('PLUGIN_DEPENDENCY_ACTIVE','先停用依赖该插件的扩展');
-    installation.enabled=false;await this.registry.retireOwner(workspaceId,id);await installation.plugin.dispose?.();
-  }
-  async install(path:string,workspaceId:WorkspaceId):Promise<void>{
-    if(!this.workspaces)throw new ReaderError('WORKSPACE_REQUIRED','请先选择工作区');
-    const root=await realpath(path);const source=JSON.parse(await readFile(join(root,'plugin.json'),'utf8')) as unknown;
-    const manifest=manifestSchema.parse(source);
-    const workspace=await this.workspaces.get(workspaceId);
-    const destination=join(workspace.root,'.reader-workbench','plugins',manifest.id);
-    const existing=this.installed.get(this.key(workspaceId,manifest.id));
-    if(existing)throw new ReaderError('PLUGIN_ALREADY_INSTALLED','插件已安装');
-    await mkdir(dirname(destination),{recursive:true});
-    const actualEntry=await realpath(resolve(root,manifest.entry));
-    if(!isWithin(root,actualEntry))throw new ReaderError('PLUGIN_INVALID','插件入口必须位于插件目录');
-    await cp(root,destination,{recursive:true,errorOnExist:true,force:false});
-    const imported=await import(pathToFileURL(join(destination,manifest.entry)).href);
-    const exported=imported.default??imported.plugin;
-    const plugin:Plugin={manifest,activate:exported.activate.bind(exported),dispose:exported.dispose?.bind(exported)};
-    this.validate(plugin);this.installed.set(this.key(workspaceId,manifest.id),{plugin,enabled:false,settings:{}});
-    const store=await this.workspaces.storeFor(workspaceId);store.putRecord('plugins',manifest.id,{manifest,path:destination,enabled:false,settings:{}});
-  }
-  async enable(id:string,workspaceId:WorkspaceId):Promise<void>{
-    const installed=this.installed.get(this.key(workspaceId,id));if(!installed)throw new ReaderError('PLUGIN_NOT_INSTALLED','请先安装插件');
-    await this.enablePlugin(installed.plugin,workspaceId,installed.settings);
-  }
-  list(workspaceId:WorkspaceId){return [...this.installed.entries()].filter(([key])=>key.startsWith(workspaceId+'\0')).map(([,entry])=>({manifest:entry.plugin.manifest,enabled:entry.enabled,settings:structuredClone(entry.settings)}));}
+import {readFile,cp,realpath,lstat,rm,readdir} from 'node:fs/promises';
+import {join,resolve} from 'node:path';import {pathToFileURL} from 'node:url';import {randomUUID} from 'node:crypto';
+import semver from 'semver';import {Ajv} from 'ajv';
+import type {WorkspaceId} from '../../../contracts/src/ids.js';import {ReaderError,publicError} from '../../../contracts/src/errors.js';
+import {manifestSchema,SDK_VERSION,type PluginManifest} from '../../../sdk/src/manifest.js';import type {Plugin} from '../../../sdk/src/plugin-context.js';import type {CapabilityMap} from '../../../sdk/src/capabilities.js';
+import type {WorkspaceService} from '../workspaces/service.js';import {isWithin} from '../workspaces/path-guard.js';import {safeCacheDirectory} from '../documents/versions.js';import {CapabilityRegistry} from './registry.js';
+interface Installation{plugin:Plugin;enabled:boolean;settings:Record<string,unknown>;error?:string}
+interface SavedInstallation{manifest:PluginManifest;path:string;enabled:boolean;settings:Record<string,unknown>}
+export class PluginManager{
+ onBeforeDisable?: (workspaceId:WorkspaceId,owner:string)=>void;
+ private installed=new Map<string,Installation>();private transitions=new Map<string,Promise<unknown>>();private loads=new Map<WorkspaceId,Promise<void>>();private ajv=new Ajv({strict:false,allErrors:true,useDefaults:true,coerceTypes:false,removeAdditional:false});
+ constructor(readonly registry:CapabilityRegistry,private workspaces?:WorkspaceService){}
+ private key(workspaceId:WorkspaceId,id:string){return workspaceId+'\0'+id;}
+ private serial<T>(key:string,action:()=>Promise<T>):Promise<T>{const previous=this.transitions.get(key),next=previous?previous.catch(()=>{}).then(action):action();this.transitions.set(key,next);void next.finally(()=>{if(this.transitions.get(key)===next)this.transitions.delete(key);}).catch(()=>{});return next;}
+ private validate(plugin:Plugin){const manifest=manifestSchema.parse(plugin.manifest);if(manifest.id==='core'||manifest.id.startsWith('core.'))throw new ReaderError('PLUGIN_NAMESPACE_DENIED','core 由系统保留',403);if(!semver.valid(manifest.version)||!semver.validRange(manifest.sdkRange)||!semver.satisfies(SDK_VERSION,manifest.sdkRange))throw new ReaderError('SDK_INCOMPATIBLE','插件 SDK 版本不兼容');if(typeof plugin.activate!=='function')throw new ReaderError('PLUGIN_INVALID','插件缺少 activate 方法');return manifest;}
+ private settings(manifest:PluginManifest,input:Record<string,unknown>){const value=structuredClone(input);if(!value||typeof value!=='object'||Array.isArray(value)||Buffer.byteLength(JSON.stringify(value))>256*1024)throw new ReaderError('PLUGIN_SETTINGS_INVALID','插件设置无效');let valid=false;try{valid=this.ajv.validate(manifest.settingsSchema as object,value) as boolean;}catch{throw new ReaderError('PLUGIN_SCHEMA_INVALID','插件设置定义无效');}if(!valid)throw new ReaderError('PLUGIN_SETTINGS_INVALID','插件设置不符合定义');const visit=(item:unknown)=>{if(item&&typeof item==='object')for(const[key,child]of Object.entries(item)){if(/^(api[_-]?key|token|secret|password)$/i.test(key))throw new ReaderError('PLUGIN_SECRET_DENIED','插件设置请使用 credentialRef，密钥必须保存在私有凭据中');visit(child);}};visit(value);return value;}
+ private async persist(workspaceId:WorkspaceId,id:string){if(!this.workspaces)return;const entry=this.installed.get(this.key(workspaceId,id));if(!entry)return;const store=await this.workspaces.storeFor(workspaceId),previous=store.getRecord<SavedInstallation>('plugins',id);if(previous)store.putRecord('plugins',id,{...previous,enabled:entry.enabled,settings:structuredClone(entry.settings)});}
+ async enablePlugin(plugin:Plugin,workspaceId:WorkspaceId,raw:Record<string,unknown>={}):Promise<void>{
+  const manifest=this.validate(plugin),settings=this.settings(manifest,raw),key=this.key(workspaceId,manifest.id),previous=this.installed.get(key);if(previous?.enabled)throw new ReaderError('PLUGIN_ALREADY_ENABLED','插件已启用');this.detectCycle(workspaceId,manifest.id,manifest.dependencies);for(const dependency of manifest.dependencies)if(!this.installed.get(this.key(workspaceId,dependency))?.enabled)throw new ReaderError('PLUGIN_DEPENDENCY_MISSING','请先启用依赖插件: '+dependency);
+  this.installed.set(key,{plugin,enabled:false,settings});
+  const context={workspaceId,settings:Object.freeze(structuredClone(settings)),register:<K extends keyof CapabilityMap>(kind:K,id:string,value:CapabilityMap[K])=>{
+   if(!id.startsWith(manifest.id+'.')||id.length>192)throw new ReaderError('PLUGIN_NAMESPACE_DENIED','插件能力名称必须以插件 id 开头',403);const tools=kind==='tool'?(value as CapabilityMap['tool']).tools:kind==='process'?(value as CapabilityMap['process']).specs.map(spec=>spec.tool):[];
+   for(const tool of tools)if(!manifest.permissions.includes('tool:'+tool.effect))throw new ReaderError('PLUGIN_PERMISSION_DENIED','插件未声明工具权限: '+tool.effect,403);
+   if(kind==='capture'&&(value as CapabilityMap['capture']).authorization==='native'&&!manifest.permissions.includes('native:capture')||kind==='hotkey'&&(value as CapabilityMap['hotkey']).scope==='global'&&!manifest.permissions.includes('native:hotkey'))throw new ReaderError('PLUGIN_PERMISSION_DENIED','插件未声明原生捕获或快捷键权限',403);
+   return this.registry.register(workspaceId,kind,id,value,manifest.id);
+  },getCapability:<K extends keyof CapabilityMap>(kind:K,id:string)=>this.registry.get(workspaceId,kind,id)};
+  try{await plugin.activate(context);this.installed.get(key)!.enabled=true;await this.persist(workspaceId,manifest.id);}catch(error){await this.registry.retireOwner(workspaceId,manifest.id);await plugin.dispose?.().catch(()=>{});if(previous)this.installed.set(key,previous);else this.installed.delete(key);throw error;}
+ }
+ private detectCycle(workspaceId:WorkspaceId,id:string,dependencies:string[]){const visit=(current:string,seen:Set<string>)=>{if(seen.has(current))throw new ReaderError('PLUGIN_DEPENDENCY_CYCLE','插件存在环依赖');const next=new Set(seen);next.add(current);const deps=current===id?dependencies:this.installed.get(this.key(workspaceId,current))?.plugin.manifest.dependencies??[];deps.forEach(dependency=>visit(dependency,next));};visit(id,new Set());}
+ private async disableDirect(id:string,workspaceId:WorkspaceId,persist=true){const entry=this.installed.get(this.key(workspaceId,id));if(!entry?.enabled)return;for(const[key,dependent]of this.installed)if(key.startsWith(workspaceId+'\0')&&dependent.enabled&&dependent.plugin.manifest.dependencies.includes(id))throw new ReaderError('PLUGIN_DEPENDENCY_ACTIVE','先停用依赖该插件的扩展');entry.enabled=false;this.onBeforeDisable?.(workspaceId,id);await this.registry.retireOwner(workspaceId,id);await entry.plugin.dispose?.();if(persist)await this.persist(workspaceId,id);}
+ async disable(id:string,workspaceId:WorkspaceId){return this.serial(workspaceId,()=>this.disableDirect(id,workspaceId));}
+ async enable(id:string,workspaceId:WorkspaceId){return this.serial(workspaceId,async()=>{const entry=this.installed.get(this.key(workspaceId,id));if(!entry)throw new ReaderError('PLUGIN_NOT_INSTALLED','请先安装插件');await this.enablePlugin(entry.plugin,workspaceId,entry.settings);});}
+ async updateSettings(id:string,workspaceId:WorkspaceId,input:Record<string,unknown>){return this.serial(workspaceId,async()=>{const entry=this.installed.get(this.key(workspaceId,id));if(!entry)throw new ReaderError('PLUGIN_NOT_INSTALLED','请先安装插件');const settings=this.settings(entry.plugin.manifest,input),old=structuredClone(entry.settings),wasEnabled=entry.enabled;if(wasEnabled)await this.disableDirect(id,workspaceId,false);entry.settings=settings;try{if(wasEnabled)await this.enablePlugin(entry.plugin,workspaceId,settings);await this.persist(workspaceId,id);}catch(error){entry.settings=old;if(wasEnabled)await this.enablePlugin(entry.plugin,workspaceId,old);throw error;}});}
+ private async importPlugin(root:string,manifest:PluginManifest):Promise<Plugin>{const actualEntry=await realpath(resolve(root,manifest.entry));if(!isWithin(root,actualEntry))throw new ReaderError('PLUGIN_INVALID','插件入口必须位于插件目录');const module=await import(pathToFileURL(actualEntry).href+'?reader-generation='+randomUUID()),exported=module.default??module.plugin;const plugin:Plugin={manifest,activate:exported?.activate?.bind(exported),dispose:exported?.dispose?.bind(exported)};this.validate(plugin);return plugin;}
+ async install(path:string,workspaceId:WorkspaceId){if(!this.workspaces)throw new ReaderError('WORKSPACE_REQUIRED','请先选择工作区');const source=await realpath(path),manifest=manifestSchema.parse(JSON.parse(await readFile(join(source,'plugin.json'),'utf8')));return this.serial(workspaceId,async()=>{
+  if(this.installed.has(this.key(workspaceId,manifest.id)))throw new ReaderError('PLUGIN_ALREADY_INSTALLED','插件已安装');const workspace=await this.workspaces!.get(workspaceId),destination=join(workspace.root,'.reader-workbench','plugins',manifest.id);try{await lstat(destination);throw new ReaderError('PLUGIN_ALREADY_INSTALLED','插件目录已存在，保留原文件');}catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;}
+  const entry=await realpath(resolve(source,manifest.entry));if(!isWithin(source,entry))throw new ReaderError('PLUGIN_INVALID','插件入口必须位于插件目录');await safeCacheDirectory(this.workspaces!,workspaceId,['plugins',manifest.id]);
+  try{for(const name of await readdir(source))await cp(join(source,name),join(destination,name),{recursive:true,errorOnExist:true,force:false,filter:async file=>{if((await lstat(file)).isSymbolicLink())throw new ReaderError('PLUGIN_LINK_DENIED','插件包不能包含文件系统链接');return true;}});const plugin=await this.importPlugin(destination,manifest),settings=this.settings(manifest,{});this.installed.set(this.key(workspaceId,manifest.id),{plugin,enabled:false,settings});(await this.workspaces!.storeFor(workspaceId)).putRecord('plugins',manifest.id,{manifest,path:destination,enabled:false,settings});}catch(error){const actual=await realpath(destination).catch(()=>null);if(actual===destination&&isWithin(workspace.root,actual))await rm(destination,{recursive:true,force:true});throw error;}
+ });}
+ async loadWorkspace(workspaceId:WorkspaceId):Promise<void>{if(!this.workspaces)return;const previous=this.loads.get(workspaceId);if(previous)return previous;const loading=(async()=>{
+  const workspace=await this.workspaces!.get(workspaceId),records=(await this.workspaces!.storeFor(workspaceId)).listRecords<SavedInstallation>('plugins'),enabled:SavedInstallation[]=[];
+  for(const record of records){try{const manifest=manifestSchema.parse(record.manifest),path=await realpath(join(workspace.root,'.reader-workbench','plugins',manifest.id));if(!isWithin(workspace.root,path))throw new ReaderError('PLUGIN_LINK_DENIED','插件目录越界');const plugin=await this.importPlugin(path,manifest),settings=this.settings(manifest,record.settings);this.installed.set(this.key(workspaceId,manifest.id),{plugin,enabled:false,settings});if(record.enabled)enabled.push({...record,manifest});}catch{try{const manifest=manifestSchema.parse(record.manifest);this.installed.set(this.key(workspaceId,manifest.id),{plugin:{manifest,activate:async()=>{throw new ReaderError('PLUGIN_UNAVAILABLE','插件包不可用，请检查本机文件');}},enabled:false,settings:{},error:'插件包或设置不可用，请检查本机文件'});}catch{}}}
+  const pending=new Set(enabled);while(pending.size){let progress=false;for(const record of [...pending]){if(record.manifest.dependencies.some(id=>!this.installed.get(this.key(workspaceId,id))?.enabled))continue;try{await this.enablePlugin(this.installed.get(this.key(workspaceId,record.manifest.id))!.plugin,workspaceId,record.settings);}catch(error){const entry=this.installed.get(this.key(workspaceId,record.manifest.id));if(entry)entry.error=publicError(error).message;}pending.delete(record);progress=true;}if(!progress){for(const record of pending){const entry=this.installed.get(this.key(workspaceId,record.manifest.id));if(entry)entry.error='依赖插件不可用';}break;}}
+ })();this.loads.set(workspaceId,loading);try{await loading;}catch(error){this.loads.delete(workspaceId);throw error;}}
+ async loadRecent(){if(this.workspaces)for(const workspace of await this.workspaces.listRecent({callerId:'local-owner',transport:'internal'}))await this.loadWorkspace(workspace.id);}
+ private shutdownOrder(workspaceId:WorkspaceId){const seen=new Set<string>(),ordered:string[]=[];const visit=(id:string)=>{if(seen.has(id))return;seen.add(id);const entry=this.installed.get(this.key(workspaceId,id));if(!entry?.enabled)return;for(const dependency of entry.plugin.manifest.dependencies)visit(dependency);ordered.push(id);};for(const entry of this.list(workspaceId))visit(entry.manifest.id);return ordered.reverse();}
+ async reload(workspaceId:WorkspaceId){return this.serial(workspaceId,async()=>{for(const id of this.shutdownOrder(workspaceId))await this.disableDirect(id,workspaceId,false);for(const key of [...this.installed.keys()])if(key.startsWith(workspaceId+'\0'))this.installed.delete(key);this.loads.delete(workspaceId);await this.loadWorkspace(workspaceId);});}
+ async close(){await Promise.allSettled([...this.transitions.values()]);for(const workspaceId of new Set([...this.installed.keys()].map(key=>key.split('\0')[0] as WorkspaceId)))for(const id of this.shutdownOrder(workspaceId))try{await this.disableDirect(id,workspaceId,false);}catch{}}
+ list(workspaceId:WorkspaceId){return[...this.installed.entries()].filter(([key])=>key.startsWith(workspaceId+'\0')).map(([,entry])=>({manifest:structuredClone(entry.plugin.manifest),enabled:entry.enabled,settings:structuredClone(entry.settings),...(entry.error?{error:entry.error}:{})}));}
 }
+

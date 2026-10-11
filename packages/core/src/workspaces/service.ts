@@ -9,8 +9,13 @@ import {writePrivateJson} from '../runtime/secure-file.js';
 import {SqliteWorkspaceStore} from '../storage/workspace-store.js';
 import {isWithin,resolveScopedPath} from './path-guard.js';
 import {browseDirectories} from './directory-browser.js';
+import type {CapabilityRegistry} from '../plugins/registry.js';import {StorageConsumer} from '../plugins/storage-consumer.js';import type {LifecycleEvent} from '../../../contracts/src/runs.js';
 interface SavedWorkspace extends Workspace {callerId:string}
 export class WorkspaceService {
+  onSelected?: (id:WorkspaceId)=>Promise<void>;
+  onLifecycle?: (event:LifecycleEvent)=>void;
+  private capabilities?:CapabilityRegistry;private storage?:StorageConsumer;private wrapped=new Map<WorkspaceId,SqliteWorkspaceStore>();
+  attachCapabilities(registry:CapabilityRegistry){this.capabilities=registry;this.storage=new StorageConsumer(registry);}
   private workspaces=new Map<WorkspaceId,SavedWorkspace>();private stores=new Map<WorkspaceId,SqliteWorkspaceStore>();private ready:Promise<void>;
   private selecting:Promise<unknown>=Promise.resolve();
   private configRoot:string;
@@ -31,6 +36,8 @@ export class WorkspaceService {
       this.workspaces.set(id,workspace);
       await writePrivateJson(join(this.configDir,'workspaces.json'),[...this.workspaces.values()]);
       await this.storeFor(id);
+      await this.onSelected?.(id);
+      this.onLifecycle?.({workspaceId:id,kind:'workspace.selected',data:{name:workspace.name}});
       return {id,root:actual,name:workspace.name};
     });
     this.selecting=operation;return operation;
@@ -52,10 +59,10 @@ export class WorkspaceService {
   async storeFor(id:WorkspaceId):Promise<SqliteWorkspaceStore>{
     const workspace=await this.get(id);let store=this.stores.get(id);
     if(!store){await this.ensureStorage(workspace.root);store=new SqliteWorkspaceStore(id,join(workspace.root,'.reader-workbench','state.sqlite'));this.stores.set(id,store);}
-    return store;
+    if(!this.storage)return store;let wrapped=this.wrapped.get(id);if(!wrapped){wrapped=this.storage.wrap(store,workspace.root);this.wrapped.set(id,wrapped);}return wrapped;
   }
   async listRecent(actor:Actor):Promise<Workspace[]>{await this.ready;return [...this.workspaces.values()].filter(w=>w.callerId===actor.callerId).map(({callerId,...workspace})=>workspace);}
-  async browseDirectories(input:string,_actor:Actor):Promise<DirectoryEntry[]>{return browseDirectories(input);}
+  async browseDirectories(input:string,actor:Actor,workspaceId?:WorkspaceId):Promise<DirectoryEntry[]>{if(workspaceId){if(!(await this.listRecent(actor)).some(workspace=>workspace.id===workspaceId))throw new ReaderError('WORKSPACE_DENIED','工作区不属于此调用者',403);const id=this.capabilities?.list(workspaceId,'workspace').at(-1);if(id){const lease=this.capabilities!.acquire(workspaceId,'workspace',id);try{const result=await lease.value.browse(input,structuredClone(actor));if(!Array.isArray(result)||result.length>2000||result.some(entry=>typeof entry.name!=='string'||typeof entry.path!=='string'))throw new ReaderError('WORKSPACE_PROVIDER_INVALID','工作区扩展返回的目录无效');return result;}finally{lease.release();}}}return browseDirectories(input);}
   async resolvePath(id:WorkspaceId,input:string,mode:'read'|'create'):Promise<string>{
     return resolveScopedPath((await this.get(id)).root,input,mode,[this.configRoot]);
   }
@@ -71,5 +78,5 @@ export class WorkspaceService {
   }
   async saveUiState(id:WorkspaceId,clientId:string,state:UiState){if(!clientId||clientId.length>128||JSON.stringify(state).length>1024*1024)throw new ReaderError('INVALID_UI_STATE','界面状态无效');await(await this.storeFor(id)).saveUiState(clientId,state);}
   async getUiState(id:WorkspaceId,clientId:string){return(await this.storeFor(id)).getUiState(clientId);}
-  async close(){for(const store of this.stores.values())await store.close();this.stores.clear();}
+  async close(){await this.storage?.close();this.wrapped.clear();for(const store of this.stores.values())await store.close();this.stores.clear();}
 }

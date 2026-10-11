@@ -1,10 +1,10 @@
 import {spawn} from 'node:child_process';
 import {ReaderError} from '../../../contracts/src/errors.js';
 export interface ProcessResult {stdout:string;stderr:string;exitCode:number}
-export async function runProcess(command:string,args:string[],signal:AbortSignal,timeoutMs:number,input?:string):Promise<ProcessResult>{
+export async function runProcess(command:string,args:string[],signal:AbortSignal,timeoutMs:number,input?:string,environment?:NodeJS.ProcessEnv):Promise<ProcessResult>{
   signal.throwIfAborted();
   return new Promise((resolve,reject)=>{
-    const child=spawn(command,args,{shell:false,windowsHide:true,detached:process.platform!=='win32',stdio:['pipe','pipe','pipe']});
+    const child=spawn(command,args,{shell:false,windowsHide:true,detached:process.platform!=='win32',stdio:['pipe','pipe','pipe'],...(environment?{env:environment}:{})});
     let stdout='',stderr='',failure:Error|undefined;
     child.stdout.setEncoding('utf8');child.stderr.setEncoding('utf8');
     const terminate=()=>{
