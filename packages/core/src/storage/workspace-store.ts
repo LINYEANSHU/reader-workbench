@@ -1,10 +1,10 @@
 import type {DatabaseSync} from 'node:sqlite';
-import type {WorkspaceStore,DocumentStorePort,SessionStorePort,RunStorePort} from '../../../contracts/src/storage.js';
+import type {WorkspaceStore,DocumentStorePort,SessionStorePort,RunStorePort,AttachmentStorePort} from '../../../contracts/src/storage.js';
 import type {RunRecord,RunEvent} from '../../../contracts/src/runs.js';
 import type {WorkspaceId,SessionId,RunScope,RunId} from '../../../contracts/src/ids.js';
 import type {UiState} from '../../../contracts/src/ui-state.js';
 import {openDatabase} from './database.js';
-import type {DocumentRef,DocumentBlock,SearchHit,StoredDocument} from '../../../contracts/src/documents.js';
+import type {DocumentRef,DocumentBlock,SearchHit,StoredDocument,Attachment} from '../../../contracts/src/documents.js';
 import type {SessionRecord,SessionSnapshot,CommittedTurn} from '../../../contracts/src/sessions.js';
 import {ReaderError} from '../../../contracts/src/errors.js';
 import type {ArtifactRecord} from '../../../contracts/src/artifacts.js';
@@ -135,6 +135,7 @@ export class SqliteWorkspaceStore implements WorkspaceStore {
     save:async record=>{this.checkWorkspace(record.workspaceId);this.database.prepare('INSERT INTO artifacts(id,session_id,data) VALUES(?,?,?)').run(record.id,record.sessionId,JSON.stringify(record));},
     list:async sessionId=>{const rows=sessionId?this.database.prepare('SELECT data FROM artifacts WHERE session_id=? ORDER BY rowid').all(sessionId):this.database.prepare('SELECT data FROM artifacts ORDER BY rowid').all();return(rows as {data:string}[]).map(row=>JSON.parse(row.data) as ArtifactRecord);}
   };
+  readonly attachments:AttachmentStorePort={get:async id=>this.getRecord<Attachment>('attachments',id),save:async record=>{this.checkWorkspace(record.workspaceId);this.putRecord('attachments',record.id,record);},list:async sessionId=>this.listRecords<Attachment>('attachments').filter(record=>record.sessionId===sessionId)};
   private checkWorkspace(workspaceId:WorkspaceId){if(workspaceId!==this.workspaceId)throw new Error('Workspace mismatch');}
   private database:DatabaseSync;private closed=false;
   constructor(readonly workspaceId:WorkspaceId,file:string){this.database=openDatabase(file);}

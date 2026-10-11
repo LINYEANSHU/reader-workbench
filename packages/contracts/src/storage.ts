@@ -5,6 +5,8 @@ import type {RunId} from './ids.js';
 import type {RunRecord,RunEvent,RunStatus} from './runs.js';
 import type {PublicError} from './errors.js';
 import type {ArtifactRecord} from './artifacts.js';
+import type {Attachment} from './documents.js';
+import type {AttachmentId} from './ids.js';
 import type {ArtifactId} from './ids.js';
 export interface DocumentStorePort {
   get(ref:DocumentRef):Promise<StoredDocument|null>;
@@ -34,4 +36,5 @@ export interface RunStorePort {
  setStatus(id:RunId,status:RunStatus,error?:PublicError):Promise<void>;
 }
 export interface ArtifactStorePort {get(id:ArtifactId):Promise<ArtifactRecord|null>;save(record:ArtifactRecord):Promise<void>;list(sessionId?:SessionId):Promise<ArtifactRecord[]>}
-export interface WorkspaceStore {workspaceId:WorkspaceId;documents:DocumentStorePort;sessions:SessionStorePort;runs:RunStorePort;artifacts:ArtifactStorePort;close():Promise<void>}
+export interface AttachmentStorePort {get(id:AttachmentId):Promise<Attachment|null>;save(record:Attachment):Promise<void>;list(sessionId:SessionId):Promise<Attachment[]>}
+export interface WorkspaceStore {workspaceId:WorkspaceId;documents:DocumentStorePort;sessions:SessionStorePort;runs:RunStorePort;artifacts:ArtifactStorePort;attachments:AttachmentStorePort;close():Promise<void>}

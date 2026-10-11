@@ -4,3 +4,5 @@ createRoot(document.getElementById('root')!).render(<App/>);
 import './styles/layout.css';
 
 import './styles/selection.css';
+
+import './styles/capture.css';

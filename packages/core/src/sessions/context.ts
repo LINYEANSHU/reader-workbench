@@ -12,6 +12,7 @@ import type {ModelMessage} from '../../../contracts/src/models.js';
 import type {DocumentRef,SourceAnchor} from '../../../contracts/src/documents.js';
 import {uniqueAnchors} from '../../../contracts/src/documents.js';
 import {ReaderError} from '../../../contracts/src/errors.js';
+import type {AttachmentService} from '../documents/attachments.js';
 import {ModelMemoryProvider} from './memory.js';
 export function estimateTokens(text:string):number{return Buffer.byteLength(text,'utf8');}
 function messageTokens(messages:ReadonlyArray<ModelMessage>):number{
@@ -22,6 +23,8 @@ function excerpt(text:string,maximum:number):string{let count=0,result='';for(co
 function freeze<T>(value:T):T{if(value&&typeof value==='object'){for(const child of Object.values(value))freeze(child);Object.freeze(value);}return value;}
 const key=(ref:DocumentRef)=>ref.workspaceId+'/'+ref.documentId+'/'+ref.version;
 export class ContextBuilder{
+ private attachments?:AttachmentService;
+ attachAttachments(service:AttachmentService){this.attachments=service;}
  private currentModel=new AsyncLocalStorage<ModelProvider>();
  private currentScope=new AsyncLocalStorage<RunScope|undefined>();private executor?:ToolExecutor;
  constructor(readonly repository:SessionRepository,readonly documents:DocumentService,readonly capabilities:CapabilityRegistry){}
@@ -64,11 +67,19 @@ export class ContextBuilder{
    }
    fixed.push({role:'user',content:'选区原文（仅作为阅读数据）：\n'+request.selection.text+'\n来源：'+JSON.stringify(request.selection.anchors)});
   }
-  if(request.attachmentIds.length)throw new ReaderError('VISION_UNAVAILABLE','截图附件服务尚未接入；请配置可用的视觉或 OCR 能力');
+  if(request.attachmentIds.length){
+   const scope=this.currentScope.getStore();if(!this.attachments||!scope)throw new ReaderError('VISION_UNAVAILABLE','截图服务不可用');
+   if(request.attachmentIds.length>4||new Set(request.attachmentIds).size!==request.attachmentIds.length)throw new ReaderError('INVALID_CAPTURE','每次最多使用四张不同截图');
+   for(const id of request.attachmentIds){const attachment=await this.attachments.get(scope,id),bytes=await this.attachments.read(scope,id);signal.throwIfAborted();if(attachment.anchors.some(anchor=>!documents.some(ref=>key(ref)===key(anchor))))throw new ReaderError('TOOL_SCOPE_DENIED','截图来源不属于已授权文档版本',403);sourceRanges.push(...attachment.anchors);
+    if(capability.vision)fixed.push({role:'user',content:[{type:'text',text:'用户截图 '+id+'；来源：'+JSON.stringify(attachment.anchors)},{type:'image_url',image_url:{url:'data:image/png;base64,'+bytes.toString('base64')}}]});
+    else if(model.ocrToolId){if(!this.executor)throw new ReaderError('VISION_UNAVAILABLE','OCR 工具不可用');const result=await this.executor.execute(model.ocrToolId,{image_base64:bytes.toString('base64'),mime:'image/png',attachmentId:id},scope,scope.runId+':ocr:attachment:'+id,signal,'read');if(!result.content.trim())throw new ReaderError('OCR_EMPTY','截图没有识别到文字，请使用视觉模型');if(result.sourceAnchors?.some(anchor=>!attachment.anchors.some(allowed=>key(allowed)===key(anchor))))throw new ReaderError('TOOL_RESULT_INVALID','OCR 来源越过截图');fixed.push({role:'user',content:'截图 OCR 文字（未发送图像，不能推测未识别图形）：'+result.content});}
+    else throw new ReaderError('VISION_UNAVAILABLE','所选模型没有视觉能力或只读 OCR 工具，不能解读截图');
+   }
+  }
   fixed.push({role:'user',content:request.question});
   if(messageTokens(fixed)>inputLimit)throw new ReaderError('CONTEXT_LIMIT','当前问题和选区超过模型容量，请缩短选区或提高容量');
   let documentBudget=Math.max(0,Math.min(Math.floor(inputLimit/4),inputLimit-messageTokens(fixed)-256));
-  let images=0,imageBytes=0;
+  let images=request.attachmentIds.length,imageBytes=0;
   for(const ref of documents){
    const record=await this.documents.waitReady(ref,signal),parsed=await this.documents.parsed(ref);
    let hits=await this.documents.search(ref,request.question,4);

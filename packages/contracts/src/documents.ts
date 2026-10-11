@@ -13,7 +13,7 @@ export interface DocumentBlock {id:string;text:string;anchor:SourceAnchor;kind?:
 export interface DocumentPage {page:number;text:string;width:number;height:number;imagePath?:string;anchors:SourceAnchor[]}
 export interface ParsedDocument {pages:DocumentPage[];blocks:DocumentBlock[];warnings:string[];pdfPath?:string}
 export interface SearchHit {text:string;anchor:SourceAnchor;score:number}
-export interface Attachment {id:AttachmentId;workspaceId:WorkspaceId;sessionId:SessionId;mime:string;sha256:string;anchors:SourceAnchor[];width:number;height:number}
+export interface Attachment {id:AttachmentId;workspaceId:WorkspaceId;sessionId:SessionId;mime:string;sha256:string;anchors:SourceAnchor[];width:number;height:number;captureKind?:'document'|'screen'}
 export interface CaptureMetadata {width:number;height:number;anchors:SourceAnchor[];captureKind:'document'|'screen'}
 export interface ViewportRect {x:number;y:number;width:number;height:number}
 export interface CaptureResult {blob:Blob;width:number;height:number;anchors:SourceAnchor[]}

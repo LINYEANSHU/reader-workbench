@@ -1,6 +1,6 @@
 import type {Workspace,DirectoryEntry,FileEntry} from '../../../../packages/contracts/src/workspaces.js';
 import type {WorkspaceId,SessionId,RunId,ArtifactId} from '../../../../packages/contracts/src/ids.js';
-import type {DocumentRef,DocumentRecord,DocumentPage} from '../../../../packages/contracts/src/documents.js';
+import type {DocumentRef,DocumentRecord,DocumentPage,Attachment,CaptureResult} from '../../../../packages/contracts/src/documents.js';
 import type {SessionRecord,HistoryPage,AskRequest} from '../../../../packages/contracts/src/sessions.js';
 import type {MaskedModelSettings,ModelSettings,ModelCapabilities} from '../../../../packages/contracts/src/models.js';
 import type {RunRecord,DocumentJobRecord} from '../../../../packages/contracts/src/runs.js';
@@ -10,6 +10,8 @@ import type {LayoutPreset} from '../../../../packages/contracts/src/layout.js';
 import type {SelectionContext} from '../../../../packages/contracts/src/documents.js';import type {SelectionActionResult} from '../../../../packages/contracts/src/tools.js';
 export class ApiError extends Error{constructor(readonly code:string,message:string,readonly status:number){super(message);}}
 export class ApiClient{
+ async saveAttachment(workspaceId:WorkspaceId,sessionId:SessionId,result:CaptureResult,captureKind:'document'|'screen'){const bytes=new Uint8Array(await result.blob.arrayBuffer());let binary='';for(let i=0;i<bytes.length;i+=8192)binary+=String.fromCharCode(...bytes.subarray(i,i+8192));return this.request<Attachment>('/attachments',{method:'POST',body:{workspaceId,sessionId,data:btoa(binary),metadata:{width:result.width,height:result.height,anchors:result.anchors,captureKind}}});}
+ attachment(workspaceId:WorkspaceId,sessionId:SessionId,id:string){return this.request<Attachment>('/attachments/'+encodeURIComponent(id)+'?workspaceId='+workspaceId+'&sessionId='+sessionId+'&metadata=true');}
  async request<T>(path:string,options:{method?:string;body?:unknown;signal?:AbortSignal;keepalive?:boolean}={}):Promise<T>{
   const response=await fetch('/api/v1'+path,{method:options.method??'GET',credentials:'same-origin',signal:options.signal,keepalive:options.keepalive,...(options.body!==undefined?{headers:{'content-type':'application/json'},body:JSON.stringify(options.body)}:{})});
   const result=await response.json().catch(()=>({error:{code:'INVALID_RESPONSE',message:'服务没有返回可用响应'}}));
@@ -48,3 +50,5 @@ export const api=new ApiClient();
 export function documentPath(ref:DocumentRef,suffix=''){return'/documents/'+ref.documentId+'/versions/'+ref.version+suffix+(suffix.includes('?')?'&':'?')+'workspaceId='+ref.workspaceId;}
 export function documentUrl(ref:DocumentRef,suffix=''){return'/api/v1'+documentPath(ref,suffix);}
 export function message(error:unknown){return error instanceof Error?error.message:'操作失败，请重试';}
+
+export function attachmentUrl(attachment:Attachment){return '/api/v1/attachments/'+encodeURIComponent(attachment.id)+'?workspaceId='+attachment.workspaceId+'&sessionId='+attachment.sessionId;}
