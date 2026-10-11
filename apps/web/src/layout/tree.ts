@@ -1,0 +1,8 @@
+import type {LayoutNode,PaneId} from '../../../../packages/contracts/src/layout.js';export {validateLayout} from '../../../../packages/contracts/src/layout.js';
+export function flattenPanes(tree:LayoutNode):PaneId[]{return tree.kind==='pane'?[tree.pane]:[...flattenPanes(tree.first),...flattenPanes(tree.second)];}
+export function setSplitRatio(tree:LayoutNode,id:string,ratio:number):LayoutNode{if(!Number.isFinite(ratio)||tree.kind==='pane')return tree;return tree.id===id?{...tree,ratio:Math.max(.1,Math.min(.9,ratio))}:{...tree,first:setSplitRatio(tree.first,id,ratio),second:setSplitRatio(tree.second,id,ratio)};}
+export function movePane(tree:LayoutNode,pane:PaneId,target:PaneId,placement:'before'|'after'|'above'|'below'):LayoutNode{
+ if(pane===target||!flattenPanes(tree).includes(pane)||!flattenPanes(tree).includes(target))return tree;
+ const ids=new Set<string>();const remove=(node:LayoutNode):LayoutNode|null=>{if(node.kind==='pane')return node.pane===pane?null:node;ids.add(node.id);const first=remove(node.first),second=remove(node.second);return first&&second?{...node,first,second}:first??second;};const remaining=remove(tree)!;let index=0;while(ids.has('move-'+index))index++;
+ const insert=(node:LayoutNode):LayoutNode=>{if(node.kind==='split')return{...node,first:insert(node.first),second:insert(node.second)};if(node.pane!==target)return node;const moved:LayoutNode={kind:'pane',pane},before=placement==='before'||placement==='above';return{kind:'split',id:'move-'+index,direction:placement==='above'||placement==='below'?'vertical':'horizontal',ratio:.5,first:before?moved:node,second:before?node:moved};};return insert(remaining);
+}

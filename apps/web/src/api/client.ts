@@ -6,6 +6,7 @@ import type {MaskedModelSettings,ModelSettings,ModelCapabilities} from '../../..
 import type {RunRecord,DocumentJobRecord} from '../../../../packages/contracts/src/runs.js';
 import type {ArtifactRecord} from '../../../../packages/contracts/src/artifacts.js';
 import type {UiState} from '../../../../packages/contracts/src/ui-state.js';
+import type {LayoutPreset} from '../../../../packages/contracts/src/layout.js';
 export class ApiError extends Error{constructor(readonly code:string,message:string,readonly status:number){super(message);}}
 export class ApiClient{
  async request<T>(path:string,options:{method?:string;body?:unknown;signal?:AbortSignal;keepalive?:boolean}={}):Promise<T>{
@@ -14,6 +15,7 @@ export class ApiClient{
   if(!response.ok)throw new ApiError(result.error?.code??'REQUEST_FAILED',result.error?.message??'请求失败',response.status);return result as T;
  }
  config(){return this.request<{demo:boolean;workspace:string|null}>('/config');}
+ layoutPresets(id:WorkspaceId){return this.request<LayoutPreset[]>('/workspaces/'+id+'/layout-presets');}
  workspaces(){return this.request<Workspace[]>('/workspaces');}
  directories(path:string){return this.request<DirectoryEntry[]>('/directories?path='+encodeURIComponent(path));}
  selectWorkspace(root:string){return this.request<Workspace>('/workspaces',{method:'POST',body:{root}});}

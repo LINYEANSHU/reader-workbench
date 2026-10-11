@@ -26,6 +26,7 @@ import {settingsRoutes} from './routes/settings.js';
 import {ArtifactService} from '../../../packages/core/src/artifacts/service.js';
 import {artifactRoutes} from './routes/artifacts.js';
 import {serveWeb} from './static.js';
+import {layoutRoutes} from './routes/layout.js';
 export async function startServer(config:RuntimeConfig){
   const app=Fastify({logger:false,bodyLimit:16*1024*1024,forceCloseConnections:true});
   const auth=new Authentication();
@@ -48,6 +49,7 @@ export async function startServer(config:RuntimeConfig){
   runRoutes(app,runs,auth);
   settingsRoutes(app,models);
   artifactRoutes(app,artifacts,auth);
+  layoutRoutes(app,workspaces,capabilities);
   app.addHook('preClose',async()=>{await runs.close();await artifacts.close();await documents.close();});
   app.addHook('onClose',async()=>{await workspaces.close();});
   app.setErrorHandler((error,_request,reply)=>{
