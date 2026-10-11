@@ -388,3 +388,30 @@ HTTP API 与 MCP 是两种调用方式，不复制 Agent 内核。额外 Agent �
 - 解释 TypeScript 的工程取舍，并提供可用的 Python 工具扩展契约。
 - 对真实模型请求、Office 版式与跨平台实测规定了证据要求。
 - 未把无法验证的平台运行或模型调用写成已经成功；未使用待定占位符代替关键行为。
+
+## 19. 用户追加要求：思考深度和内置离线语音（2026-10-11）
+
+用户在实施中明确追加思考深度选择、语音输入，选择本地离线识别，并要求识别能力直接内置应用。以下作为已批准方案的补充，不改变三栏记忆隔离和工作区约束。
+
+### 19.1 思考深度
+
+主对话和临时对话输入栏分别保留选定模型与思考深度；每次提交固定选项，随后更改设置不影响在途运行。档位来自模型能力，不能仅改变按钮文案而继续发送同一参数。不支持思考参数的模型不显示虚假的可用档位。DeepSeek Flash 提供关闭、轻度、深入、最高，分别对应 none/low/high/max；关闭时显式禁用 thinking，其他档位启用 thinking 并发送 reasoning_effort。缺省使用深入，用户可单独调整临时对话。
+
+设置和运行记录保存实际选项；HTTP/MCP AskRequest 使用可选 reasoningEffort。适配器校验档位并传给真实模型。模型的工具循环需要保留其协议要求的 reasoning_content；不能把这些内容当成用户指令或已完成回答。用户只要求深度控制，界面显示思考状态，不默认展开原始推理文本。
+
+### 19.2 内置离线语音
+
+默认内置 SenseVoiceSmall INT8 和 sherpa-onnx 的本地识别适配器；不依赖浏览器云端听写、第三方语音 API、用户另行安装 Python 或手动启动识别服务。运行库由应用依赖按 Windows/macOS/Linux 提供。应用管理首次模型准备，显示进度、失败重试和取消；下载来自固定的官方模型地址，校验大小和 SHA-256，完成后从本地加载。也支持发行包携带已验证模型供无网络机器安装。SenseVoice 模型约 239 MB，磁盘和内存需求在设置中明确显示；缓存保存在应用配置的 voice 目录。
+
+浏览器麦克风按钮位于两个对话输入栏。按下录音，停止后识别并将纯文字插入录音起点所属的草稿，用户编辑后自行发送；不自动创建 Agent 轮次。取消、Esc、页面隐藏/关闭停止全部麦克风轨道；录音期间切换工作区或会话后，晚到结果不写入新输入框。识别结果仍可显式复制或插入。音频仅在本机内存中传输到已认证的本地服务，识别后丢弃，不默认保存原始录音。
+
+音频输入为单声道、16 kHz、PCM16 WAV；最大 120 秒和 4 MB，服务器检查 WAV 头、样本、持续时间、所属工作区/会话及调用者。识别在单独的受管理子进程运行，队列有界、超时和取消可终止实际推理；退出应用释放子进程。SDK 增加 speech capability，使替换模型仍通过同一语音 API；默认只启用内置本地提供者，不进行云端回退。
+
+### 19.3 追加验收
+
+| ID | 验收要求 | 需要的实际证据 |
+| --- | --- | --- |
+| R24 | 能选择并实际传递思考深度 | 档位能力、两栏独立设置、运行选项固定、真实 DeepSeek 请求；不支持档位时的拒绝测试 |
+| R25 | 安装后可准备并使用内置本地语音 | 固定模型下载和哈希、真实中文/英文音频识别、断网本地推理、麦克风授权/录音/停止/取消/草稿归属；模拟证据单列 |
+
+依据：[DeepSeek 思考模式](https://api-docs.deepseek.com/guides/thinking_mode/)、[模型能力接口](https://api-docs.deepseek.com/api/list-models/)、[Harness 官方语音设计](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/subsystems/voice-input.md)、[官方 SenseVoice 模型资产清单](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/experimental/speech-to-text-sensevoice/runtime/assets.json)、[sherpa-onnx Node 安装与平台说明](https://k2-fsa.github.io/sherpa/onnx/javascript-api/install.html)。Codex 官方资料未确定具体听写模型，本应用不依赖对其私有实现的推测。
