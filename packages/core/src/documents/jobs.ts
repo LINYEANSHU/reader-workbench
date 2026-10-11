@@ -4,8 +4,9 @@ import type {WorkspaceId,RunId,DocumentId} from '../../../contracts/src/ids.js';
 import type {DocumentJobRecord,RunEvent} from '../../../contracts/src/runs.js';
 import {ReaderError,publicError} from '../../../contracts/src/errors.js';
 import type {WorkspaceService} from '../workspaces/service.js';
+import {KeyedQueue} from '../runs/queue.js';
 export class DocumentJobService {
- private controllers=new Map<RunId,AbortController>();private tasks=new Set<Promise<void>>();
+ private controllers=new Map<RunId,AbortController>();private tasks=new Set<Promise<void>>();private recovery=new KeyedQueue();
  constructor(private workspaces:WorkspaceService){}
  async enqueue(workspaceId:WorkspaceId,documentId:DocumentId,perform:(signal:AbortSignal)=>Promise<void>,initialSignal:AbortSignal):Promise<RunId>{
   const id=randomUUID() as RunId;const store=await this.workspaces.storeFor(workspaceId);
@@ -22,10 +23,12 @@ export class DocumentJobService {
   this.tasks.add(task);void task.then(()=>this.tasks.delete(task),()=>this.tasks.delete(task));return id;
  }
  async get(workspaceId:WorkspaceId,id:RunId):Promise<DocumentJobRecord>{
+  return this.recovery.enqueue(workspaceId+'/'+id,async()=>{
   const record=(await this.workspaces.storeFor(workspaceId)).getRecord<DocumentJobRecord>('document-jobs',id);
   if(!record||record.workspaceId!==workspaceId)throw new ReaderError('RUN_UNAVAILABLE','文档任务不存在',404);
-  if(['queued','running'].includes(record.status)&&!this.controllers.has(id)){record.status='failed';record.error=new ReaderError('RUN_INTERRUPTED','服务重启中断文档处理，请重新打开').public();(await this.workspaces.storeFor(workspaceId)).putRecord('document-jobs',id,record);}
+  if(['queued','running'].includes(record.status)&&!this.controllers.has(id)){record.status='failed';record.error=new ReaderError('RUN_INTERRUPTED','服务重启中断文档处理，请重新打开').public();(await this.workspaces.storeFor(workspaceId)).putRecord('document-jobs',id,record);await this.emit(record,'error',record.error);await this.emit(record,'state',{status:'failed'});}
   return record;
+  });
  }
  async cancel(workspaceId:WorkspaceId,id:RunId){await this.get(workspaceId,id);this.controllers.get(id)?.abort();}
  async emit(record:DocumentJobRecord,kind:RunEvent['kind'],data:unknown){

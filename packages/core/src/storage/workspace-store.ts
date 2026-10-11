@@ -1,5 +1,6 @@
 import type {DatabaseSync} from 'node:sqlite';
-import type {WorkspaceStore,DocumentStorePort,SessionStorePort} from '../../../contracts/src/storage.js';
+import type {WorkspaceStore,DocumentStorePort,SessionStorePort,RunStorePort} from '../../../contracts/src/storage.js';
+import type {RunRecord,RunEvent} from '../../../contracts/src/runs.js';
 import type {WorkspaceId,SessionId,RunScope,RunId} from '../../../contracts/src/ids.js';
 import type {UiState} from '../../../contracts/src/ui-state.js';
 import {openDatabase} from './database.js';
@@ -20,6 +21,13 @@ export class SqliteWorkspaceStore implements WorkspaceStore {
     const session=await this.sessions.getSession(scope.sessionId);
     if(session.callerId&&session.callerId!==scope.actor.callerId)throw new ReaderError('TOOL_SCOPE_DENIED','会话调用者不匹配',403);
     return session;
+  }
+  setReadRevisions(scope:RunScope,revisions:Record<string,number>):RunScope{
+    const entry=this.scopes.get(scope.runId);
+    if(!entry||JSON.stringify(entry.scope)!==JSON.stringify(scope))throw new ReaderError('TOOL_SCOPE_DENIED','运行身份不匹配',403);
+    const own=this.readSession(scope.sessionId),allowed=new Set([own.id,own.parentMainSessionId]);
+    for(const [id,revision] of Object.entries(revisions))if(!allowed.has(id as SessionId)||!Number.isSafeInteger(revision)||revision<0||revision>this.readSession(id as SessionId).revision)throw new ReaderError('TOOL_SCOPE_DENIED','归档读取版本不属于当前运行',403);
+    entry.scope={...structuredClone(scope),readRevisions:structuredClone(revisions)};return structuredClone(entry.scope);
   }
   private readSession(id:SessionId):SessionRecord{
     const row=this.database.prepare('SELECT data FROM sessions WHERE id=?').get(id) as {data:string}|undefined;
@@ -95,6 +103,30 @@ export class SqliteWorkspaceStore implements WorkspaceStore {
     list:async()=>this.listRecords<StoredDocument>('documents'),
     index:async(ref,blocks)=>this.indexDocument(ref,blocks),
     search:async(ref,query,limit)=>this.searchDocument(ref,query,limit)
+  };
+  readonly runs:RunStorePort={
+    get:async id=>{
+      const row=this.database.prepare('SELECT data FROM runs WHERE id=?').get(id) as {data:string}|undefined;
+      if(!row)throw new ReaderError('RUN_UNAVAILABLE','此工作区中不存在该运行',404);return JSON.parse(row.data) as RunRecord;
+    },
+    create:async record=>{
+      this.checkWorkspace(record.workspaceId);this.readSession(record.sessionId);
+      this.database.prepare('INSERT INTO runs(id,session_id,request_key,data) VALUES(?,?,?,?)').run(record.id,record.sessionId,JSON.stringify([record.sessionId,record.callerId,record.requestId]),JSON.stringify(record));
+    },
+    save:async record=>{this.checkWorkspace(record.workspaceId);this.database.prepare('UPDATE runs SET data=? WHERE id=?').run(JSON.stringify(record),record.id);},
+    list:async()=> (this.database.prepare('SELECT data FROM runs ORDER BY rowid').all() as {data:string}[]).map(row=>JSON.parse(row.data) as RunRecord),
+    appendEvent:async event=>{
+      this.checkWorkspace(event.workspaceId);
+      this.transaction(()=>{
+        const row=this.database.prepare('SELECT COALESCE(MAX(seq),0) AS seq FROM run_events WHERE run_id=?').get(event.runId) as {seq:number};
+        event.seq=row.seq+1;
+        this.database.prepare('INSERT INTO run_events(run_id,seq,data) VALUES(?,?,?)').run(event.runId,event.seq,JSON.stringify(event));
+      });
+    },
+    readEvents:async(id,after)=> (this.database.prepare('SELECT data FROM run_events WHERE run_id=? AND seq>? ORDER BY seq').all(id,after) as {data:string}[]).map(row=>JSON.parse(row.data) as RunEvent),
+    setStatus:async(id,status,error)=>{
+      const record=await this.runs.get(id);record.status=status;if(error)record.error=error;await this.runs.save(record);
+    }
   };
   private checkWorkspace(workspaceId:WorkspaceId){if(workspaceId!==this.workspaceId)throw new Error('Workspace mismatch');}
   private database:DatabaseSync;private closed=false;

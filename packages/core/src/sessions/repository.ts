@@ -7,6 +7,7 @@ export class SessionRepository{
   const store=await this.workspaces.storeFor(scope.workspaceId);await store.sessions.getSession(scope.sessionId);return store.bindScope(scope);
  }
  async authorizeScope(scope:RunScope):Promise<SessionRecord>{return(await this.workspaces.storeFor(scope.workspaceId)).authorizeScope(scope);}
+ async setReadRevisions(scope:RunScope,revisions:Record<string,number>):Promise<RunScope>{return(await this.workspaces.storeFor(scope.workspaceId)).setReadRevisions(scope,revisions);}
  async completeOwnTurn(scope:RunScope,turn:CompletedTurn):Promise<number>{return(await this.workspaces.storeFor(scope.workspaceId)).sessions.completeOwnTurn(scope,turn);}
  async getSession(workspaceId:WorkspaceId,sessionId:SessionId):Promise<SessionRecord>{return(await this.workspaces.storeFor(workspaceId)).sessions.getSession(sessionId);}
  async saveOwnSummary(scope:RunScope,summary:MemorySummary):Promise<void>{return(await this.workspaces.storeFor(scope.workspaceId)).sessions.saveOwnSummary(scope,summary);}

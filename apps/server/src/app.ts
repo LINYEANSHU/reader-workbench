@@ -17,8 +17,11 @@ import {SessionRepository} from '../../../packages/core/src/sessions/repository.
 import {SessionService} from '../../../packages/core/src/sessions/service.js';
 import {ContextBuilder} from '../../../packages/core/src/sessions/context.js';
 import {sessionRoutes} from './routes/sessions.js';
+import {ToolRegistry} from '../../../packages/core/src/tools/registry.js';
+import {RunService} from '../../../packages/core/src/runs/service.js';
+import {runRoutes} from './routes/runs.js';
 export async function startServer(config:RuntimeConfig){
-  const app=Fastify({logger:false,bodyLimit:16*1024*1024});
+  const app=Fastify({logger:false,bodyLimit:16*1024*1024,forceCloseConnections:true});
   const auth=new Authentication();
   auth.url='http://'+(config.host.includes(':')?'['+config.host+']':config.host)+':'+config.port;
   auth.attach(app);
@@ -29,10 +32,14 @@ export async function startServer(config:RuntimeConfig){
   const sessionRepository=new SessionRepository(workspaces);
   const sessions=new SessionService(sessionRepository);
   const context=new ContextBuilder(sessionRepository,documents,capabilities);
+  const tools=new ToolRegistry(capabilities,scope=>sessionRepository.authorizeScope(scope));
+  const runs=new RunService({workspaces,repository:sessionRepository,context,tools,documents,capabilities});
   workspaceRoutes(app,workspaces,auth);uiStateRoutes(app,workspaces);
   documentRoutes(app,documents);
   sessionRoutes(app,sessions,auth);
-  app.addHook('onClose',async()=>{await documents.close();await workspaces.close();});
+  runRoutes(app,runs,auth);
+  app.addHook('preClose',async()=>{await runs.close();await documents.close();});
+  app.addHook('onClose',async()=>{await workspaces.close();});
   app.setErrorHandler((error,_request,reply)=>{
     reply.code(error instanceof ReaderError?error.status:(error as {statusCode?:number}).statusCode??500).send({error:publicError(error)});
   });
@@ -48,6 +55,6 @@ export async function startServer(config:RuntimeConfig){
     const url=await app.listen({host:config.host,port:config.port});auth.url=url;
     await writePrivateJson(join(config.configDir,'connection.json'),{url,token:auth.token,pid:process.pid});
     if(config.workspace)await workspaces.select(config.workspace,{callerId:'local-owner',transport:'internal'});
-    return {url,bootstrapUrl:url+'/#bootstrap='+auth.code,app,auth,workspaces,documents,capabilities,plugins,sessionRepository,sessions,context,close:async()=>{await app.close();}};
+    return {url,bootstrapUrl:url+'/#bootstrap='+auth.code,app,auth,workspaces,documents,capabilities,plugins,sessionRepository,sessions,context,runs,tools,close:async()=>{await app.close();}};
   }catch(error){await app.close();if((error as NodeJS.ErrnoException).code==='EADDRINUSE')throw new ReaderError('PORT_IN_USE','端口 '+config.port+' 已被占用，请使用 --port 指定其他端口');throw error;}
 }
