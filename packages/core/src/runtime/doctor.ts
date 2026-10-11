@@ -5,11 +5,12 @@ import { promisify } from 'node:util';
 import type { DoctorReport,RuntimeConfig } from '../../../contracts/src/runtime.js';
 const execute=promisify(execFile);
 export async function findLibreOffice():Promise<string|undefined>{
+  if(process.env.READER_LIBREOFFICE){try{await access(process.env.READER_LIBREOFFICE);return process.env.READER_LIBREOFFICE;}catch{return undefined;}}
   const names=process.platform==='win32'?['soffice.com','soffice.exe']:['soffice','libreoffice'];
   const dirs=(process.env.PATH??'').split(delimiter);
   if(process.platform==='win32')dirs.push(join(process.env.ProgramFiles??'C:\\Program Files','LibreOffice','program'),join(process.env['ProgramFiles(x86)']??'C:\\Program Files (x86)','LibreOffice','program'));
   if(process.platform==='darwin')dirs.push('/Applications/LibreOffice.app/Contents/MacOS');
-  const paths=[...(process.env.READER_LIBREOFFICE?[process.env.READER_LIBREOFFICE]:[]),...dirs.flatMap(dir=>names.map(name=>join(dir,name)))];
+  const paths=dirs.flatMap(dir=>names.map(name=>join(dir,name)));
   for(const path of paths){try{await access(path);return path;}catch{}}
 }
 export async function doctor(_config:RuntimeConfig):Promise<DoctorReport>{

@@ -37,9 +37,17 @@
     "test:live": "node scripts/live-model.mjs"
   },
   "dependencies": {
+    "@napi-rs/canvas": "1.0.11",
+    "docx": "9.10.0",
     "env-paths": "4.0.0",
+    "fast-xml-parser": "5.11.2",
     "fastify": "5.12.5",
+    "fflate": "0.8.3",
+    "markdown-it": "15.0.2",
     "open": "11.0.4",
+    "pdf-lib": "1.17.1",
+    "pdfjs-dist": "6.4.299",
+    "pptxgenjs": "4.0.1",
     "semver": "7.8.5",
     "zod": "4.6.5"
   },
