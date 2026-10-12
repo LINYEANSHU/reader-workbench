@@ -1,0 +1,24 @@
+# SDD ledger — plan: docs/superpowers/plans/2026-10-12-visual-document-memory.md
+
+Execution: Native, user confirmed 2026-10-12. Branch codex/visual-document-memory; baseline aa07c18.
+Ruling: Work in the existing dedicated feature branch in the current checkout — user chose current-chat implementation; no consent to create another checkout and old worktree contains running resources — cost if wrong: source changes appear in current feature checkout.
+Ruling: Maintain this Windows ledger directly because skill helper scripts are POSIX shell scripts — no product dependencies added — cost: manual task bookkeeping.
+Pre-flight: Task 1 host/record contracts consumed by Tasks 2/4/5; generation and model identity must be exposed on host, store always receives explicit DocumentRef.
+Pre-flight: Task 2 leases consumed by Tasks 5/6; shared jobs must not depend on the first caller's released RunScope.
+Pre-flight: Task 3 provider limits consumed by Tasks 4/5; check encoded request body and transient revisit images.
+Pre-flight: Tasks 5/6 consumer references consumed by Task 7; state APIs use pinned version/provider and strict ownership.
+Pre-flight: Task 8 release depends on Tasks 1-7; real API execution remains separately authorized.
+Task 1: in progress (BASE aa07c18).
+Task 1: complete (5/5 contract tests, typecheck PASS). Task 2: in progress. Baseline 95 passed, 4 failed; investigating resource failures.
+Task 2: complete (9/9 storage and lease tests, typecheck PASS). Ruling: cache uses a hashed directory with plugin identity in the hash, avoiding unsafe plugin paths. Baseline Office resources found in old worktree; use READER_LIBREOFFICE without moving them. Task 3: in progress.
+Task 3: complete (13/13 image/model tests, typecheck PASS). Task 4: in progress.
+Task 4: complete (4/4 plugin behavior tests, typecheck PASS). Task 5: in progress. Ruling: app composition wires the consumer in Task 5 to test the actual RunService; installation and UI remain Tasks 6/7.
+Task 5: complete (18/18 run/context regressions, typecheck PASS). Task 6: in progress.
+Task 6: complete (14/14 integration regressions, typecheck PASS). Serialization is by whole document version to prevent concurrent saved page maps losing updates. Task 7: in progress.
+Ruling: OCR regression explicitly disables visual memory to exercise the supported old OCR path; non-vision visual pre-reading remains an honest error. Cost: OCR users must opt out of visual memory. Windows copied-workspace test now compares canonical realpath because TEMP uses the 8.3 user alias. Native capture actual-frame regression found a buffered overlay frame; wait for two presented frames. Cost: one additional video frame of latency.
+Task 7: complete (browser memory flow, screenshot native/injected fixes, 5/5 memory integrations, typecheck PASS). Actual DeepSeek: two images, overview, first answer, followup zero images PASS. Task 8: in progress. Native frame ruling corrected: drain initial native tab frame before hiding controls; synthetic/static streams consume only one frame. Overlapping Playwright processes collided in the shared output directory; final browser suite must be serial.
+Final: all three reviewer Important findings accepted and reproduced RED. Pinned select, unmanaged plugin collision, and model-specific image token budgets now GREEN (9 targeted tests, typecheck PASS). Added real RunService main/temporary shared-cancel regression. Declined items remain parent release/limits/live/full-suite responsibilities; limits verified from official docs, actual 2-page API passed, final broad suite and distribution are required below.
+Correction: the prior review-targeted run had type errors (private manager field). Encapsulated diagnostic persistence in PluginManager; widened generated OpenAPI paths type for GET routes. Fresh typecheck PASS. Full core/Office/native speech/distribution suite running; final fix-pass completion is gated on it.
+Ruling: root launcher reuses the retained worktree config/resources only when root resources do not exist — user saved the live key there and old files must remain in place — cost if wrong: default startup continues using that saved config until an explicit root config or -ConfigDir is chosen.
+Final fix pass: complete; all three Important findings reproduced RED then GREEN, fresh full suite 127/127, browser 35/35, typecheck and build PASS. No deferred minors. Version/distribution passed in full suite. Reviewer exclusions resolved by parent actual API, official provider sources, and full resource-enabled suites.
+Task 8: checks complete: typecheck/build exit 0, core 127/127 with Office/native speech/distribution, browser 35/35. Release 0.2.0 metadata and docs ready. Existing authorization selects local main fast-forward and annotated v0.2.0; no remote publication.

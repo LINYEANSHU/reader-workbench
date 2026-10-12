@@ -10,6 +10,10 @@ $ErrorActionPreference = 'Stop'
 $readerRoot = $PSScriptRoot
 if ([string]::IsNullOrWhiteSpace($ConfigDir)) {
     $ConfigDir = Join-Path $readerRoot '.reader-runtime/user-config'
+    $readerPreviousConfig = Join-Path $readerRoot '.worktrees/reader-workbench/.reader-runtime/user-config'
+    if (-not (Test-Path -LiteralPath $ConfigDir) -and (Test-Path -LiteralPath $readerPreviousConfig)) {
+        $ConfigDir = $readerPreviousConfig
+    }
 }
 $readerCli = Join-Path $readerRoot 'bin/reader-workbench.mjs'
 $readerBuild = Join-Path $readerRoot 'dist/cli.mjs'
@@ -23,6 +27,12 @@ $readerPreviousTemp = $env:TEMP
 $readerPreviousTmp = $env:TMP
 $readerOffice = Join-Path $readerRoot '.reader-runtime/LibreOffice/program/soffice.com'
 $readerSpeech = Join-Path $readerRoot '.reader-runtime/sensevoice-small-int8'
+if (-not (Test-Path -LiteralPath $readerOffice)) {
+    $readerOffice = Join-Path $readerRoot '.worktrees/reader-workbench/.reader-runtime/LibreOffice/program/soffice.com'
+}
+if (-not (Test-Path -LiteralPath (Join-Path $readerSpeech 'model.int8.onnx'))) {
+    $readerSpeech = Join-Path $readerRoot '.worktrees/reader-workbench/.reader-runtime/sensevoice-small-int8'
+}
 try {
     $readerTemporaryDirectory = Join-Path $readerRoot '.reader-runtime/tmp'
     New-Item -ItemType Directory -Path $readerTemporaryDirectory -Force | Out-Null

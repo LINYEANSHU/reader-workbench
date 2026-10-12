@@ -1,0 +1,24 @@
+
+ RUN  v4.0.18 G:/My_project/try
+
+ ✓ tests/integration/document-memory-runs.test.ts (6 tests | 5 skipped) 1816ms
+   ✓ enforces the configured image token cost before sending a page revisit  1815ms
+ ❯ tests/integration/document-memory-api.test.ts (2 tests | 1 failed | 1 skipped) 240ms
+   ↓ automatically prepares every local image, owns memory routes, rebuilds locally and preserves disabled state
+   × opens a workspace with a same-name unregistered user plugin directory without overwriting it 240ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/integration/document-memory-api.test.ts > opens a workspace with a same-name unregistered user plugin directory without overwriting it
+ReaderError: 插件目录已存在，保留原文件
+ ❯ packages/core/src/plugins/manager.ts:36:303
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  1 failed | 1 passed | 6 skipped (8)
+   Start at  17:48:09
+   Duration  4.34s (transform 690ms, setup 0ms, import 2.00s, tests 2.06s, environment 0ms)
+

@@ -1,0 +1,16 @@
+
+ RUN  v4.0.18 G:/My_project/try
+
+ ✓ tests/integration/document-memory-runs.test.ts (7 tests) 5910ms
+   ✓ first question reads all images then second carries memory with zero automatic images  788ms
+   ✓ revisits only the requested page and never stores binary images in dialogue  632ms
+   ✓ keeps a failed pre-read out of dialogue and refuses forged memory references  1441ms
+   ✓ finishes the paid in-flight reading using its pinned plugin when disabled during generation  534ms
+   ✓ enforces the configured image token cost before sending a page revisit  1601ms
+   ✓ shares the real main and temporary pre-read and keeps the temporary question alive when main cancels  618ms
+
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+   Start at  17:51:46
+   Duration  7.37s (transform 737ms, setup 0ms, import 1.32s, tests 5.91s, environment 0ms)
+

@@ -99,7 +99,7 @@ export async function startServer(config:RuntimeConfig){
     await writePrivateJson(join(config.configDir,'connection.json'),{url,token:auth.token,pid:process.pid});
     if(config.workspace)await workspaces.select(config.workspace,{callerId:'local-owner',transport:'internal'});
     await plugins.loadRecent();await externalMcp.loadRecent();await models.loadRecent();
-    for(const workspace of await workspaces.listRecent({callerId:'local-owner',transport:'internal'}))lifecycle.emit({workspaceId:workspace.id,kind:'server.started',data:{version:'0.1.0'}});
+    for(const workspace of await workspaces.listRecent({callerId:'local-owner',transport:'internal'}))lifecycle.emit({workspaceId:workspace.id,kind:'server.started',data:{version:'0.2.0'}});
     return {url,bootstrapUrl:url+'/#bootstrap='+auth.code,app,auth,workspaces,documents,documentMemory,capabilities,plugins,externalMcp,ui,speech,sessionRepository,sessions,context,runs,tools,models,artifacts,attachments,selections,close:async()=>{await app.close();}};
   }catch(error){await app.close();if((error as NodeJS.ErrnoException).code==='EADDRINUSE')throw new ReaderError('PORT_IN_USE','端口 '+config.port+' 已被占用，请使用 --port 指定其他端口');throw error;}
 }

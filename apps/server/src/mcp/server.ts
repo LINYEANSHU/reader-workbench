@@ -74,7 +74,7 @@ export async function invokeReaderOperation(services:ReaderServices,actor:Actor,
  }
 }
 export function createMcpServer(services:ReaderServices,actor:Actor):McpServer{
- const server=new McpServer({name:'reader-workbench',version:'0.1.0'});
+ const server=new McpServer({name:'reader-workbench',version:'0.2.0'});
  for(const [name,operation] of Object.entries(readerOperations))server.registerTool(name,{description:operation.description,inputSchema:operation.schema,annotations:{readOnlyHint:operation.readOnly,destructiveHint:false,openWorldHint:false}},async(input,ctx)=>{
   try{const result=await invokeReaderOperation(services,actor,name,input,ctx.mcpReq.signal);return{content:[{type:'text' as const,text:JSON.stringify(result)}],structuredContent:result};}
   catch(error){const result=publicError(error);return{isError:true,content:[{type:'text' as const,text:JSON.stringify(result)}]};}

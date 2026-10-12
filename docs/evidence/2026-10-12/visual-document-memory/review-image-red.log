@@ -1,0 +1,57 @@
+
+ RUN  v4.0.18 G:/My_project/try
+
+ ❯ tests/unit/tool-image-budget.test.ts (1 test | 1 failed) 6ms
+   × uses the leased image token estimate before the next actual model generation 5ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/unit/tool-image-budget.test.ts > uses the leased image token estimate before the next actual model generation
+AssertionError: promise resolved "{ answer: 'answer', …(2) }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "anchors": [],
++   "answer": "answer",
++   "ownMessages": [
++     {
++       "content": "",
++       "role": "assistant",
++       "tool_calls": [
++         {
++           "function": {
++             "arguments": "{}",
++             "name": "revisit_document_page",
++           },
++           "id": "one",
++           "type": "function",
++         },
++       ],
++     },
++     {
++       "content": "page",
++       "role": "tool",
++       "tool_call_id": "one",
++     },
++     {
++       "content": "answer",
++       "role": "assistant",
++     },
++   ],
+  }
+
+ ❯ tests/unit/tool-image-budget.test.ts:2:992
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+   Start at  17:48:50
+   Duration  240ms (transform 75ms, setup 0ms, import 93ms, tests 6ms, environment 0ms)
+

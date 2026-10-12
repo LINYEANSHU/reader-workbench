@@ -1,0 +1,145 @@
+{
+  "status": "passed",
+  "date": "2026-10-12T18:04:58.1399346+08:00",
+  "platform": "win32",
+  "node": "v24.21.0",
+  "version": "0.2.0",
+  "protocolVersion": "1.1.0",
+  "pluginVersion": "1.0.0",
+  "checks": [
+    {
+      "command": "npm run typecheck",
+      "exitCode": 0
+    },
+    {
+      "command": "npm run build",
+      "exitCode": 0
+    },
+    {
+      "exitCode": 0,
+      "actualOffice": true,
+      "freshPackageInstall": true,
+      "passed": 127,
+      "skipped": 0,
+      "files": 31,
+      "actualSpeech": true,
+      "command": "npm test"
+    },
+    {
+      "passed": 35,
+      "command": "npm run test:e2e",
+      "actualTabCapture": true,
+      "skipped": 0,
+      "exitCode": 0
+    },
+    {
+      "paidCalls": 0,
+      "command": "Start-Reader.ps1 -NoOpen -Port <allocated> -ConfigDir <isolated>",
+      "health": 200,
+      "exitCode": 0
+    },
+    {
+      "followupImages": 0,
+      "preReadImages": 2,
+      "command": "authorized real DeepSeek two-page acceptance",
+      "evidence": "../visual-memory-live.json",
+      "model": "deepseek-flash",
+      "status": "passed",
+      "apiCalls": 4
+    },
+    {
+      "command": "npm pack --json --pack-destination release",
+      "requiredPluginFilesPresent": true,
+      "exitCode": 0
+    }
+  ],
+  "review": {
+    "deferredMinors": 0,
+    "fixCommit": "b8ffa60",
+    "importantFixed": 3,
+    "reviewedHead": "78c720c",
+    "critical": 0,
+    "baseline": "479a7c9"
+  },
+  "package": {
+    "sha256": "ddc75b381debd37e8fe6f7d903b0c27cb9c917ae3259d094457979938580c000",
+    "bytes": 3849769,
+    "path": "release/reader-workbench-0.2.0.tgz"
+  },
+  "artifacts": [
+    {
+      "path": "browser.log",
+      "bytes": 6075,
+      "sha256": "6183d53998cec4cd0116258f21b57590aad338fafb05c24bdf5c7bde38bd7114"
+    },
+    {
+      "path": "build.log",
+      "bytes": 4872,
+      "sha256": "41f6a5bfdd871ee7abab6daff0ac665401873bd6c794ca0868c68bc2d9bf2b0e"
+    },
+    {
+      "path": "core.log",
+      "bytes": 7914,
+      "sha256": "60e226cd236d856fa2a54bfa1454ebdf305a718577576791c7365c808f8ae54c"
+    },
+    {
+      "path": "distribution.json",
+      "bytes": 311,
+      "sha256": "49b4ac67077d636067f2a36feef9fa7054b6d50adc0d0e4639325bf7ac403246"
+    },
+    {
+      "path": "document-memory-ready.png",
+      "bytes": 112699,
+      "sha256": "be073858be6d6d2f96388c1a9243fd366f136304bc3dceec48e99863fa840438"
+    },
+    {
+      "path": "execution-ledger.md",
+      "bytes": 4831,
+      "sha256": "6dca53822e31e4800b687a76962e9a89af1459fe6946dd4418b2135a6b1fb1c8"
+    },
+    {
+      "path": "launcher.json",
+      "bytes": 204,
+      "sha256": "0e9006ead6c494753f0fa5f742e3270e79818006d61f6e6a98a6ad6f8cd9e33a"
+    },
+    {
+      "path": "review-collision-red.log",
+      "bytes": 1132,
+      "sha256": "7efbba7e2013c3f3912d606840fc568d02286e7728204ff382907325d3719395"
+    },
+    {
+      "path": "review-green.log",
+      "bytes": 1007,
+      "sha256": "5878e54f0478a4566e9b84d57f161fc3bb2e8710ed131db0738947b10d38eead"
+    },
+    {
+      "path": "review-image-red.log",
+      "bytes": 1439,
+      "sha256": "e1c711a92fedea2929b5fbf21be17ec2f0265229476dc64ce492cb01409b73d0"
+    },
+    {
+      "path": "review-lease-red.log",
+      "bytes": 1252,
+      "sha256": "e101b29b6659df806dd898aaf764114d5d93d9256b57438836568b4e8b63da06"
+    },
+    {
+      "path": "review-runs.log",
+      "bytes": 876,
+      "sha256": "11b905aa1c2ed2a5b50f516c768a24c3875ae3a45a440d56b3123f10590068e0"
+    },
+    {
+      "path": "typecheck.log",
+      "bytes": 98,
+      "sha256": "da224dc5364ada521c5b431f981da319a551091fc3f4a328bc61aecb8ccc47f5"
+    },
+    {
+      "path": "validation.md",
+      "bytes": 3389,
+      "sha256": "ee4deb73151f9defd650ca8b1ee7d74e7b3fbba73989a9f54da19eb20d412f2a"
+    }
+  ],
+  "untested": [
+    "macOS/Linux runtime",
+    "arbitrary real document sizes beyond the authorized two-page sample"
+  ]
+}

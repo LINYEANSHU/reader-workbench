@@ -1,0 +1,9 @@
+{
+  "status": "passed",
+  "launcher": "Start-Reader.ps1",
+  "health": 200,
+  "childIdentityVerified": true,
+  "isolatedConfig": true,
+  "paidModelCalls": 0,
+  "oldConfigFilesKeptInPlace": true
+}

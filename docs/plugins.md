@@ -8,6 +8,17 @@
 
 - `reader-helper`：只读术语工具 `reader_explain_term`，字数设置，以及“把选区带到临时提问”动作。动作携带文档版本和选区，放入可编辑临时草稿，不会自动发送，也不更改主对话。
 - `python-helper`：配置 Python 解释器路径后启用 `python_word_stats`。实际输入 `{"text":"你好 AI"}` 返回 `char_count: 5`。设置页的工具预览仅运行只读工具，结果不加入任何对话历史。
+- `visual-document-memory`（1.0.0）：新工作区自动安装并启用，已有同名包或明确停用状态保持原样。PDF、转换后的 Word/PPT、图片先在本地准备各页图像；首次提问由所选视觉模型逐页建立记忆，后续问题使用本地记忆。页记忆与重建入口在文件栏，停用入口在设置 → 插件。文字和 Markdown 沿用正文路径；需要旧的文字模型/OCR 路径时停用此插件。
+
+## 文档记忆扩展（SDK 协议 1.1.0）
+
+`context.register('documentMemory', 'your-plugin.reader', provider)` 注册 `DocumentMemoryProvider`。实现 `promptVersion`、`supports(record)`、`prepareLocal(host, signal)`、`prepare(host, signal)`、`select(record, question, budgetBytes)`。`DocumentImageHost` 提供受控页码图像和本地文字；`DocumentMemoryHost` 额外提供已租约固定的模型能力、图像限制、加载/原子保存记忆、无工具的模型调用和进度。
+
+应用宿主负责工作区与来源版本授权、严格记忆结构/页码覆盖校验、缓存原子保存、共享任务、租约及取消；插件负责阅读提示、顺序分批、概览和相关页选择。完整原文与页记忆保留；上下文装不下全部记忆时发送概览、完整页码索引和相关页，模型可用 `read_document_memory` 读取其他页，用 `revisit_document_page` 核实指定一页图像。
+
+缓存位于工作区内部存储的 `document-memory/<hash>/generation-<n>.json`，哈希覆盖工作区/文档/内容版本/插件/提示版本/模型身份。一般内部存储是 `.reader-workbench`；复制的工作区可能使用 `.reader-workbench/identities/<workspace-id>`。原文及页图像在同一内部存储的 `cache/<document-id>/<version>`。重建只递增本地代次，保留旧记录；下一次提问才调用模型。非法或不完整输出不会标记全文读完，已完成批次可继续。
+
+DeepSeek 的接口是无状态调用。所谓“记忆”是每次请求中明确提供的本地模型阅读记录与历史摘要，不能代替原文件中的所有细节。`api.deepseek.com` + `deepseek-flash` 使用 600 张、单图 32 MiB、图像累计 64 MiB、请求体 48 MiB 的上限；还受输出及上下文预算约束，超限会分批。其他端点默认 4 张、单图 4 MiB、累计 12 MiB、请求体 16 MiB，可通过模型设置 `imageLimits` 覆盖。
 
 最小 manifest：
 
