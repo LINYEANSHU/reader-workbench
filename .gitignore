@@ -1,10 +1,13 @@
-/.worktrees/
 # Dependencies and generated bundles
 node_modules/
 dist/
 apps/web/public/pdfjs/
+*.tsbuildinfo
+.vite/
+.cache/
 
 # Local workspaces, private settings, models and converters
+/.worktrees/
 .reader-workbench/
 .reader-runtime/
 .superpowers/
@@ -26,14 +29,31 @@ apps/web/public/pdfjs/
 *.db-wal
 /outputs/
 
-# Tests, packaging and disposable local files
+# Test reports and release packages
 test-results/
 playwright-report/
+blob-report/
+coverage/
 *.tgz
 /release/
-coverage/
+
+# Logs stay local, including verification evidence and rotated logs
 *.log
-!docs/evidence/**/*.log
+*.log.*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Disposable local files and editor/OS metadata
 /tmp/
+*.tmp
+*.temp
+*.swp
+*.swo
+__pycache__/
+*.py[cod]
+.pytest_cache/
 .DS_Store
 Thumbs.db
+Desktop.ini

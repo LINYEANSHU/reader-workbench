@@ -1,8 +1,0 @@
-Join-Path : 无法将参数绑定到参数“Path”，因为该参数为空字符串。
-所在位置 G:\My_project\try\.worktrees\reader-workbench\Start-Reader.ps1:4 字符: 38
-+     [string] $ConfigDir = (Join-Path $PSScriptRoot '.reader-runtime/u ...
-+                                      ~~~~~~~~~~~~~
-    + CategoryInfo          : InvalidData: (:) [Join-Path]，ParentContainsErrorRecordException
-    + FullyQualifiedErrorId : ParameterArgumentValidationErrorEmptyStringNotAllowed,Microsoft.PowerShell.Commands.Join 
-   PathCommand
- 

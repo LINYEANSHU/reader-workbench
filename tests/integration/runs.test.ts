@@ -117,14 +117,15 @@ describe('scoped agent runs',()=>{
  });
  it('streams authenticated HTTP events and resumes terminal output using Last-Event-ID',async()=>{
   const directory=await mkdtemp(join(tmpdir(),'reader run http '));cleanup.push(()=>rm(directory,{recursive:true,force:true,maxRetries:10,retryDelay:100}));const root=join(directory,'work');await mkdir(root);
-  const server=await startServer({host:'127.0.0.1',port:0,configDir:join(directory,'config'),noOpen:true,demo:false});cleanup.push(()=>server.close());const workspace=await server.workspaces.select(root,actor);
+  const server=await startServer({host:'127.0.0.1',port:0,configDir:join(directory,'config'),noOpen:true,demo:false});let closing:Promise<void>|undefined;cleanup.push(()=>closing??=server.close());const workspace=await server.workspaces.select(root,actor);
   server.capabilities.register(workspace.id,'model','test',provider(async function*(){yield{kind:'delta',text:'中文流式回答'};yield{kind:'done'};}));const main=await server.sessions.createMain(workspace.id,'HTTP');
   const headers={authorization:'Bearer '+server.auth.token,'content-type':'application/json'},response=await fetch(server.url+'/api/v1/runs',{method:'POST',headers,body:JSON.stringify(ask(main))});expect(response.status).toBe(202);const {runId}=await response.json() as {runId:RunId};
   const stream=await fetch(server.url+'/api/v1/runs/'+runId+'/events?workspaceId='+workspace.id,{headers});expect(stream.headers.get('content-type')).toContain('text/event-stream');const text=await stream.text();expect(text).toContain('中文流式回答');expect(text).toContain('"status":"completed"');
   const resumed=await fetch(server.url+'/api/v1/runs/'+runId+'/events?workspaceId='+workspace.id,{headers:{...headers,'last-event-id':'2'}});expect(await resumed.text()).not.toContain('id: 1\n');expect((await fetch(server.url+'/api/v1/runs/'+runId,{headers})).status).toBe(400);
-  server.capabilities.register(workspace.id,'model','long',provider(async function*(_r,signal){yield{kind:'delta',text:'部分'};await delay(10000,undefined,{signal});yield{kind:'done'};}));
+  let entered!:()=>void,aborted=false,completed=false;const started=new Promise<void>(resolve=>entered=resolve);
+  server.capabilities.register(workspace.id,'model','long',provider(async function*(_r,signal){signal.addEventListener('abort',()=>aborted=true,{once:true});entered();yield{kind:'delta',text:'部分'};await delay(10000,undefined,{signal});completed=true;yield{kind:'done'};}));
   const next=await fetch(server.url+'/api/v1/runs',{method:'POST',headers,body:JSON.stringify({...ask(main),providerId:'long'})});const nextId=(await next.json() as {runId:string}).runId;
-  const connection=new AbortController();const pending=await fetch(server.url+'/api/v1/runs/'+nextId+'/events?workspaceId='+workspace.id,{headers,signal:connection.signal});
-  try{expect(await Promise.race([server.close().then(()=>true),delay(1000).then(()=>false)])).toBe(true);}finally{connection.abort();await pending.body?.cancel().catch(()=>{});await server.runs.close();}
+  const connection=new AbortController();const pending=await fetch(server.url+'/api/v1/runs/'+nextId+'/events?workspaceId='+workspace.id,{headers,signal:connection.signal});const drained=pending.text().catch(()=>{});
+  try{await started;closing=server.close();await closing;expect(aborted).toBe(true);expect(completed).toBe(false);await expect(fetch(server.url+'/health')).rejects.toThrow();}finally{connection.abort();await drained;}
  });
 });

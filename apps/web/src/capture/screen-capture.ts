@@ -28,7 +28,10 @@ export async function captureScreen(signal:AbortSignal):Promise<CaptureResult>{
   // Hide only our capture controls, so selecting this tab preserves its actual document pixels.
   for(const node of document.querySelectorAll<HTMLElement>('[data-capture-pending]')){hidden.push({node,visibility:node.style.visibility});node.style.visibility='hidden';}
   await new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve())));signal.throwIfAborted();
-  if(!video.srcObject)video.srcObject=stream;await freshFrame(video,signal);await waitFor(()=>video.videoWidth>0&&video.videoHeight>0&&video.readyState>=2,signal);
+  // Reconnect the video sink after hiding the controls. Native tab capture
+  // requests a refresh for a new sink, even when the tab is otherwise static.
+  // This also discards a queued frame containing the permission overlay.
+  video.pause();video.srcObject=null;video.srcObject=stream;await freshFrame(video,signal);await waitFor(()=>video.videoWidth>0&&video.videoHeight>0&&video.readyState>=2,signal);
   const canvas=captureCanvas({x:0,y:0,width:video.videoWidth,height:video.videoHeight},1);canvas.getContext('2d')!.drawImage(video,0,0);
   return{blob:await png(canvas,signal),width:canvas.width,height:canvas.height,anchors:[]};
  }finally{stop();video.pause();video.srcObject=null;for(const entry of hidden)entry.node.style.visibility=entry.visibility;signal.removeEventListener('abort',stop);}

@@ -1,2 +1,7 @@
-# Preserve evidence bytes and hashes; logs are captured output, not source.
+# Preserve published evidence bytes and hashes.
 docs/evidence/** -text -whitespace
+# Fixture hashes describe exact bytes on every platform.
+tests/fixtures/*.pdf -text
+tests/fixtures/plain.txt -text
+tests/fixtures/reader.md -text
+*.sh text eol=lf

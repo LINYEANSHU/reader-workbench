@@ -31,7 +31,7 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           brew install --cask font-noto-sans-cjk-sc
-          brew install --cask .github/casks/libreoffice-ci.rb
+          bash .github/scripts/install-libreoffice-macos.sh
       - name: Office on Windows
         if: runner.os == 'Windows'
         shell: pwsh
@@ -42,6 +42,7 @@ jobs:
           $readerInstall = Start-Process msiexec.exe -ArgumentList @('/i', $readerInstaller, '/qn', '/norestart') -WindowStyle Hidden -Wait -PassThru
           if ($readerInstall.ExitCode -notin @(0, 3010)) { throw 'Converter installation failed' }
       - run: npm ci
+      - run: node scripts/fixture-manifest.mjs
       - run: npm run typecheck
       - run: npm run build
       - run: npx playwright install --with-deps chromium chrome
@@ -50,8 +51,6 @@ jobs:
       - name: Browser tests on Linux
         if: runner.os == 'Linux'
         run: xvfb-run -a npm run test:e2e
-        env:
-          READER_CAPTURE_HEADFUL: '1'
       - name: Browser tests on macOS and Windows
         if: runner.os != 'Linux'
         run: npm run test:e2e

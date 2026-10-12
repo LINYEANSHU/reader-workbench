@@ -1,4 +1,0 @@
-
-> reader-workbench@0.2.0 typecheck
-> tsc --noEmit && tsc --noEmit -p apps/web/tsconfig.json
-
