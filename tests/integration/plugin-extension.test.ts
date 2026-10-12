@@ -30,7 +30,7 @@ it('installs, configures, invokes and persistently reloads a reader plugin witho
  expect(bridge.listUiContributions(workspace.id).map(item=>item.id)).toContain('reader-helper.ask-selection');
  const action=await bridge.invokeUiAction('reader-helper.ask-selection',{actor:scope.actor,workspaceId:workspace.id,sessionId:temporary.id},selection);expect(action.target).toBe('temporary');expect(action.selection).toEqual(selection);
  await host.plugins.disable('reader-helper',workspace.id);expect(bridge.listUiContributions(workspace.id)).toHaveLength(0);expect(host.tools.list(workspace.id).some(tool=>tool.name==='reader_explain_term')).toBe(false);expect(await host.sessionRepository.snapshot(workspace.id,main.id)).toEqual(before);
- await host.plugins.enable('reader-helper',workspace.id);await host.plugins.reload(workspace.id);expect(host.plugins.list(workspace.id)[0]).toMatchObject({enabled:true,settings:{maxCharacters:18}});
+ await host.plugins.enable('reader-helper',workspace.id);await host.plugins.reload(workspace.id);expect(host.plugins.list(workspace.id).find(item=>item.manifest.id==='reader-helper')).toMatchObject({enabled:true,settings:{maxCharacters:18}});
 },30000);
 it('reloads dependencies even when the dependent package was installed first',async()=>{
  const {host,workspace,directory}=await setup();for(const[id,dependencies]of [['dependent',['dependency']],['dependency',[]]] as const){const path=join(directory,id);await mkdir(path);await writeFile(join(path,'plugin.json'),JSON.stringify({id,version:'1.0.0',sdkRange:'^1.0.0',entry:'index.mjs',settingsSchema:{type:'object'},permissions:[],dependencies}));await writeFile(join(path,'index.mjs'),'export default {async activate(){}}');await host.plugins.install(path,workspace.id);}

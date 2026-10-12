@@ -1,0 +1,16 @@
+import {afterEach,expect,it} from 'vitest';import {mkdtemp,mkdir,writeFile,rm} from 'node:fs/promises';import {join} from 'node:path';import {tmpdir} from 'node:os';import {PDFDocument} from 'pdf-lib';import {startServer} from '../../apps/server/src/app.js';
+const cleanup:Array<()=>Promise<any>>=[];afterEach(async()=>{for(const close of cleanup.splice(0).reverse())await close();});
+it('automatically prepares every local image, owns memory routes, rebuilds locally and preserves disabled state',async()=>{
+ const dir=await mkdtemp(join(tmpdir(),'visual-api-')),root=join(dir,'workspace');await mkdir(root);const pdf=await PDFDocument.create();for(let page=1;page<=7;page++)pdf.addPage([200,200]).drawText('Page '+page);await writeFile(join(root,'seven.pdf'),await pdf.save());
+ const config={host:'127.0.0.1',port:0,configDir:join(dir,'config'),demo:true,noOpen:true};let host=await startServer(config);cleanup.push(()=>rm(dir,{recursive:true,force:true}),()=>host.close());const actor={callerId:'local-owner',transport:'internal' as const},workspace=await host.workspaces.select(root,actor);
+ expect(host.plugins.list(workspace.id).find(item=>item.manifest.id==='visual-document-memory')?.enabled).toBe(true);
+ let calls=0;host.capabilities.register(workspace.id,'model','vision-test',{identity:'vision-test',capabilities:{vision:true,tools:false,contextWindow:100000,maxOutputTokens:12000},async *generate(){calls++;yield{kind:'done'};}});
+ const document=await host.documents.open(workspace.id,'seven.pdf',new AbortController().signal);await host.documents.waitReady(document,new AbortController().signal);await host.documentMemory.prepareLocal(document,new AbortController().signal);
+ expect((await host.documents.parsed(document)).pages.every(page=>page.imagePath)).toBe(true);expect(calls).toBe(0);
+ const url='/api/v1/workspaces/'+workspace.id+'/documents/'+document.documentId+'/'+document.version+'/memory',headers={authorization:'Bearer '+host.auth.token,host:new URL(host.url).host};
+ const status=await host.app.inject({method:'GET',url:url+'?providerId=vision-test',headers});expect(status.statusCode).toBe(200);expect(status.json()).toMatchObject({status:'not-started',pageCount:7,generation:0});
+ const rebuild=await host.app.inject({method:'POST',url:url+'/rebuild',headers,payload:{providerId:'vision-test'}});expect(rebuild.json()).toMatchObject({generation:1});expect(calls).toBe(0);
+ const missing=await host.app.inject({method:'GET',url:url.replace(document.version,'bad')+'?providerId=vision-test',headers});expect(missing.statusCode).toBe(404);
+ const originalActor=host.auth.actor.bind(host.auth);host.auth.actor=()=>({callerId:'other-owner',transport:'http'});const denied=await host.app.inject({method:'GET',url:url+'?providerId=vision-test',headers});host.auth.actor=originalActor;expect(denied.statusCode).toBe(403);
+ await host.plugins.disable('visual-document-memory',workspace.id);await host.close();host=await startServer(config);await host.workspaces.select(root,actor);expect(host.plugins.list(workspace.id).find(item=>item.manifest.id==='visual-document-memory')?.enabled).toBe(false);
+});

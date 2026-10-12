@@ -16,6 +16,8 @@ import {isWithin} from '../workspaces/path-guard.js';
 import {markdownResources} from './markdown-resources.js';import {resourceUri} from '../../../contracts/src/resource-uri.js';import {KeyedQueue} from '../runs/queue.js';
 type SavedDocument=StoredDocument;
 export class DocumentService {
+ onParsed?:(ref:DocumentRef)=>void;
+ private pageRenders=new KeyedQueue();
  readonly registry:CapabilityRegistry;readonly jobs:DocumentJobService;
  private resourceRepairs=new KeyedQueue();
  constructor(readonly workspaces:WorkspaceService,registry?:CapabilityRegistry){
@@ -35,7 +37,7 @@ export class DocumentService {
  async open(workspaceId:WorkspaceId,relativePath:string,signal:AbortSignal):Promise<DocumentRecord>{
   const input=await snapshot(this.workspaces,workspaceId,relativePath,signal);const store=await this.workspaces.storeFor(workspaceId);
   const previous=await store.documents.get(input),old=previous?.record.workspaceId===workspaceId?previous:null;
-  if(old&&old.record.workspaceId===workspaceId&&old.record.parseState==='ready')return this.get(input);
+  if(old&&old.record.workspaceId===workspaceId&&old.record.parseState==='ready'){this.onParsed?.(input);return this.get(input);}
   if(old&&['queued','converting','indexing'].includes(old.record.parseState)){
    const job=await this.jobs.get(workspaceId,old.record.processingRunId);
    if(['queued','running'].includes(job.status))return old.record;
@@ -59,7 +61,7 @@ export class DocumentService {
     if(input.mime==='text/markdown'){saved.resources=await this.snapshotResources(input.workspaceId,relativePath,input.cacheDir,saved.parsed.pages[0]?.text??'',jobSignal);saved.resourceVersion=1;}
     await new DocumentIndex(store).replace(input,saved.parsed.blocks);publicRecord.parseState='ready';
    }catch(error){publicRecord.parseState=jobSignal.aborted?'cancelled':'failed';throw error;}
-   finally{lease.release();await store.documents.save(saved);}
+   finally{lease.release();await store.documents.save(saved);if(publicRecord.parseState==='ready')this.onParsed?.(input);}
   },signal);
   await store.documents.save(saved);this.workspaces.onLifecycle?.({workspaceId,kind:'document.opened',data:{documentId:input.documentId,version:input.version}});return structuredClone(publicRecord);
  }
@@ -101,12 +103,13 @@ export class DocumentService {
   }
  }
  async parsed(ref:DocumentRef):Promise<ParsedDocument>{const saved=await this.saved(ref);if(!saved.parsed||saved.record.parseState!=='ready')throw new ReaderError('DOCUMENT_NOT_READY','文档仍在处理或处理失败',409);return saved.parsed;}
- async readPage(ref:DocumentRef,page:number):Promise<DocumentPage>{
+ async readPage(ref:DocumentRef,page:number,signal:AbortSignal=new AbortController().signal):Promise<DocumentPage>{return this.pageRenders.enqueue(ref.workspaceId+'/'+this.key(ref),async()=>{
+  signal.throwIfAborted();
   const saved=await this.saved(ref),parsed=await this.parsed(ref);const result=parsed.pages.find(item=>item.page===page);
   if(!result)throw new ReaderError('PAGE_UNAVAILABLE','页码不存在',404);
-  if(parsed.pdfPath&&!result.imagePath){result.imagePath=await renderPdfPage(parsed.pdfPath,page,saved.cacheDir,new AbortController().signal);saved.parsed=parsed;await(await this.workspaces.storeFor(ref.workspaceId)).documents.save(saved);}
+  if(parsed.pdfPath&&!result.imagePath){result.imagePath=await renderPdfPage(parsed.pdfPath,page,saved.cacheDir,signal);signal.throwIfAborted();saved.parsed=parsed;await(await this.workspaces.storeFor(ref.workspaceId)).documents.save(saved);}
   return result;
- }
+ });}
  async readBlock(ref:DocumentRef,id:string):Promise<DocumentBlock>{const block=(await this.parsed(ref)).blocks.find(item=>item.id===id);if(!block)throw new ReaderError('BLOCK_UNAVAILABLE','文档块不存在',404);return block;}
  async search(ref:DocumentRef,query:string,limit:number):Promise<SearchHit[]>{await this.parsed(ref);if(!query.trim())return [];return new DocumentIndex(await this.workspaces.storeFor(ref.workspaceId)).search(ref,query,Math.max(1,Math.min(limit||20,100)));}
  async list(workspaceId:WorkspaceId):Promise<DocumentRecord[]>{return(await(await this.workspaces.storeFor(workspaceId)).documents.list()).map(saved=>saved.record);}
