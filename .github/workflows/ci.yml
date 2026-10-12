@@ -54,3 +54,15 @@ jobs:
       - name: Browser tests on macOS and Windows
         if: runner.os != 'Linux'
         run: npm run test:e2e
+      - name: Save failed browser diagnostics
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: browser-failure-${{ matrix.os }}
+          if-no-files-found: ignore
+          include-hidden-files: true
+          retention-days: 7
+          path: |
+            test-results/
+            .superpowers/sdd/2026-10-11-reader-workbench/native-source-window.png
+            .superpowers/sdd/2026-10-11-reader-workbench/native-raw-frame.png
