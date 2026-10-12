@@ -1,0 +1,57 @@
+{
+  "date": "2026-10-12",
+  "repository": "G:/My_project/try",
+  "branch": "main",
+  "releaseVersion": "0.1.0",
+  "plannedAnnotatedTag": "v0.1.0",
+  "mergedSourceCommit": "5900c358db8e16db3be4da598dcf91ba3c78f20d",
+  "applicationSourceUnchanged": true,
+  "coreTestsPassed": 101,
+  "installedDistributionPassed": true,
+  "realLlmCalled": false,
+  "remoteConfigured": false,
+  "previousRuntimeWorktreePreserved": true,
+  "previousUserServiceStatus": "not-running at final check",
+  "previousUserServiceStoppedByThisTask": false,
+  "logs": [
+    {
+      "name": "install",
+      "sha256": "dba3830aa5d62f0b41a737711b19175a86b0d46fb4f5d142aaf3ec7381e02d76",
+      "path": "docs/evidence/2026-10-12/git-versioning/install.log",
+      "status": "passed"
+    },
+    {
+      "name": "typecheck",
+      "sha256": "55d7f507537b2a36cc77b62ae83e05c62fa30dbf33ac513f590a8334544d78bd",
+      "path": "docs/evidence/2026-10-12/git-versioning/typecheck.log",
+      "status": "passed"
+    },
+    {
+      "name": "build",
+      "sha256": "923cc7010cea2222b41467a34b2965513a05a64e337641b99a305bcae4bf18e4",
+      "path": "docs/evidence/2026-10-12/git-versioning/build.log",
+      "status": "passed"
+    },
+    {
+      "name": "core",
+      "sha256": "5a9548090a39faac1918494fce1c88cb23732262e250d0be3cf34455a6e49c58",
+      "path": "docs/evidence/2026-10-12/git-versioning/core.log",
+      "status": "passed"
+    },
+    {
+      "name": "distribution",
+      "sha256": "40ac792206365e0dcd5ea11040036d6e1a732a3a30b6c84b6820fcea5c77f667",
+      "path": "docs/evidence/2026-10-12/git-versioning/distribution.log",
+      "status": "passed"
+    }
+  ],
+  "package": {
+    "path": "release/reader-workbench-0.1.0.tgz",
+    "containsVersioningInstructions": true,
+    "privateRuntimeEntries": 0,
+    "sha256": "9b8374cfec6e44ac5aeaed23de1f81edf457be4d9580e63392ac9c12b0549979",
+    "bytes": 3820364,
+    "entries": 290
+  },
+  "note": "Only delivery documentation changed after the final installed-package test; application source unchanged."
+}

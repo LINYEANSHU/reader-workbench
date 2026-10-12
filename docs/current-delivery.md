@@ -1,6 +1,6 @@
 # 当前版本交付：2026-10-12
 
-应用已实际启动于 http://127.0.0.1:4317，当前用户服务保留运行。后续验收的配置、缓存和临时目录已限制在 G:\My_project\try 内；未调用你禁止使用的测试 API。
+此前应用已实际启动于 http://127.0.0.1:4317 并验证正常。随后进行当前目录的 Git 整合时，检查确认旧进程已不存在、4317 未监听；本次 Git 操作未关闭该用户服务，原启动脚本、Office 资源及语音模型均保留。后续验收的配置、缓存和临时目录已限制在 G:\My_project\try 内；未调用你禁止使用的测试 API。
 
 ## 启动与使用
 
@@ -16,7 +16,7 @@ G:\My_project\try\.worktrees\reader-workbench
 & 'G:\My_project\try\.worktrees\reader-workbench\Start-Reader.ps1'
 ```
 
-脚本已实际运行，核对新启动的 Node 进程属于此脚本，并验证真实 HTTP health 200。它复用本轮本地 LibreOffice 和 SenseVoice 模型，默认配置目录为 `.reader-runtime/user-config`，临时目录为 `.reader-runtime/tmp`。不自动配置测试凭据，不默认启用演示模型。当前 4317 服务已运行；启动另一实例可加 `-Port 4318 -ConfigDir '另一私有配置目录'`。`-NoOpen` 可禁止自动打开浏览器，`-Demo` 仅供明确的协议演示。
+脚本已实际运行，核对新启动的 Node 进程属于此脚本，并验证真实 HTTP health 200。它复用本轮本地 LibreOffice 和 SenseVoice 模型，默认配置目录为 `.reader-runtime/user-config`，临时目录为 `.reader-runtime/tmp`。不自动配置测试凭据，不默认启用演示模型。上述启动结果是前次验收记录，当前使用时请运行脚本；启动另一实例可加 `-Port 4318 -ConfigDir '另一私有配置目录'`。`-NoOpen` 可禁止自动打开浏览器，`-Demo` 仅供明确的协议演示。
 
 先选择工作区，再从文件树打开文档，在设置中填写兼容 OpenAI Chat Completions 的 Base URL、模型和 API Key。两个对话栏分别选择模型、思考深度并支持本地语音；停止录音后先编辑文字，按发送才向 LLM 请求。
 
@@ -42,6 +42,6 @@ G:\My_project\try\.worktrees\reader-workbench
 - 本次最终真实 API 与真实思考档位调用未执行，遵守用户“未经再次批准不得调用测试 API”的指示。早期实际 API 结果不冒充本次的新鲜验收。
 - macOS/Linux 平台入口、原生依赖和 CI matrix 已提供；本轮没有真实机器/CI 结果，仍标记 not-tested。
 - 人工物理麦克风、OS 手工选择器与可选全局快捷键 helper 未实测；网页热键与实际浏览器捕获已测。没有声称内置系统全局 helper。
-- 最终独立全分支代码审查沿用用户指定的当前模型，只进行一次；全部八项实际问题已修复。发行包位于 `release/reader-workbench-0.1.0.tgz`，最终校验记录保存在源码仓库的 `docs/evidence/2026-10-12/distribution-package.json`。Git 分支为 `codex/reader-workbench`，集成到 `main` 或推送由用户选择。
+- 最终独立全分支代码审查沿用用户指定的当前模型，只进行一次；全部八项实际问题已修复。此前发行包位于开发 worktree 的 `release/reader-workbench-0.1.0.tgz`，校验记录保存在源码仓库的 `docs/evidence/2026-10-12/distribution-package.json`。用户随后要求在当前目录管理 Git 版本，完整源码已合并至 `G:\My_project\try` 的 `main`，首个版本标签为 `v0.1.0`。后续迭代方式见 [版本说明](versioning.md)；原运行 worktree 与资源保留，未推送远程。
 
-先前自动审批用量限制已经解除；本轮命令均继续通过环境正常审批。仅按后来授权清理已核实的测试进程；未关闭 Codex 或其他既有进程，用户应用仍运行。
+先前自动审批用量限制已经解除；本轮命令均继续通过环境正常审批。仅按后来授权清理已核实的测试进程；未关闭 Codex 或其他既有进程。用户应用的当前状态见本文开头，历史启动证据不代表进程持续存活。

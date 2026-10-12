@@ -1,0 +1,11 @@
+
+ RUN  v4.0.18 G:/My_project/try
+
+ ✓ tests/integration/cli-distribution.test.ts (1 test) 18782ms
+   ✓ starts the installed package with no source workspace links  18781ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  14:11:40
+   Duration  19.03s (transform 34ms, setup 0ms, import 128ms, tests 18.78s, environment 0ms)
+

@@ -1,0 +1,14 @@
+{
+  "status": "passed",
+  "platform": "win32",
+  "node": "v24.21.0",
+  "package": "reader-workbench-0.1.0.tgz",
+  "installedWithoutSource": true,
+  "pdfWorker": true,
+  "voiceWorker": true,
+  "actualSpeech": true,
+  "sdkStdio": true,
+  "pluginInstalled": true,
+  "historyRestart": true,
+  "portConflict": true
+}

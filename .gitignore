@@ -8,3 +8,8 @@ playwright-report/
 coverage/
 .reader-runtime/
 apps/web/public/pdfjs/
+.superpowers/
+.env
+.env.*
+!.env.example
+!.env.template
