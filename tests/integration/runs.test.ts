@@ -116,7 +116,7 @@ describe('scoped agent runs',()=>{
   }finally{releaseMain();releaseTemporary();}
  });
  it('streams authenticated HTTP events and resumes terminal output using Last-Event-ID',async()=>{
-  const directory=await mkdtemp(join(tmpdir(),'reader run http '));cleanup.push(()=>rm(directory,{recursive:true,force:true}));const root=join(directory,'work');await mkdir(root);
+  const directory=await mkdtemp(join(tmpdir(),'reader run http '));cleanup.push(()=>rm(directory,{recursive:true,force:true,maxRetries:10,retryDelay:100}));const root=join(directory,'work');await mkdir(root);
   const server=await startServer({host:'127.0.0.1',port:0,configDir:join(directory,'config'),noOpen:true,demo:false});cleanup.push(()=>server.close());const workspace=await server.workspaces.select(root,actor);
   server.capabilities.register(workspace.id,'model','test',provider(async function*(){yield{kind:'delta',text:'中文流式回答'};yield{kind:'done'};}));const main=await server.sessions.createMain(workspace.id,'HTTP');
   const headers={authorization:'Bearer '+server.auth.token,'content-type':'application/json'},response=await fetch(server.url+'/api/v1/runs',{method:'POST',headers,body:JSON.stringify(ask(main))});expect(response.status).toBe(202);const {runId}=await response.json() as {runId:RunId};

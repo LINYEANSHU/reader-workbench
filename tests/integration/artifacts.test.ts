@@ -33,7 +33,7 @@ describe('workspace artifact export',()=>{
    if(['docx','pptx','pdf'].includes(format)){
     expect(page.imagePath).toBeTruthy();const ready=await server.documents.get(reopened),pages=[];
     for(let number=1;number<=ready.pageCount;number++){const rendered=await server.documents.readPage(reopened,number);pages.push(rendered);if(process.env.READER_RENDER_EVIDENCE==='1'){const output=resolve('.superpowers/sdd/2026-10-11-reader-workbench/artifacts');await mkdir(output,{recursive:true});await writeFile(join(output,format+'-'+number+'.png'),await readFile(rendered.imagePath!));}}
-    expect(normalizeExtractedText(pages.map(p=>p.text).join('\n'))).toContain('公式源表达式');
+    expect(normalizeExtractedText(pages.map(p=>p.text).join('\n'))).toContain('\\frac{1}{2}+x^2');
     if(format==='pptx'){const picture=pages.find(p=>p.text.includes('示意图'))!;expect(picture).toBeTruthy();const image=await loadImage(await readFile(picture.imagePath!)),canvas=createCanvas(image.width,image.height),context=canvas.getContext('2d');context.drawImage(image,0,0);const pixel=context.getImageData(Math.floor(image.width*.885),Math.floor(image.height*.655),1,1).data;expect([...pixel].slice(0,3)).toEqual([18,63,98]);}
    }
   }
