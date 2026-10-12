@@ -20,15 +20,30 @@ async function nativeBluePoint(bytes:Uint8Array){
 async function alignedScreenFrame(page:Page){
  await expect.poll(async()=>{const image=(await page.getByAltText('待框选的屏幕图像').boundingBox())!,overlay=(await page.getByRole('dialog',{name:'框选屏幕截图'}).boundingBox())!;return Math.max(...(['x','y','width','height'] as const).map(key=>Math.abs(image[key]-overlay[key])));}).toBeLessThan(1);
 }
+function nativeFixtureGeometry(node:HTMLImageElement){
+ const box=node.getBoundingClientRect(),scroll=node.closest<HTMLElement>('.document-scroll')!;
+ const clip={left:0,top:0,right:innerWidth,bottom:innerHeight},ancestors=[];
+ for(let parent=node.parentElement;parent;parent=parent.parentElement){
+  const style=getComputedStyle(parent),rect=parent.getBoundingClientRect(),bounds={left:rect.left+parent.clientLeft,top:rect.top+parent.clientTop,right:rect.left+parent.clientLeft+parent.clientWidth,bottom:rect.top+parent.clientTop+parent.clientHeight};
+  if(/auto|scroll|hidden|clip/.test(style.overflowX)){clip.left=Math.max(clip.left,bounds.left);clip.right=Math.min(clip.right,bounds.right);}
+  if(/auto|scroll|hidden|clip/.test(style.overflowY)){clip.top=Math.max(clip.top,bounds.top);clip.bottom=Math.min(clip.bottom,bounds.bottom);}
+  if(/auto|scroll|hidden|clip/.test(style.overflowX+' '+style.overflowY))ancestors.push({className:parent.className,bounds});
+ }
+ const sx=box.width/node.naturalWidth,sy=box.height/node.naturalHeight,marker={left:box.left+30*sx,top:box.top+30*sy,right:box.left+145*sx,bottom:box.top+126*sy};
+ return{box:{x:box.x,y:box.y,width:box.width,height:box.height},clip,marker,ancestors,scrollTop:scroll.scrollTop,clientHeight:scroll.clientHeight,scrollHeight:scroll.scrollHeight,viewport:{width:innerWidth,height:innerHeight,dpr:devicePixelRatio},fonts:document.fonts.status,visible:marker.left>=clip.left+4&&marker.right<=clip.right-4&&marker.top>=clip.top+4&&marker.bottom<=clip.bottom-4};
+}
 async function showNativeFixture(page:Page){
  const image=file(page).locator('.markdown-body img');await expect(image).toHaveJSProperty('complete',true);await expect.poll(()=>image.evaluate((node:HTMLImageElement)=>node.naturalWidth)).toBe(640);
- await image.evaluate((node:HTMLImageElement)=>{const scroll=node.closest<HTMLElement>('.document-scroll')!,box=node.getBoundingClientRect(),view=scroll.getBoundingClientRect();scroll.scrollLeft+=box.left+box.width*100/node.naturalWidth-(view.left+scroll.clientWidth/2);scroll.scrollTop+=box.top+box.height*70/node.naturalHeight-(view.top+scroll.clientHeight/2);});
- await expect.poll(()=>image.evaluate((node:HTMLImageElement)=>{
-  const scroll=node.closest<HTMLElement>('.document-scroll')!,box=node.getBoundingClientRect(),view=scroll.getBoundingClientRect(),sx=box.width/node.naturalWidth,sy=box.height/node.naturalHeight;
-  const left=Math.max(0,view.left+scroll.clientLeft),top=Math.max(0,view.top+scroll.clientTop),right=Math.min(innerWidth,view.left+scroll.clientLeft+scroll.clientWidth),bottom=Math.min(innerHeight,view.top+scroll.clientTop+scroll.clientHeight);
-  return box.left+30*sx>=left+4&&box.left+145*sx<=right-4&&box.top+30*sy>=top+4&&box.top+126*sy<=bottom-4;
- }),{message:'The native fixture marker and blue sample must be inside the actual window before capture'}).toBe(true);
+ // Loading the image can precede DocumentPane's scheduled scroll restoration.
+ // Finish font layout and that render cycle before positioning the fixture.
+ await page.evaluate(async()=>{await document.fonts.ready;await new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve())));});
+ const geometry=await image.evaluate(nativeFixtureGeometry);
+ await image.evaluate((node:HTMLImageElement,{box,clip})=>{const scroll=node.closest<HTMLElement>('.document-scroll')!;scroll.scrollLeft+=box.x+box.width*100/node.naturalWidth-(clip.left+(clip.right-clip.left)/2);scroll.scrollTop+=box.y-(clip.top+16);},geometry);
+ await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));
+ await expect.poll(async()=>(await image.evaluate(nativeFixtureGeometry)).visible,{message:'The native fixture marker and blue sample must remain inside every clipping ancestor'}).toBe(true);
  await page.screenshot({path:'.superpowers/sdd/2026-10-11-reader-workbench/native-source-window.png'});
+ const positioned=await image.evaluate(nativeFixtureGeometry);await writeFile('.superpowers/sdd/2026-10-11-reader-workbench/native-capture-geometry.json',JSON.stringify(positioned,null,2));
+ expect(positioned.visible,JSON.stringify(positioned)).toBe(true);
 }
 test('keeps the native blue sample visible when the desktop clips the fixture bottom',async()=>{
  const canvas=createCanvas(1600,535),ctx=canvas.getContext('2d');ctx.drawImage(await loadImage('tests/fixtures/assets/diagram.png'),85,376);

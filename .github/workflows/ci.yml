@@ -66,3 +66,4 @@ jobs:
             test-results/
             .superpowers/sdd/2026-10-11-reader-workbench/native-source-window.png
             .superpowers/sdd/2026-10-11-reader-workbench/native-raw-frame.png
+            .superpowers/sdd/2026-10-11-reader-workbench/native-capture-geometry.json
