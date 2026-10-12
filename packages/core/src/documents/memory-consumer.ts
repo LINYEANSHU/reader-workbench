@@ -12,7 +12,7 @@ export class SharedMemoryJobs<T=unknown>{
  }
  async close(){const jobs=[...this.jobs.values()];for(const job of jobs)job.controller.abort();await Promise.allSettled(jobs.map(job=>job.promise));}
 }
-export const conservativeImageLimits={maxImages:4,maxImageBytes:4*1024*1024,maxTotalImageBytes:12*1024*1024,maxRequestBytes:16*1024*1024,imageTokens:1024};
+export {DEFAULT_IMAGE_LIMITS as conservativeImageLimits} from '../models/image-budget.js';import {DEFAULT_IMAGE_LIMITS as conservativeImageLimits} from '../models/image-budget.js';
 export class DocumentMemoryConsumer{
  private jobs=new SharedMemoryJobs<DocumentMemoryRecord>();private local=new Map<string,{controller:AbortController;promise:Promise<void>}>();
  constructor(readonly documents:DocumentService,private repository:SessionRepository,readonly capabilities:CapabilityRegistry,readonly store:DocumentMemoryStore){}

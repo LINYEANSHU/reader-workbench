@@ -1,0 +1,8 @@
+import type {ModelSettings,ModelImageLimits,ModelMessage} from '../../../contracts/src/models.js';import {ReaderError} from '../../../contracts/src/errors.js';
+export const DEFAULT_IMAGE_LIMITS:ModelImageLimits=Object.freeze({maxImages:4,maxImageBytes:4*1024*1024,maxTotalImageBytes:12*1024*1024,maxRequestBytes:16*1024*1024,imageTokens:1024});
+export function resolveImageLimits(settings:ModelSettings):ModelImageLimits{const official=new URL(settings.baseUrl).hostname==='api.deepseek.com'&&settings.model==='deepseek-flash';return Object.freeze({...official?{maxImages:600,maxImageBytes:32*1024*1024,maxTotalImageBytes:64*1024*1024,maxRequestBytes:48*1024*1024,imageTokens:1024}:DEFAULT_IMAGE_LIMITS,...settings.imageLimits});}
+export function validateImageRequest(messages:ReadonlyArray<ModelMessage>,limits:ModelImageLimits,body:Record<string,unknown>):void{
+ let count=0,total=0;for(const message of messages){if(typeof message.content==='string')continue;for(const item of message.content){if(item.type!=='image_url')continue;
+  if(message.role!=='user')throw new ReaderError('IMAGE_INVALID','页面图像必须出现在用户消息中');const match=/^data:image\/(?:png|jpeg|webp|gif);base64,([A-Za-z0-9+/=]+)$/.exec(item.image_url.url);if(!match)throw new ReaderError('IMAGE_INVALID','仅接受已验证的本地图像数据');const bytes=Buffer.from(match[1]!,'base64').length;count++;total+=bytes;if(bytes>limits.maxImageBytes)throw new ReaderError('IMAGE_CONTEXT_LIMIT','单页图像超过模型发送大小上限');
+ }}if(count>limits.maxImages||total>limits.maxTotalImageBytes||Buffer.byteLength(JSON.stringify(body),'utf8')>limits.maxRequestBytes)throw new ReaderError('IMAGE_CONTEXT_LIMIT','图像请求超过模型数量或发送大小上限，请分批阅读');
+}

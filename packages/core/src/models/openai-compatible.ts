@@ -3,6 +3,7 @@ import type {ModelSettings,ModelRequest,ModelEvent,ModelCapabilities} from '../.
 import type {CredentialStore} from '../runtime/credentials.js';
 import {ReaderError} from '../../../contracts/src/errors.js';
 import {parseSSE} from './sse-parser.js';
+import {createHash} from 'node:crypto';import {resolveImageLimits,validateImageRequest} from './image-budget.js';
 class CredentialRedactor{
  private pending='';constructor(private secret:string){}
  append(text:string,final=false):string{
@@ -17,9 +18,11 @@ export function completionUrl(baseUrl:string):string{
  const path=url.pathname.replace(/\/+$/,'');url.pathname=path.endsWith('/chat/completions')?path:path+'/chat/completions';return url.toString();
 }
 export class OpenAICompatibleProvider implements ModelProvider{
+ readonly identity:string;readonly imageLimits:import('../../../contracts/src/models.js').ModelImageLimits;
  readonly capabilities:ModelCapabilities;readonly ocrToolId?:string;private settings:ModelSettings;private key:Promise<string>;private endpoint:string;
  constructor(settings:ModelSettings,credentials:CredentialStore){
   this.settings=structuredClone(settings);this.capabilities=Object.freeze(structuredClone(settings.capabilities));this.ocrToolId=settings.ocrToolId;this.endpoint=completionUrl(settings.baseUrl);
+  this.imageLimits=resolveImageLimits(settings);this.identity=createHash('sha256').update(JSON.stringify([this.endpoint,settings.model,this.capabilities,this.imageLimits,settings.reasoningFormat])).digest('hex');
   this.key=credentials.getSecret(settings.credentialRef);void this.key.catch(()=>{});
  }
  async *generate(request:ModelRequest,signal:AbortSignal):AsyncIterable<ModelEvent>{
@@ -27,8 +30,6 @@ export class OpenAICompatibleProvider implements ModelProvider{
   if(request.tools.length&&!capabilities.tools)throw new ReaderError('MODEL_TOOLS_UNSUPPORTED','此模型未启用工具调用');
   const images=request.messages.flatMap(message=>typeof message.content==='string'?[]:message.content.filter(item=>item.type==='image_url'));
   if(images.length&&!capabilities.vision)throw new ReaderError('VISION_UNAVAILABLE','所选模型不支持图像，请选择视觉模型或配置 OCR');
-  let imageBytes=0;for(const image of images){const match=/^data:image\/(?:png|jpeg|webp|gif);base64,([A-Za-z0-9+/=]+)$/.exec(image.type==='image_url'?image.image_url.url:'');if(!match)throw new ReaderError('IMAGE_INVALID','仅接受工作区中已验证的图像数据');const bytes=Buffer.from(match[1]!,'base64').length;imageBytes+=bytes;if(bytes>4*1024*1024)throw new ReaderError('IMAGE_CONTEXT_LIMIT','单张图像超过 4 MiB');}
-  if(images.length>4||imageBytes>12*1024*1024)throw new ReaderError('IMAGE_CONTEXT_LIMIT','每次最多 4 张图像，总大小不超过 12 MiB');
   const effort=request.reasoningEffort??capabilities.defaultReasoningEffort;
   if(effort!==undefined&&!capabilities.reasoningEfforts?.includes(effort))throw new ReaderError('REASONING_UNSUPPORTED','所选模型不支持此思考档位');
   if(!Number.isSafeInteger(request.maxOutputTokens)||request.maxOutputTokens<1||request.maxOutputTokens>capabilities.maxOutputTokens)throw new ReaderError('MODEL_OUTPUT_LIMIT','输出容量设置超出所选模型范围');
@@ -36,6 +37,7 @@ export class OpenAICompatibleProvider implements ModelProvider{
   const body:Record<string,unknown>={model:settings.model,messages:structuredClone(request.messages),stream:true,stream_options:{include_usage:true},max_tokens:request.maxOutputTokens};
   if(request.tools.length)body.tools=structuredClone(request.tools);
   if(effort!==undefined){body.reasoning_effort=effort;if(settings.reasoningFormat==='deepseek')body.thinking={type:effort==='none'?'disabled':'enabled'};}
+  validateImageRequest(request.messages,this.imageLimits,body);
   const networkSignal=AbortSignal.any([signal,AbortSignal.timeout(settings.requestTimeoutMs??180000)]);
   let response:Response;
   try{response=await fetch(this.endpoint,{method:'POST',headers:{authorization:'Bearer '+key,'content-type':'application/json',accept:'text/event-stream'},body:JSON.stringify(body),signal:networkSignal,redirect:'error'});}
