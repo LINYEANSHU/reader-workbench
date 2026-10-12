@@ -70,4 +70,13 @@ git revert COMMIT_ID
 
 `git revert` 创建反向提交，保留完整历史；执行前检查工作树并处理冲突。查看旧版本可以创建单独 worktree，保留当前修改，不直接覆盖正在运行的应用。
 
-目前仓库仅在本地，没有配置远程地址。用户提供并授权远程仓库后，再设置 remote、推送提交和标签；现有跨平台 CI 定义届时可运行，定义存在不等于已验证其他平台。
+公开仓库为 [LINYEANSHU/reader-workbench](https://github.com/LINYEANSHU/reader-workbench)，正式分支为 `main`。版本通过注释标签与 GitHub Release 标记，发行包及 SHA-256 校验文件作为 Release 附件；模型、私有配置及运行缓存只保留在本地。
+
+推送代码和已核对的发布标签：
+
+```powershell
+git push origin main
+git push origin v0.2.0
+```
+
+发布前同时检查当前文件及待推送的 Git 历史，确认没有真实凭据或工作区数据；`.gitignore` 不会移除历史中已提交的内容。跨平台 CI 状态以 GitHub Actions 实际结果为准。

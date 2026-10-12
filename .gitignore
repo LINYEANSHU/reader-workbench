@@ -1,15 +1,39 @@
 /.worktrees/
+# Dependencies and generated bundles
 node_modules/
 dist/
-.reader-workbench/
-test-results/
-playwright-report/
-*.tgz
-coverage/
-.reader-runtime/
 apps/web/public/pdfjs/
+
+# Local workspaces, private settings, models and converters
+.reader-workbench/
+.reader-runtime/
 .superpowers/
+**/user-config/
+**/credentials.json
+**/connection.json
 .env
 .env.*
 !.env.example
 !.env.template
+*.pem
+*.key
+*.p12
+*.pfx
+*.sqlite
+*.sqlite3
+*.db
+*.db-shm
+*.db-wal
+/outputs/
+
+# Tests, packaging and disposable local files
+test-results/
+playwright-report/
+*.tgz
+/release/
+coverage/
+*.log
+!docs/evidence/**/*.log
+/tmp/
+.DS_Store
+Thumbs.db
