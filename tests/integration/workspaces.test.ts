@@ -60,11 +60,11 @@ describe('workspace boundaries',()=>{
     const execute=promisify(execFile);
     const account=(process.env.USERDOMAIN?process.env.USERDOMAIN+'\\':'')+userInfo().username;
     try{
-      if(process.platform==='win32')await execute('icacls.exe',[a,'/inheritance:r','/grant:r',account+':(RX)'],{windowsHide:true});
+      if(process.platform==='win32')await execute('icacls.exe',[a,'/inheritance:r','/grant:r',account+':(RX)','/deny',account+':(WD,AD)'],{windowsHide:true});
       else await chmod(a,0o500);
       await expect(service.select(a,actor)).rejects.toMatchObject({code:'WORKSPACE_NOT_WRITABLE'});
     }finally{
-      if(process.platform==='win32')await execute('icacls.exe',[a,'/grant:r',account+':(OI)(CI)F','/inheritance:e'],{windowsHide:true});
+      if(process.platform==='win32'){await execute('icacls.exe',[a,'/remove:d',account,'/inheritance:e','/grant:r',account+':(OI)(CI)F'],{windowsHide:true});}
       else await chmod(a,0o700);
     }
     const parent=await service.select(dir,actor);

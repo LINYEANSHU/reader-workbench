@@ -11,7 +11,7 @@ afterEach(async()=>{for(const fn of cleanup.splice(0).reverse())await fn();});
 const provider=(generate:ModelProvider['generate']):ModelProvider=>({capabilities:{vision:false,tools:true,contextWindow:32000,maxOutputTokens:512},generate});
 function ask(session:SessionRecord,question='问题'):AskRequest{return{workspaceId:session.workspaceId,sessionId:session.id,question,documents:[],attachmentIds:[],providerId:'test',requestId:randomUUID(),allowArtifactWrites:session.kind==='main'};}
 async function fixture(model:ModelProvider){
- const directory=await mkdtemp(join(tmpdir(),'reader runs '));cleanup.push(()=>rm(directory,{recursive:true,force:true}));await mkdir(join(directory,'A'));
+ const directory=await mkdtemp(join(tmpdir(),'reader runs '));cleanup.push(()=>rm(directory,{recursive:true,force:true,maxRetries:10,retryDelay:100}));await mkdir(join(directory,'A'));
  const workspaces=new WorkspaceService(join(directory,'config'));cleanup.push(()=>workspaces.close());const workspace=await workspaces.select(join(directory,'A'),actor);
  const capabilities=new CapabilityRegistry();capabilities.register(workspace.id,'model','test',model);
  const documents=new DocumentService(workspaces,capabilities);cleanup.push(()=>documents.close());const repository=new SessionRepository(workspaces),sessions=new SessionService(repository),context=new ContextBuilder(repository,documents,capabilities),tools=new ToolRegistry(capabilities,scope=>repository.authorizeScope(scope));

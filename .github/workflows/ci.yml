@@ -18,11 +18,15 @@ jobs:
         with:
           node-version: '24'
           cache: npm
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        if: runner.os == 'Windows'
+        with:
+          python-version: '3.13'
       - name: Office on Linux
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libreoffice fonts-noto-cjk
+          sudo apt-get install -y libreoffice fonts-noto-cjk xvfb
       - name: Office on macOS
         if: runner.os == 'macOS'
         run: brew install --cask libreoffice
@@ -41,4 +45,11 @@ jobs:
       - run: npx playwright install --with-deps chromium chrome
       - run: node scripts/prepare-speech.mjs --cache .reader-runtime/sensevoice-small-int8
       - run: npm test
-      - run: npm run test:e2e
+      - name: Browser tests on Linux
+        if: runner.os == 'Linux'
+        run: xvfb-run -a npm run test:e2e
+        env:
+          READER_CAPTURE_HEADFUL: '1'
+      - name: Browser tests on macOS and Windows
+        if: runner.os != 'Linux'
+        run: npm run test:e2e

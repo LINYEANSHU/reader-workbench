@@ -9,6 +9,7 @@ import type {RunScope,RunId} from '../../packages/contracts/src/ids.js';
 import type {AskRequest} from '../../packages/contracts/src/sessions.js';
 const actor={callerId:'local-owner',transport:'internal' as const},signal=()=>new AbortController().signal;
 const hash=(bytes:Uint8Array)=>createHash('sha256').update(bytes).digest('hex');
+const normalizeExtractedText=(text:string)=>text.replace(/\s+/gu,'');
 const cleanup:Array<()=>Promise<unknown>>=[];afterEach(async()=>{for(const fn of cleanup.splice(0).reverse())await fn();});
 async function setup(){
  const dir=await mkdtemp(join(tmpdir(),'reader artifacts 中文 '));cleanup.push(()=>rm(dir,{recursive:true,force:true}));
@@ -28,11 +29,11 @@ describe('workspace artifact export',()=>{
    const input:ArtifactInput={format,name:'阅读件',blocks,sourceAnchors:[{workspaceId:workspace.id,documentId:source.documentId,version:source.version,location:{kind:'block',blockId:(await server.documents.parsed(source)).blocks[0]!.id,start:0,end:2}}],coverage:{status:'partial',sourceBlockIds:[],note:'仅选取一段'}};
    const artifact=await server.artifacts.create(input,scope,signal());expect(artifact.workspaceId).toBe(workspace.id);expect(artifact.relativePath.startsWith('outputs/'+scope.sessionId+'/')).toBe(true);expect(artifact.coverage?.status).toBe('partial');expect(hash(await readFile(join(root,artifact.relativePath)))).toBe(artifact.sha256);
    expect(await server.artifacts.create(input,scope,signal())).toEqual(artifact);expect(artifact.warnings.join(' ')).not.toMatch(/公式.*失败|公式无法渲染/);
-   const reopened=await server.artifacts.open(workspace.id,artifact.id);expect((await server.documents.waitReady(reopened,signal())).parseState).toBe('ready');const page=await server.documents.readPage(reopened,1);expect(page.text).toContain('部分');expect(page.text).toContain('RI');
+   const reopened=await server.artifacts.open(workspace.id,artifact.id);expect((await server.documents.waitReady(reopened,signal())).parseState).toBe('ready');const page=await server.documents.readPage(reopened,1);expect(normalizeExtractedText(page.text)).toContain('部分');expect(normalizeExtractedText(page.text)).toContain('RI');
    if(['docx','pptx','pdf'].includes(format)){
     expect(page.imagePath).toBeTruthy();const ready=await server.documents.get(reopened),pages=[];
     for(let number=1;number<=ready.pageCount;number++){const rendered=await server.documents.readPage(reopened,number);pages.push(rendered);if(process.env.READER_RENDER_EVIDENCE==='1'){const output=resolve('.superpowers/sdd/2026-10-11-reader-workbench/artifacts');await mkdir(output,{recursive:true});await writeFile(join(output,format+'-'+number+'.png'),await readFile(rendered.imagePath!));}}
-    expect(pages.map(p=>p.text).join('\n')).toContain('公式源表达式');
+    expect(normalizeExtractedText(pages.map(p=>p.text).join('\n'))).toContain('公式源表达式');
     if(format==='pptx'){const picture=pages.find(p=>p.text.includes('示意图'))!;expect(picture).toBeTruthy();const image=await loadImage(await readFile(picture.imagePath!)),canvas=createCanvas(image.width,image.height),context=canvas.getContext('2d');context.drawImage(image,0,0);const pixel=context.getImageData(Math.floor(image.width*.885),Math.floor(image.height*.655),1,1).data;expect([...pixel].slice(0,3)).toEqual([18,63,98]);}
    }
   }
