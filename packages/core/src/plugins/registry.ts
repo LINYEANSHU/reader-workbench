@@ -13,6 +13,7 @@ export function validateContextTransform(before:ContextEnvelope,after:ContextEnv
     throw new ReaderError('TOOL_SCOPE_DENIED','上下文变换越过已授权的文档或会话权限',403);
 }
 interface Entry {workspaceId:string;kind:keyof CapabilityMap;id:string;value:unknown;owner:string;active:boolean;leases:number;idle:Array<()=>void>}
+export interface CapabilityLease<T>{value:T;release():void;fork():CapabilityLease<T>}
 export class CapabilityRegistry {
   private entries=new Map<string,Entry>();
   private retired=new Set<Entry>();
@@ -38,10 +39,8 @@ export class CapabilityRegistry {
   }
   get<K extends keyof CapabilityMap>(workspaceId:WorkspaceId,kind:K,id:string):CapabilityMap[K]{return this.entry(workspaceId,kind,id).value as CapabilityMap[K];}
   list(workspaceId:WorkspaceId,kind:keyof CapabilityMap):string[]{return [...new Set([...this.entries.values()].filter(e=>e.active&&e.kind===kind&&(e.workspaceId===workspaceId||e.workspaceId==='*')).map(e=>e.id))];}
-  acquire<K extends keyof CapabilityMap>(workspaceId:WorkspaceId,kind:K,id:string):{value:CapabilityMap[K];release():void}{
-    const entry=this.entry(workspaceId,kind,id);entry.leases++;let released=false;
-    return {value:entry.value as CapabilityMap[K],release:()=>{if(released)return;released=true;entry.leases--;if(!entry.active)this.retire(this.key(entry.workspaceId,kind,id),entry);}};
-  }
+  acquire<K extends keyof CapabilityMap>(workspaceId:WorkspaceId,kind:K,id:string):CapabilityLease<CapabilityMap[K]>{return this.lease<CapabilityMap[K]>(this.entry(workspaceId,kind,id));}
+  private lease<T>(entry:Entry):CapabilityLease<T>{entry.leases++;let released=false;return{value:entry.value as T,fork:()=>{if(released)throw new ReaderError('CAPABILITY_UNAVAILABLE','能力租约已释放');return this.lease<T>(entry);},release:()=>{if(released)return;released=true;entry.leases--;if(!entry.active)this.retire(this.key(entry.workspaceId,entry.kind,entry.id),entry);}};}
   retireOwner(workspaceId:WorkspaceId,owner:string):Promise<void>{
     const waits:Promise<void>[]=[];
     for(const entry of new Set([...this.entries.values(),...this.retired])){if(entry.workspaceId!==workspaceId||entry.owner!==owner)continue;const key=this.key(entry.workspaceId,entry.kind,entry.id);
