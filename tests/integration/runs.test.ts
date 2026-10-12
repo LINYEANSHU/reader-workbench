@@ -7,11 +7,19 @@ import {RunService} from '../../packages/core/src/runs/service.js';
 import {startServer} from '../../apps/server/src/app.js';
 import type {AskRequest,SessionRecord} from '../../packages/contracts/src/sessions.js';import type {RunId,RunScope} from '../../packages/contracts/src/ids.js';import type {ModelProvider} from '../../packages/sdk/src/capabilities.js';import type {RunRecord,RunEvent} from '../../packages/contracts/src/runs.js';
 const actor={callerId:'local-owner',transport:'internal' as const};const cleanup:Array<()=>Promise<unknown>>=[];
-afterEach(async()=>{for(const fn of cleanup.splice(0).reverse())await fn();});
+// Windows CI can take longer to remove temporary workspace files after closing
+// SQLite. Test bodies keep their normal timeout and explicitly assert shutdown.
+afterEach(async()=>{for(const fn of cleanup.splice(0).reverse())await fn();},60000);
+async function removeRunDirectory(directory:string){
+ const slow=setTimeout(()=>console.warn('Still removing temporary run workspace: '+directory),10000);
+ try{await rm(directory,{recursive:true,force:true,maxRetries:10,retryDelay:100});}
+ catch(error){throw new Error('Temporary run workspace cleanup failed: '+directory,{cause:error});}
+ finally{clearTimeout(slow);}
+}
 const provider=(generate:ModelProvider['generate']):ModelProvider=>({capabilities:{vision:false,tools:true,contextWindow:32000,maxOutputTokens:512},generate});
 function ask(session:SessionRecord,question='问题'):AskRequest{return{workspaceId:session.workspaceId,sessionId:session.id,question,documents:[],attachmentIds:[],providerId:'test',requestId:randomUUID(),allowArtifactWrites:session.kind==='main'};}
 async function fixture(model:ModelProvider){
- const directory=await mkdtemp(join(tmpdir(),'reader runs '));cleanup.push(()=>rm(directory,{recursive:true,force:true,maxRetries:10,retryDelay:100}));await mkdir(join(directory,'A'));
+ const directory=await mkdtemp(join(tmpdir(),'reader runs '));cleanup.push(()=>removeRunDirectory(directory));await mkdir(join(directory,'A'));
  const workspaces=new WorkspaceService(join(directory,'config'));cleanup.push(()=>workspaces.close());const workspace=await workspaces.select(join(directory,'A'),actor);
  const capabilities=new CapabilityRegistry();capabilities.register(workspace.id,'model','test',model);
  const documents=new DocumentService(workspaces,capabilities);cleanup.push(()=>documents.close());const repository=new SessionRepository(workspaces),sessions=new SessionService(repository),context=new ContextBuilder(repository,documents,capabilities),tools=new ToolRegistry(capabilities,scope=>repository.authorizeScope(scope));
@@ -116,7 +124,7 @@ describe('scoped agent runs',()=>{
   }finally{releaseMain();releaseTemporary();}
  });
  it('streams authenticated HTTP events and resumes terminal output using Last-Event-ID',async()=>{
-  const directory=await mkdtemp(join(tmpdir(),'reader run http '));cleanup.push(()=>rm(directory,{recursive:true,force:true,maxRetries:10,retryDelay:100}));const root=join(directory,'work');await mkdir(root);
+  const directory=await mkdtemp(join(tmpdir(),'reader run http '));cleanup.push(()=>removeRunDirectory(directory));const root=join(directory,'work');await mkdir(root);
   const server=await startServer({host:'127.0.0.1',port:0,configDir:join(directory,'config'),noOpen:true,demo:false});let closing:Promise<void>|undefined;cleanup.push(()=>closing??=server.close());const workspace=await server.workspaces.select(root,actor);
   server.capabilities.register(workspace.id,'model','test',provider(async function*(){yield{kind:'delta',text:'中文流式回答'};yield{kind:'done'};}));const main=await server.sessions.createMain(workspace.id,'HTTP');
   const headers={authorization:'Bearer '+server.auth.token,'content-type':'application/json'},response=await fetch(server.url+'/api/v1/runs',{method:'POST',headers,body:JSON.stringify(ask(main))});expect(response.status).toBe(202);const {runId}=await response.json() as {runId:RunId};
