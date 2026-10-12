@@ -14,6 +14,8 @@ import {uniqueAnchors} from '../../../contracts/src/documents.js';
 import {ReaderError} from '../../../contracts/src/errors.js';
 import type {AttachmentService} from '../documents/attachments.js';
 import {ModelMemoryProvider} from './memory.js';
+import type {DocumentMemoryConsumer} from '../documents/memory-consumer.js';
+import type {CapabilityLease} from '../plugins/registry.js';
 export function estimateTokens(text:string):number{return Buffer.byteLength(text,'utf8');}
 function messageTokens(messages:ReadonlyArray<ModelMessage>):number{
  return messages.reduce((total,message)=>total+24+(typeof message.content==='string'?estimateTokens(message.content):message.content.reduce((sum,item)=>sum+(item.type==='text'?estimateTokens(item.text):1024),0))+
@@ -23,14 +25,17 @@ function excerpt(text:string,maximum:number):string{let count=0,result='';for(co
 function freeze<T>(value:T):T{if(value&&typeof value==='object'){for(const child of Object.values(value))freeze(child);Object.freeze(value);}return value;}
 const key=(ref:DocumentRef)=>ref.workspaceId+'/'+ref.documentId+'/'+ref.version;
 export class ContextBuilder{
+ private documentMemory?:DocumentMemoryConsumer;
+ attachDocumentMemory(consumer:DocumentMemoryConsumer){this.documentMemory=consumer;}
+ private currentExecution=new AsyncLocalStorage<{lease:CapabilityLease<ModelProvider>;progress:(value:{completedPages:number;pageCount:number;label:string})=>Promise<void>}|undefined>();
  private attachments?:AttachmentService;
  attachAttachments(service:AttachmentService){this.attachments=service;}
  private currentModel=new AsyncLocalStorage<ModelProvider>();
  private currentScope=new AsyncLocalStorage<RunScope|undefined>();private executor?:ToolExecutor;
  constructor(readonly repository:SessionRepository,readonly documents:DocumentService,readonly capabilities:CapabilityRegistry){}
  attachToolExecutor(executor:ToolExecutor){this.executor=executor;}
- async build(request:AskRequest,signal:AbortSignal,leasedModel?:ModelProvider,scope?:RunScope):Promise<ContextEnvelope>{
-  return this.currentScope.run(scope,()=>this.currentModel.run(leasedModel??this.capabilities.get(request.workspaceId,'model',request.providerId),()=>this.buildEnvelope(request,signal)));
+ async build(request:AskRequest,signal:AbortSignal,leasedModel?:ModelProvider,scope?:RunScope,execution?:{lease:CapabilityLease<ModelProvider>;progress:(value:{completedPages:number;pageCount:number;label:string})=>Promise<void>}):Promise<ContextEnvelope>{
+  return this.currentExecution.run(execution,()=>this.currentScope.run(scope,()=>this.currentModel.run(leasedModel??this.capabilities.get(request.workspaceId,'model',request.providerId),()=>this.buildEnvelope(request,signal))));
  }
  private async buildEnvelope(request:AskRequest,signal:AbortSignal):Promise<ContextEnvelope>{
   signal.throwIfAborted();
@@ -80,7 +85,17 @@ export class ContextBuilder{
   if(messageTokens(fixed)>inputLimit)throw new ReaderError('CONTEXT_LIMIT','当前问题和选区超过模型容量，请缩短选区或提高容量');
   let documentBudget=Math.max(0,Math.min(Math.floor(inputLimit/4),inputLimit-messageTokens(fixed)-256));
   let images=request.attachmentIds.length,imageBytes=0;
+  const execution=this.currentExecution.getStore(),scope=this.currentScope.getStore();
+  const memories=this.documentMemory&&execution&&scope?await this.documentMemory.prepare(request,scope,execution.lease,signal,execution.progress):[];
+  let memoryBudget=Math.max(0,Math.min(Math.floor(inputLimit/3),inputLimit-messageTokens(fixed)-256));
   for(const ref of documents){
+   const memory=memories.find(item=>key(item.reference.document)===key(ref));
+   if(memory){
+    const selected=this.documentMemory!.select(memory,request.question,Math.floor(memoryBudget/Math.max(1,memories.length)));
+    fixed.splice(fixed.length-1,0,{role:'user',content:selected.text});memoryBudget-=estimateTokens(selected.text)+24;
+    sourceRanges.push(...selected.pages.map(page=>({...ref,location:{kind:'page' as const,page}})));
+    continue;
+   }
    const record=await this.documents.waitReady(ref,signal),parsed=await this.documents.parsed(ref);
    let hits=await this.documents.search(ref,request.question,4);
    if(!hits.length)hits=parsed.blocks.slice(0,4).map(block=>({text:block.text,anchor:block.anchor,score:0}));
@@ -144,7 +159,7 @@ export class ContextBuilder{
    }finally{lease.release();}
   }
   const messages=[fixed[0]!,...historyMessages,...fixed.slice(1)];
-  let envelope:ContextEnvelope={workspaceId:request.workspaceId,sessionId:request.sessionId,mainRevision,ownRevision:own.session.revision,memory,documents,messages,sourceRanges:uniqueAnchors(sourceRanges),budget:{limit:capability.contextWindow,inputTokens:messageTokens(messages)+toolTokens+64,reservedOutputTokens,estimated:true,reservedToolTokens:toolTokens},summaryCoverage};
+  let envelope:ContextEnvelope={workspaceId:request.workspaceId,sessionId:request.sessionId,mainRevision,ownRevision:own.session.revision,memory,documents,documentMemories:memories.map(item=>item.reference),messages,sourceRanges:uniqueAnchors(sourceRanges),budget:{limit:capability.contextWindow,inputTokens:messageTokens(messages)+toolTokens+64,reservedOutputTokens,estimated:true,reservedToolTokens:toolTokens},summaryCoverage};
   if(envelope.budget.inputTokens+reservedOutputTokens>capability.contextWindow)throw new ReaderError('CONTEXT_LIMIT','上下文摘要后仍超限，请增加容量或减少选区');
   for(const id of this.capabilities.list(request.workspaceId,'context')){
    const lease=this.capabilities.acquire(request.workspaceId,'context',id);

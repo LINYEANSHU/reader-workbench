@@ -7,7 +7,7 @@ import type {RunEvent} from '../../../contracts/src/runs.js';
 import type {ToolExecutor} from '../tools/executor.js';
 import {ReaderError} from '../../../contracts/src/errors.js';
 import {estimateTokens} from '../sessions/context.js';
-export async function toolLoop(model:ModelProvider,envelope:ContextEnvelope,tools:ModelTool[],scope:RunScope,executor:ToolExecutor,emit:(kind:RunEvent['kind'],data:unknown)=>Promise<unknown>,signal:AbortSignal,reasoningEffort?:string){
+export async function toolLoop(model:ModelProvider,envelope:ContextEnvelope,tools:ModelTool[],scope:RunScope,executor:ToolExecutor,emit:(kind:RunEvent['kind'],data:unknown)=>Promise<unknown>,signal:AbortSignal,reasoningEffort?:string,resolveImages?:(anchors:SourceAnchor[])=>Promise<ModelMessage[]>){
  const messages:ModelMessage[]=structuredClone([...envelope.messages]),ownMessages:ModelMessage[]=[],anchors:SourceAnchor[]=[];let answer='';
  for(let round=0;round<8;round++){
   signal.throwIfAborted();const inputTokens=messages.reduce((total,message)=>total+24+(typeof message.content==='string'?estimateTokens(message.content):message.content.reduce((sum,item)=>sum+(item.type==='text'?estimateTokens(item.text):1024),0))+(message.tool_calls?estimateTokens(JSON.stringify(message.tool_calls)):0)+(message.reasoning_content?estimateTokens(message.reasoning_content):0),0)+estimateTokens(JSON.stringify(tools))+64;
@@ -34,6 +34,11 @@ export async function toolLoop(model:ModelProvider,envelope:ContextEnvelope,tool
    for(const anchor of result.sourceAnchors??[]){anchors.push(anchor);await emit('citation',anchor);}
    for(const artifactId of result.artifactIds??[])await emit('artifact',{id:artifactId});
    const message:ModelMessage={role:'tool',tool_call_id:call.id,content:result.content};messages.push(message);ownMessages.push(message);
+  }
+  // Image payloads belong only to this request, never to committed history or tool storage.
+  for(const call of calls){
+   const stored=await executor.execute(call.function.name,JSON.parse(call.function.arguments),scope,scope.runId+':'+call.id,signal);
+   if(stored.pageImages?.length){if(!resolveImages)throw new ReaderError('VISION_UNAVAILABLE','本次运行没有页面图像解析能力');messages.push(...await resolveImages(stored.pageImages));}
   }
  }
  throw new ReaderError('TOOL_ROUND_LIMIT','工具调用已达到 8 轮，请调整问题后继续');

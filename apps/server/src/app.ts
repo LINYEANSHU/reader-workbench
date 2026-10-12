@@ -12,6 +12,9 @@ import {uiStateRoutes} from './routes/ui-state.js';
 import {CapabilityRegistry} from '../../../packages/core/src/plugins/registry.js';
 import {PluginManager} from '../../../packages/core/src/plugins/manager.js';
 import {DocumentService} from '../../../packages/core/src/documents/service.js';
+import {DocumentMemoryStore} from '../../../packages/core/src/documents/memory-store.js';
+import {DocumentMemoryConsumer} from '../../../packages/core/src/documents/memory-consumer.js';
+import {documentMemoryTools} from '../../../packages/core/src/tools/document-memory.js';
 import {documentRoutes} from './routes/documents.js';
 import {SessionRepository} from '../../../packages/core/src/sessions/repository.js';
 import {SessionService} from '../../../packages/core/src/sessions/service.js';
@@ -47,6 +50,7 @@ export async function startServer(config:RuntimeConfig){
   const documents=new DocumentService(workspaces,capabilities);
   const plugins=new PluginManager(capabilities,workspaces);
   const sessionRepository=new SessionRepository(workspaces);
+  const documentMemory=new DocumentMemoryConsumer(documents,sessionRepository,capabilities,new DocumentMemoryStore(workspaces));
   const sessions=new SessionService(sessionRepository);
   const nativeSpeech=new NativeSpeechProvider(new SpeechAssets(process.env.READER_SPEECH_ASSET_DIR??join(config.configDir,'speech','sensevoice-small-int8')));capabilities.register('*','speech','core.sensevoice',nativeSpeech);const speech=new SpeechService(capabilities,sessionRepository);speechRoutes(app,speech,auth);
   const selections=new SelectionService(capabilities,sessionRepository,documents);
@@ -54,8 +58,10 @@ export async function startServer(config:RuntimeConfig){
   const attachments=new AttachmentService(workspaces,sessionRepository,documents);
   const context=new ContextBuilder(sessionRepository,documents,capabilities);
   context.attachAttachments(attachments);
+  context.attachDocumentMemory(documentMemory);
   const tools=new ToolRegistry(capabilities,scope=>sessionRepository.authorizeScope(scope));
   const runs=new RunService({workspaces,repository:sessionRepository,context,tools,documents,capabilities,artifacts});
+  capabilities.register('*','tool','core.document-memory',documentMemoryTools(documentMemory,runs.records));
   const externalMcp=new ExternalMcpManager(capabilities,workspaces),ui=new UiBridge(capabilities,sessionRepository,selections);
   const native=new NativeInteractions(capabilities,sessionRepository,attachments);plugins.onBeforeDisable=(id,owner)=>native.releaseOwner(id,owner);
   workspaces.onSelected=async id=>{await plugins.loadWorkspace(id);await externalMcp.loadWorkspace(id);};
@@ -69,7 +75,7 @@ export async function startServer(config:RuntimeConfig){
   layoutRoutes(app,workspaces,capabilities);
   selectionRoutes(app,selections,auth);attachmentRoutes(app,attachments,auth);
   const services={workspaces,documents,sessions,runs,artifacts,plugins};await attachMcpHttp(app,services,auth);attachReaderOpenApi(app,services,auth);
-  app.addHook('preClose',async()=>{native.close();await speech.close();await nativeSpeech.dispose();await runs.close();await artifacts.close();await documents.close();await lifecycle.close();await externalMcp.close();await plugins.close();});
+  app.addHook('preClose',async()=>{native.close();await speech.close();await nativeSpeech.dispose();await runs.close();await documentMemory.close();await artifacts.close();await documents.close();await lifecycle.close();await externalMcp.close();await plugins.close();});
   app.addHook('onClose',async()=>{await workspaces.close();});
   app.setErrorHandler((error,_request,reply)=>{
     const status=error instanceof ReaderError?error.status:(error as {statusCode?:number}).statusCode??500;
@@ -90,7 +96,7 @@ export async function startServer(config:RuntimeConfig){
     if(config.workspace)await workspaces.select(config.workspace,{callerId:'local-owner',transport:'internal'});
     await plugins.loadRecent();await externalMcp.loadRecent();await models.loadRecent();
     for(const workspace of await workspaces.listRecent({callerId:'local-owner',transport:'internal'}))lifecycle.emit({workspaceId:workspace.id,kind:'server.started',data:{version:'0.1.0'}});
-    return {url,bootstrapUrl:url+'/#bootstrap='+auth.code,app,auth,workspaces,documents,capabilities,plugins,externalMcp,ui,speech,sessionRepository,sessions,context,runs,tools,models,artifacts,attachments,selections,close:async()=>{await app.close();}};
+    return {url,bootstrapUrl:url+'/#bootstrap='+auth.code,app,auth,workspaces,documents,documentMemory,capabilities,plugins,externalMcp,ui,speech,sessionRepository,sessions,context,runs,tools,models,artifacts,attachments,selections,close:async()=>{await app.close();}};
   }catch(error){await app.close();if((error as NodeJS.ErrnoException).code==='EADDRINUSE')throw new ReaderError('PORT_IN_USE','端口 '+config.port+' 已被占用，请使用 --port 指定其他端口');throw error;}
 }
 

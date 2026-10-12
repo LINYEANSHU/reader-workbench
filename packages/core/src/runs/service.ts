@@ -8,9 +8,13 @@ import type {ModelProvider} from '../../../sdk/src/capabilities.js';
 import type {ArtifactService} from '../artifacts/service.js';
 import {artifactTools} from '../tools/artifacts.js';
 import {uniqueAnchors} from '../../../contracts/src/documents.js';
-interface Dependencies{workspaces:WorkspaceService;repository:SessionRepository;context:ContextBuilder;tools:ToolRegistry;documents:DocumentService;capabilities:CapabilityRegistry;artifacts?:ArtifactService}
+import type {CapabilityLease} from '../plugins/registry.js';
+import type {DocumentMemoryConsumer} from '../documents/memory-consumer.js';
+import {readFile} from 'node:fs/promises';
+import {validateImageRequest,DEFAULT_IMAGE_LIMITS} from '../models/image-budget.js';
+interface Dependencies{workspaces:WorkspaceService;repository:SessionRepository;context:ContextBuilder;tools:ToolRegistry;documents:DocumentService;capabilities:CapabilityRegistry;artifacts?:ArtifactService;documentMemory?:DocumentMemoryConsumer}
 export class RunService{
- readonly records:RunRepository;readonly executor:ToolExecutor;private queue=new KeyedQueue();private recovery=new KeyedQueue();private controllers=new Map<RunId,AbortController>();private liveRecords=new Map<RunId,RunRecord>();private modelLeases=new Map<RunId,{value:ModelProvider;release:()=>void}>();private tasks=new Map<RunId,Promise<void>>();private closed=false;
+ readonly records:RunRepository;readonly executor:ToolExecutor;private queue=new KeyedQueue();private recovery=new KeyedQueue();private controllers=new Map<RunId,AbortController>();private liveRecords=new Map<RunId,RunRecord>();private modelLeases=new Map<RunId,CapabilityLease<ModelProvider>>();private tasks=new Map<RunId,Promise<void>>();private closed=false;
  constructor(readonly dependencies:Dependencies){this.records=new RunRepository(dependencies.workspaces);this.executor=new ToolExecutor(dependencies.tools,dependencies.workspaces);dependencies.context.attachToolExecutor(this.executor);if(!dependencies.capabilities.list('*' as WorkspaceId,'tool').includes('core.reading'))dependencies.capabilities.register('*','tool','core.reading',builtinTools(dependencies.documents,dependencies.repository));if(dependencies.artifacts)dependencies.capabilities.register('*','tool','core.artifacts',artifactTools(dependencies.artifacts));}
  async submit(request:AskRequest,actor:Actor):Promise<{runId:RunId}>{
   if(this.closed)throw new ReaderError('SERVER_CLOSING','服务正在退出',503);
@@ -33,7 +37,7 @@ export class RunService{
    const initialScope:RunScope={actor:structuredClone(actor),workspaceId:record.workspaceId,sessionId:record.sessionId,runId:record.id,allowArtifactWrites:record.request.allowArtifactWrites,...(record.outputDirectory?{outputDirectory:record.outputDirectory}:{})};release=await this.dependencies.repository.registerScope(initialScope);
    record.status='running';await this.records.save(record);await this.records.emit(record,'state',{status:'running'});
    const model=this.modelLeases.get(record.id)!;releaseModel=model.release;
-   const envelope=await this.dependencies.context.build(record.request,signal,model.value,initialScope);record.contextRevision=envelope.mainRevision;record.context=envelope;await this.records.save(record);await this.records.emit(record,'context',{mainRevision:envelope.mainRevision,ownRevision:envelope.ownRevision,budget:envelope.budget,summaryCoverage:envelope.summaryCoverage});
+   const envelope=await this.dependencies.context.build(record.request,signal,model.value,initialScope,{lease:model,progress:async value=>{await this.records.emit(record,'progress',value);}});record.contextRevision=envelope.mainRevision;record.context=envelope;await this.records.save(record);await this.records.emit(record,'context',{mainRevision:envelope.mainRevision,ownRevision:envelope.ownRevision,budget:envelope.budget,summaryCoverage:envelope.summaryCoverage});
    const sessionRecord=await this.dependencies.repository.getSession(record.workspaceId,record.sessionId);
    const readRevisions:Record<string,number>={[record.sessionId]:envelope.ownRevision??sessionRecord.revision};if(sessionRecord.parentMainSessionId)readRevisions[sessionRecord.parentMainSessionId]=envelope.mainRevision;
    const scope=await this.dependencies.repository.setReadRevisions(initialScope,readRevisions);
@@ -43,7 +47,15 @@ export class RunService{
    const tools=model.value.capabilities.tools?definitions.map(tool=>({type:'function' as const,function:{name:tool.name,description:tool.description,parameters:tool.inputSchema}})):[];
    const result=await toolLoop(model.value,envelope,tools,scope,this.executor,async(kind,data)=>{
     if(kind==='delta'){record.partialText+=(data as {text:string}).text;await this.records.save(record);}await this.records.emit(record,kind,data);
-   },signal,record.request.reasoningEffort);signal.throwIfAborted();
+   },signal,record.request.reasoningEffort,async anchors=>{
+    if(!model.value.capabilities.vision)throw new ReaderError('VISION_UNAVAILABLE','重看页面需要视觉模型');
+    const messages:import('../../../contracts/src/models.js').ModelMessage[]=[];
+    for(const anchor of anchors){if(anchor.location.kind!=='page'||!envelope.documents.some(ref=>ref.workspaceId===anchor.workspaceId&&ref.documentId===anchor.documentId&&ref.version===anchor.version))throw new ReaderError('TOOL_SCOPE_DENIED','重看页面越过本次文档权限',403);
+     const page=await this.dependencies.documents.readPage(anchor,anchor.location.page);if(!page.imagePath)throw new ReaderError('DOCUMENT_IMAGE_UNAVAILABLE','页面图像不可用');const document=await this.dependencies.documents.get(anchor),bytes=await readFile(await this.dependencies.documents.authorizedFile(anchor,page.imagePath),{signal});
+     messages.push({role:'user',content:[{type:'text',text:'按需重看文档页：'+JSON.stringify(anchor)},{type:'image_url',image_url:{url:'data:'+(document.viewer.kind==='image'?document.mime:'image/png')+';base64,'+bytes.toString('base64')}}]});
+    }
+    validateImageRequest(messages,model.value.imageLimits??DEFAULT_IMAGE_LIMITS,{messages});return messages;
+   });signal.throwIfAborted();
    for(const anchor of envelope.sourceRanges)await this.records.emit(record,'citation',anchor);
    const content=record.request.question+(record.request.selection?'\n选区：'+record.request.selection.text+'\n来源：'+JSON.stringify(record.request.selection.anchors):'');
    signal.throwIfAborted();await this.dependencies.repository.completeOwnTurn(scope,{id:randomUUID(),runId:record.id,question:record.request.question,answer:result.answer,messages:[{role:'user',content},...result.ownMessages],sourceAnchors:uniqueAnchors([...envelope.sourceRanges,...result.anchors]),attachmentIds:record.request.attachmentIds,...(record.request.selection?{selection:structuredClone(record.request.selection)}:{})},signal);
