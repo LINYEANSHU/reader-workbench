@@ -7,6 +7,7 @@ import type {WorkspaceService} from '../workspaces/service.js';import {isWithin}
 interface Installation{plugin:Plugin;enabled:boolean;settings:Record<string,unknown>;error?:string}
 interface SavedInstallation{manifest:PluginManifest;path:string;enabled:boolean;settings:Record<string,unknown>}
 export class PluginManager{
+ async recordDiagnostic(workspaceId:WorkspaceId,id:string,message:string){const store=await this.workspaces?.storeFor(workspaceId);store?.putRecord('hook-errors','bundled.'+id,{id,kind:'plugin.install',message});}
  onBeforeDisable?: (workspaceId:WorkspaceId,owner:string)=>void;
  private installed=new Map<string,Installation>();private transitions=new Map<string,Promise<unknown>>();private loads=new Map<WorkspaceId,Promise<void>>();private ajv=new Ajv({strict:false,allErrors:true,useDefaults:true,coerceTypes:false,removeAdditional:false});
  constructor(readonly registry:CapabilityRegistry,private workspaces?:WorkspaceService){}

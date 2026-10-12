@@ -12,7 +12,7 @@ export async function toolLoop(model:ModelProvider,envelope:ContextEnvelope,tool
  const messages:ModelMessage[]=structuredClone([...envelope.messages]),ownMessages:ModelMessage[]=[],anchors:SourceAnchor[]=[];let answer='';
  for(let round=0;round<8;round++){
   validateImageRequest(messages,model.imageLimits??DEFAULT_IMAGE_LIMITS,{messages,tools,max_tokens:envelope.budget.reservedOutputTokens});
-  signal.throwIfAborted();const inputTokens=messages.reduce((total,message)=>total+24+(typeof message.content==='string'?estimateTokens(message.content):message.content.reduce((sum,item)=>sum+(item.type==='text'?estimateTokens(item.text):1024),0))+(message.tool_calls?estimateTokens(JSON.stringify(message.tool_calls)):0)+(message.reasoning_content?estimateTokens(message.reasoning_content):0),0)+estimateTokens(JSON.stringify(tools))+64;
+  signal.throwIfAborted();const inputTokens=messages.reduce((total,message)=>total+24+(typeof message.content==='string'?estimateTokens(message.content):message.content.reduce((sum,item)=>sum+(item.type==='text'?estimateTokens(item.text):(model.imageLimits?.imageTokens??1024)),0))+(message.tool_calls?estimateTokens(JSON.stringify(message.tool_calls)):0)+(message.reasoning_content?estimateTokens(message.reasoning_content):0),0)+estimateTokens(JSON.stringify(tools))+64;
   if(inputTokens+envelope.budget.reservedOutputTokens>model.capabilities.contextWindow)throw new ReaderError('CONTEXT_LIMIT','工具结果使本次上下文超限，请减少读取内容');
   const calls:ModelToolCall[]=[];let text='',reasoning='',done=false;
   for await(const event of model.generate({messages:structuredClone(messages),tools,maxOutputTokens:envelope.budget.reservedOutputTokens,reasoningEffort},signal)){

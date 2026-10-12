@@ -17,8 +17,8 @@ import {ModelMemoryProvider} from './memory.js';
 import type {DocumentMemoryConsumer} from '../documents/memory-consumer.js';
 import type {CapabilityLease} from '../plugins/registry.js';
 export function estimateTokens(text:string):number{return Buffer.byteLength(text,'utf8');}
-function messageTokens(messages:ReadonlyArray<ModelMessage>):number{
- return messages.reduce((total,message)=>total+24+(typeof message.content==='string'?estimateTokens(message.content):message.content.reduce((sum,item)=>sum+(item.type==='text'?estimateTokens(item.text):1024),0))+
+function messageTokens(messages:ReadonlyArray<ModelMessage>,imageTokens=1024):number{
+ return messages.reduce((total,message)=>total+24+(typeof message.content==='string'?estimateTokens(message.content):message.content.reduce((sum,item)=>sum+(item.type==='text'?estimateTokens(item.text):imageTokens),0))+
   (message.tool_calls?estimateTokens(JSON.stringify(message.tool_calls)):0)+(message.reasoning_content?estimateTokens(message.reasoning_content):0),0);
 }
 function excerpt(text:string,maximum:number):string{let count=0,result='';for(const character of text){count+=estimateTokens(character);if(count>maximum)break;result+=character;}return result;}
@@ -44,6 +44,7 @@ export class ContextBuilder{
   const own=await this.repository.snapshot(request.workspaceId,request.sessionId);
   const mainRevision=parent?.session.revision??own.session.revision;
   const model=this.currentModel.getStore()!;
+  const messageCost=(messages:ReadonlyArray<ModelMessage>)=>messageTokens(messages,model.imageLimits?.imageTokens??1024);
   const capability=model.capabilities;
   const reservedOutputTokens=Math.min(capability.maxOutputTokens,Math.floor(capability.contextWindow/4));
   const tools=capability.tools?this.capabilities.list(request.workspaceId,'tool').flatMap(id=>this.capabilities.get(request.workspaceId,'tool',id).tools).filter(tool=>session.kind==='main'||tool.effect==='read'||tool.effect==='write_artifact'&&request.allowArtifactWrites):[];
@@ -82,16 +83,16 @@ export class ContextBuilder{
    }
   }
   fixed.push({role:'user',content:request.question});
-  if(messageTokens(fixed)>inputLimit)throw new ReaderError('CONTEXT_LIMIT','当前问题和选区超过模型容量，请缩短选区或提高容量');
-  let documentBudget=Math.max(0,Math.min(Math.floor(inputLimit/4),inputLimit-messageTokens(fixed)-256));
+  if(messageCost(fixed)>inputLimit)throw new ReaderError('CONTEXT_LIMIT','当前问题和选区超过模型容量，请缩短选区或提高容量');
+  let documentBudget=Math.max(0,Math.min(Math.floor(inputLimit/4),inputLimit-messageCost(fixed)-256));
   let images=request.attachmentIds.length,imageBytes=0;
   const execution=this.currentExecution.getStore(),scope=this.currentScope.getStore();
-  const memories=this.documentMemory&&execution&&scope?await this.documentMemory.prepare(request,scope,execution.lease,signal,execution.progress):[];
-  const memoryBudget=Math.max(0,Math.min(Math.floor(inputLimit/3),inputLimit-messageTokens(fixed)-256));
+  const memoryBudget=Math.max(0,Math.min(Math.floor(inputLimit/3),inputLimit-messageCost(fixed)-256));
+  const memories=this.documentMemory&&execution&&scope?await this.documentMemory.prepare({...request,documents},scope,execution.lease,signal,execution.progress,memoryBudget):[];
   for(const ref of documents){
    const memory=memories.find(item=>key(item.reference.document)===key(ref));
    if(memory){
-    const selected=this.documentMemory!.select(memory,request.question,Math.floor(memoryBudget/Math.max(1,memories.length)));
+    const selected=memory.selection;
     fixed.splice(fixed.length-1,0,{role:'user',content:selected.text});
     sourceRanges.push(...selected.pages.map(page=>({...ref,location:{kind:'page' as const,page}})));
     const selectedPages=[...new Set(request.selection?.anchors.filter(anchor=>key(anchor)===key(ref)&&anchor.location.kind==='page').map(anchor=>anchor.location.kind==='page'?anchor.location.page:1)??[])];
@@ -106,7 +107,7 @@ export class ContextBuilder{
     const header='文档摘录 '+JSON.stringify(hit.anchor)+'\n';const available=documentBudget-estimateTokens(header)-32;
     if(available<=0)break;const text=excerpt(hit.text,available);if(!text)continue;
     const content=header+text+(text.length<hit.text.length?'\n[仅为部分摘录；原文可通过文档读取工具访问]':'');
-    if(messageTokens(fixed)+estimateTokens(content)+24>inputLimit)break;
+    if(messageCost(fixed)+estimateTokens(content)+24>inputLimit)break;
     fixed.splice(fixed.length-1,0,{role:'user',content});documentBudget-=estimateTokens(content)+24;sourceRanges.push(hit.anchor);
    }
    if(record.viewer.kind==='fallback')fixed.splice(fixed.length-1,0,{role:'user',content:'文件 '+record.relativePath+' 的正文未解析，不能声称已读懂内容。'});
@@ -119,7 +120,7 @@ export class ContextBuilder{
      if(bytes.length>4*1024*1024||imageBytes+bytes.length>12*1024*1024)throw new ReaderError('IMAGE_CONTEXT_LIMIT','页面图像超过发送大小上限');
      const mime=record.viewer.kind==='image'?record.mime:'image/png';
      if(capability.vision){
-      if(messageTokens(fixed)+1100>inputLimit)throw new ReaderError('CONTEXT_LIMIT','图像和问题超过模型容量，请减少页数或提高容量');
+      if(messageCost(fixed)+(model.imageLimits?.imageTokens??1024)+76>inputLimit)throw new ReaderError('CONTEXT_LIMIT','图像和问题超过模型容量，请减少页数或提高容量');
       fixed.splice(fixed.length-1,0,{role:'user',content:[{type:'text',text:'实际发送的文档页图像：'+JSON.stringify({...ref,page:pageNumber})},{type:'image_url',image_url:{url:'data:'+mime+';base64,'+bytes.toString('base64')}}]});
      }else{
       const scope=this.currentScope.getStore();if(!scope||!this.executor||!model.ocrToolId)throw new ReaderError('VISION_UNAVAILABLE','OCR 未接入此运行，请选择视觉模型');
@@ -127,7 +128,7 @@ export class ContextBuilder{
       if(!result.content.trim())throw new ReaderError('OCR_EMPTY','OCR 没有识别到文字，请选择视觉模型或其他页面');
       if(result.sourceAnchors?.some(anchor=>key(anchor)!==key(ref)))throw new ReaderError('TOOL_RESULT_INVALID','OCR 来源不能离开已授权页面');
       const content='OCR 文字（只识别文字，未向模型发送图像，不能推测未识别图形）：'+JSON.stringify({...ref,page:pageNumber})+'\n'+result.content;
-      if(messageTokens(fixed)+estimateTokens(content)+24>inputLimit)throw new ReaderError('CONTEXT_LIMIT','OCR 结果超过模型容量，请减少页数');
+      if(messageCost(fixed)+estimateTokens(content)+24>inputLimit)throw new ReaderError('CONTEXT_LIMIT','OCR 结果超过模型容量，请减少页数');
       fixed.splice(fixed.length-1,0,{role:'user',content});
      }
      images++;imageBytes+=bytes.length;sourceRanges.push({...ref,location:{kind:'page',page:pageNumber}});
@@ -137,11 +138,11 @@ export class ContextBuilder{
   }
   const history=[...(parent?.turns??[]),...own.turns];const allHistory=history.flatMap(turn=>turn.messages);
   let historyMessages:ModelMessage[]=structuredClone(allHistory);let summaryCoverage:string[]=[];let memory:MemorySummary|undefined;
-  const remaining=inputLimit-messageTokens(fixed);
-  if(messageTokens(historyMessages)>remaining){
+  const remaining=inputLimit-messageCost(fixed);
+  if(messageCost(historyMessages)>remaining){
    const kept:CommittedTurn[]=[];let used=0;
    for(const turn of [...history].reverse()){
-    const cost=messageTokens(turn.messages);if(used+cost>remaining*0.6)break;kept.unshift(turn);used+=cost;
+    const cost=messageCost(turn.messages);if(used+cost>remaining*0.6)break;kept.unshift(turn);used+=cost;
    }
    const keptIds=new Set(kept.map(turn=>turn.id)),older=history.filter(turn=>!keptIds.has(turn.id));
    const summaryBudget=Math.max(64,remaining-used-160);
@@ -161,13 +162,13 @@ export class ContextBuilder{
    }finally{lease.release();}
   }
   const messages=[fixed[0]!,...historyMessages,...fixed.slice(1)];
-  let envelope:ContextEnvelope={workspaceId:request.workspaceId,sessionId:request.sessionId,mainRevision,ownRevision:own.session.revision,memory,documents,documentMemories:memories.map(item=>item.reference),messages,sourceRanges:uniqueAnchors(sourceRanges),budget:{limit:capability.contextWindow,inputTokens:messageTokens(messages)+toolTokens+64,reservedOutputTokens,estimated:true,reservedToolTokens:toolTokens},summaryCoverage};
+  let envelope:ContextEnvelope={workspaceId:request.workspaceId,sessionId:request.sessionId,mainRevision,ownRevision:own.session.revision,memory,documents,documentMemories:memories.map(item=>item.reference),messages,sourceRanges:uniqueAnchors(sourceRanges),budget:{limit:capability.contextWindow,inputTokens:messageCost(messages)+toolTokens+64,reservedOutputTokens,estimated:true,reservedToolTokens:toolTokens},summaryCoverage};
   if(envelope.budget.inputTokens+reservedOutputTokens>capability.contextWindow)throw new ReaderError('CONTEXT_LIMIT','上下文摘要后仍超限，请增加容量或减少选区');
   for(const id of this.capabilities.list(request.workspaceId,'context')){
    const lease=this.capabilities.acquire(request.workspaceId,'context',id);
    try{const changed=await lease.value.transform(freeze(structuredClone(envelope)),signal);validateContextTransform(envelope,changed);envelope=structuredClone(changed);}
    finally{lease.release();}
-   envelope.budget={limit:capability.contextWindow,inputTokens:messageTokens(envelope.messages)+toolTokens+64,reservedOutputTokens,estimated:true,reservedToolTokens:toolTokens};
+   envelope.budget={limit:capability.contextWindow,inputTokens:messageCost(envelope.messages)+toolTokens+64,reservedOutputTokens,estimated:true,reservedToolTokens:toolTokens};
    if(envelope.budget.inputTokens+reservedOutputTokens>capability.contextWindow)throw new ReaderError('CONTEXT_LIMIT','插件变换后的上下文超限');
   }
   signal.throwIfAborted();return freeze(structuredClone(envelope));
