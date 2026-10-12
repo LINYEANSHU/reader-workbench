@@ -33,7 +33,7 @@ export class DocumentMemoryConsumer{
    }finally{pinnedProvider.release();pinnedModel.release();}},signal,onProgress);
    output.push({reference:{document:ref,pluginId,cacheKey:key,generation,pageCount:record.pageCount,completedPages:record.completedPages,status:record.status},record,providerId:id});
   }catch(error){throw this.expose(error);}finally{providerLease.release();}}
-  return output;
+  if(output.length)await onProgress({completedPages:output.reduce((sum,item)=>sum+item.record.completedPages.length,0),pageCount:output.reduce((sum,item)=>sum+item.record.pageCount,0),label:'根据文档记忆回答'});return output;
  }
  private expose(error:unknown){if(error instanceof ReaderError)return error;const code=(error as {code?:string})?.code;if(code&&['DOCUMENT_MEMORY_INVALID','DOCUMENT_MEMORY_INCOMPLETE','CONTEXT_LIMIT','IMAGE_CONTEXT_LIMIT','VISION_UNAVAILABLE'].includes(code))return new ReaderError(code,'文档记忆处理失败：'+(error as Error).message);return error;}
  select(item:{record:DocumentMemoryRecord;providerId:string},question:string,budget:number){try{return this.capabilities.get(item.record.document.workspaceId,'documentMemory',item.providerId).select(item.record,question,budget);}catch(error){throw this.expose(error);}}

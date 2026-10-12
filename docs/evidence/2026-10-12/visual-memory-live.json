@@ -1,0 +1,33 @@
+{
+  "status": "passed",
+  "date": "2026-10-12T09:34:33.772Z",
+  "model": "deepseek-flash",
+  "pages": 2,
+  "requests": [
+    {
+      "images": 2,
+      "hasMemory": false,
+      "hasImageBase64": true
+    },
+    {
+      "images": 0,
+      "hasMemory": false,
+      "hasImageBase64": false
+    },
+    {
+      "images": 0,
+      "hasMemory": true,
+      "hasImageBase64": false
+    },
+    {
+      "images": 0,
+      "hasMemory": true,
+      "hasImageBase64": false
+    }
+  ],
+  "checks": [
+    "real two-page visual reading",
+    "subsequent answer carries memory and zero images",
+    "no images persisted in dialogue"
+  ]
+}

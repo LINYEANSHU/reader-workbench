@@ -9,6 +9,7 @@ it('automatically prepares every local image, owns memory routes, rebuilds local
  expect((await host.documents.parsed(document)).pages.every(page=>page.imagePath)).toBe(true);expect(calls).toBe(0);
  const url='/api/v1/workspaces/'+workspace.id+'/documents/'+document.documentId+'/'+document.version+'/memory',headers={authorization:'Bearer '+host.auth.token,host:new URL(host.url).host};
  const status=await host.app.inject({method:'GET',url:url+'?providerId=vision-test',headers});expect(status.statusCode).toBe(200);expect(status.json()).toMatchObject({status:'not-started',pageCount:7,generation:0});
+ const cacheKey=host.documentMemory.store.key(document,'visual-document-memory','1','vision-test');await writeFile(join(await host.workspaces.internalDirectory(workspace.id),'document-memory',cacheKey,'generation-0.json'),'{bad json');
  const rebuild=await host.app.inject({method:'POST',url:url+'/rebuild',headers,payload:{providerId:'vision-test'}});expect(rebuild.json()).toMatchObject({generation:1});expect(calls).toBe(0);
  const missing=await host.app.inject({method:'GET',url:url.replace(document.version,'bad')+'?providerId=vision-test',headers});expect(missing.statusCode).toBe(404);
  const originalActor=host.auth.actor.bind(host.auth);host.auth.actor=()=>({callerId:'other-owner',transport:'http'});const denied=await host.app.inject({method:'GET',url:url+'?providerId=vision-test',headers});host.auth.actor=originalActor;expect(denied.statusCode).toBe(403);

@@ -10,6 +10,9 @@ import type {LayoutPreset} from '../../../../packages/contracts/src/layout.js';
 import type {SelectionContext} from '../../../../packages/contracts/src/documents.js';import type {SelectionActionResult} from '../../../../packages/contracts/src/tools.js';
 export class ApiError extends Error{constructor(readonly code:string,message:string,readonly status:number){super(message);}}
 export class ApiClient{
+ documentMemoryStatus(ref:DocumentRef,providerId:string,signal?:AbortSignal){return this.request<{status:string;generation:number;pageCount:number;completedPages:number[];overview:string;localPreparation:{status:string;error?:string}}>(memoryPath(ref)+'?providerId='+encodeURIComponent(providerId),{signal});}
+ documentMemoryPage(ref:DocumentRef,providerId:string,page:number,signal?:AbortSignal){return this.request<import('../../../../packages/contracts/src/document-memory.js').DocumentMemoryPage>(memoryPath(ref)+'/pages/'+page+'?providerId='+encodeURIComponent(providerId),{signal});}
+ rebuildDocumentMemory(ref:DocumentRef,providerId:string){return this.request(memoryPath(ref)+'/rebuild',{method:'POST',body:{providerId}});}
  async saveAttachment(workspaceId:WorkspaceId,sessionId:SessionId,result:CaptureResult,captureKind:'document'|'screen'){const bytes=new Uint8Array(await result.blob.arrayBuffer());let binary='';for(let i=0;i<bytes.length;i+=8192)binary+=String.fromCharCode(...bytes.subarray(i,i+8192));return this.request<Attachment>('/attachments',{method:'POST',body:{workspaceId,sessionId,data:btoa(binary),metadata:{width:result.width,height:result.height,anchors:result.anchors,captureKind}}});}
  attachment(workspaceId:WorkspaceId,sessionId:SessionId,id:string){return this.request<Attachment>('/attachments/'+encodeURIComponent(id)+'?workspaceId='+workspaceId+'&sessionId='+sessionId+'&metadata=true');}
  async request<T>(path:string,options:{method?:string;body?:unknown;signal?:AbortSignal;keepalive?:boolean}={}):Promise<T>{
@@ -52,3 +55,5 @@ export function documentUrl(ref:DocumentRef,suffix=''){return'/api/v1'+documentP
 export function message(error:unknown){return error instanceof Error?error.message:'操作失败，请重试';}
 
 export function attachmentUrl(attachment:Attachment){return '/api/v1/attachments/'+encodeURIComponent(attachment.id)+'?workspaceId='+attachment.workspaceId+'&sessionId='+attachment.sessionId;}
+
+function memoryPath(ref:DocumentRef){return '/workspaces/'+ref.workspaceId+'/documents/'+ref.documentId+'/'+ref.version+'/memory';}

@@ -87,13 +87,15 @@ export class ContextBuilder{
   let images=request.attachmentIds.length,imageBytes=0;
   const execution=this.currentExecution.getStore(),scope=this.currentScope.getStore();
   const memories=this.documentMemory&&execution&&scope?await this.documentMemory.prepare(request,scope,execution.lease,signal,execution.progress):[];
-  let memoryBudget=Math.max(0,Math.min(Math.floor(inputLimit/3),inputLimit-messageTokens(fixed)-256));
+  const memoryBudget=Math.max(0,Math.min(Math.floor(inputLimit/3),inputLimit-messageTokens(fixed)-256));
   for(const ref of documents){
    const memory=memories.find(item=>key(item.reference.document)===key(ref));
    if(memory){
     const selected=this.documentMemory!.select(memory,request.question,Math.floor(memoryBudget/Math.max(1,memories.length)));
-    fixed.splice(fixed.length-1,0,{role:'user',content:selected.text});memoryBudget-=estimateTokens(selected.text)+24;
+    fixed.splice(fixed.length-1,0,{role:'user',content:selected.text});
     sourceRanges.push(...selected.pages.map(page=>({...ref,location:{kind:'page' as const,page}})));
+    const selectedPages=[...new Set(request.selection?.anchors.filter(anchor=>key(anchor)===key(ref)&&anchor.location.kind==='page').map(anchor=>anchor.location.kind==='page'?anchor.location.page:1)??[])];
+    for(const number of selectedPages){const page=await this.documents.readPage(ref,number,signal);if(!page.imagePath)throw new ReaderError('DOCUMENT_IMAGE_UNAVAILABLE','选中页面没有图像');const record=await this.documents.get(ref),bytes=await readFile(await this.documents.authorizedFile(ref,page.imagePath),{signal});fixed.splice(fixed.length-1,0,{role:'user',content:[{type:'text',text:'用户选定的页面图像：'+JSON.stringify({...ref,page:number})},{type:'image_url',image_url:{url:'data:'+(record.viewer.kind==='image'?record.mime:'image/png')+';base64,'+bytes.toString('base64')}}]});sourceRanges.push(...page.anchors);}
     continue;
    }
    const record=await this.documents.waitReady(ref,signal),parsed=await this.documents.parsed(ref);
