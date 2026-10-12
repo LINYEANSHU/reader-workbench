@@ -1,0 +1,12 @@
+import {expect,it} from 'vitest';
+import {validateMemoryRecord} from '../../packages/contracts/src/document-memory.js';
+import {SDK_VERSION} from '../../packages/sdk/src/manifest.js';
+const document={workspaceId:'w',documentId:'d',version:'v'} as any;
+const expected={document,modelIdentity:'model',pluginId:'plugin',promptVersion:'1',pageCount:2,generation:0};
+const page=(page:number)=>({page,summary:'页'+page,transcription:'',figures:[],formulas:[],terms:[],uncertainties:[],crossPageRelations:[]});
+const record=()=>({...expected,schemaVersion:1,status:'ready',pages:[page(1),page(2)],completedPages:[1,2],batches:[{pages:[1,2],completedAt:'2026-10-12T00:00:00.000Z'}],overview:'全文概览',createdAt:'2026-10-12T00:00:00.000Z',updatedAt:'2026-10-12T00:00:00.000Z'});
+it('ready requires all pages and overview',()=>{expect(validateMemoryRecord(record(),expected,1024*1024).status).toBe('ready');expect(()=>validateMemoryRecord({...record(),pages:[page(1)],completedPages:[1]},expected,1024*1024)).toThrow();expect(()=>validateMemoryRecord({...record(),overview:''},expected,1024*1024)).toThrow();});
+it('rejects missing duplicate or out of range pages',()=>{for(const pages of [[page(1),page(1)],[page(1),page(3)]])expect(()=>validateMemoryRecord({...record(),pages},expected,1024*1024)).toThrow();expect(()=>validateMemoryRecord({...record(),completedPages:[1,1]},expected,1024*1024)).toThrow();});
+it('rejects wrong document model and cross page references',()=>{expect(()=>validateMemoryRecord({...record(),modelIdentity:'other'},expected,1024*1024)).toThrow();expect(()=>validateMemoryRecord({...record(),document:{...document,workspaceId:'other'}},expected,1024*1024)).toThrow();const value=record();value.pages[0]!.crossPageRelations=[{pages:[3],text:'invalid'}] as any;expect(()=>validateMemoryRecord(value,expected,1024*1024)).toThrow();});
+it('allows incomplete checkpoint but bounds serialized data',()=>{expect(validateMemoryRecord({...record(),status:'partial',pages:[page(1)],completedPages:[1],batches:[{pages:[1],completedAt:record().createdAt}],overview:''},expected,1024*1024).status).toBe('partial');expect(()=>validateMemoryRecord(record(),expected,20)).toThrow();});
+it('SDK exposes compatible 1.1 minor version',()=>expect(SDK_VERSION).toBe('1.1.0'));
