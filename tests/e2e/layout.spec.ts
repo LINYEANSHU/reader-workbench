@@ -1,8 +1,9 @@
 import {test,expect,openWorkspace,model} from './fixtures.js';import type {Locator} from '@playwright/test';import {mkdir,writeFile} from 'node:fs/promises';import {join} from 'node:path';import {PDFDocument} from 'pdf-lib';
 async function glyph(locator:Locator){return locator.evaluate(node=>{const walker=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);let text:Node|null;while(text=walker.nextNode()){const start=text.textContent?.indexOf('RI')??-1;if(start>=0){const range=document.createRange();range.setStart(text,start);range.setEnd(text,start+2);const rect=range.getBoundingClientRect();return{height:rect.height,width:rect.width};}}throw new Error('RI glyph absent');});}
 async function zoom(region:Locator,value:string){await region.getByRole('button',{name:/栏设置/}).click();await region.page().getByRole('spinbutton',{name:'正文缩放'}).fill(value);await region.page().getByRole('spinbutton',{name:'正文缩放'}).press('Enter');await region.page().keyboard.press('Escape');}
-// Font glyph bounds are rounded to CSS pixels differently by platform fonts.
-function scaledHeight(before:number,after:number,ratio:number){expect(Math.abs(after-before*ratio)).toBeLessThanOrEqual(2);}
+// Each font measurement can round by one CSS pixel. Scaling the original error
+// also scales that allowance; both measurements together allow 1 + ratio pixels.
+function scaledHeight(before:number,after:number,ratio:number){expect(Math.abs(after-before*ratio),JSON.stringify({before,after,ratio})).toBeLessThanOrEqual(1+ratio);}
 test('zooms each pane while preserving a user-selected vertical layout',async({page,host,root,modelUrl})=>{
  const workspace=await model(host,root,modelUrl);await openWorkspace(page,host,root);await page.getByRole('button',{name:'reader.md',exact:true}).click();const file=page.getByRole('region',{name:'文件',exact:true}),main=page.getByRole('region',{name:'主对话',exact:true}),temp=page.getByRole('region',{name:'临时对话',exact:true});await expect(file).toContainText('RI');
  for(const region of [main,temp]){await region.getByRole('textbox').fill('RI $$E=mc^2$$ `code`');await region.getByRole('button',{name:'发送',exact:true}).click();await expect(region.locator('.assistant-message')).toContainText('RI');await expect(region.locator('.working')).toHaveCount(0);}

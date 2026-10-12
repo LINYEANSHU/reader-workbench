@@ -1,4 +1,5 @@
 import {afterEach,describe,expect,it} from 'vitest';
+import {rmSync} from 'node:fs';
 import {mkdtemp,mkdir,rm,writeFile} from 'node:fs/promises';import {tmpdir} from 'node:os';import {join} from 'node:path';import {randomUUID} from 'node:crypto';import {setTimeout as delay} from 'node:timers/promises';
 import {WorkspaceService} from '../../packages/core/src/workspaces/service.js';
 import {SessionRepository} from '../../packages/core/src/sessions/repository.js';import {SessionService} from '../../packages/core/src/sessions/service.js';import {ContextBuilder} from '../../packages/core/src/sessions/context.js';
@@ -7,14 +8,13 @@ import {RunService} from '../../packages/core/src/runs/service.js';
 import {startServer} from '../../apps/server/src/app.js';
 import type {AskRequest,SessionRecord} from '../../packages/contracts/src/sessions.js';import type {RunId,RunScope} from '../../packages/contracts/src/ids.js';import type {ModelProvider} from '../../packages/sdk/src/capabilities.js';import type {RunRecord,RunEvent} from '../../packages/contracts/src/runs.js';
 const actor={callerId:'local-owner',transport:'internal' as const};const cleanup:Array<()=>Promise<unknown>>=[];
-// Windows CI can take longer to remove temporary workspace files after closing
-// SQLite. Test bodies keep their normal timeout and explicitly assert shutdown.
-afterEach(async()=>{for(const fn of cleanup.splice(0).reverse())await fn();},60000);
+afterEach(async()=>{for(const fn of cleanup.splice(0).reverse())await fn();});
 async function removeRunDirectory(directory:string){
- const slow=setTimeout(()=>console.warn('Still removing temporary run workspace: '+directory),10000);
- try{await rm(directory,{recursive:true,force:true,maxRetries:10,retryDelay:100});}
+ // Services are already closed. Use Node's native removal on Windows instead
+ // of the asynchronous recursive rimraf path that stalls on the hosted runner.
+ // Keep failures visible, including the underlying file path and errno.
+ try{if(process.platform==='win32')rmSync(directory,{recursive:true,force:true,maxRetries:3,retryDelay:100});else await rm(directory,{recursive:true,force:true});}
  catch(error){throw new Error('Temporary run workspace cleanup failed: '+directory,{cause:error});}
- finally{clearTimeout(slow);}
 }
 const provider=(generate:ModelProvider['generate']):ModelProvider=>({capabilities:{vision:false,tools:true,contextWindow:32000,maxOutputTokens:512},generate});
 function ask(session:SessionRecord,question='问题'):AskRequest{return{workspaceId:session.workspaceId,sessionId:session.id,question,documents:[],attachmentIds:[],providerId:'test',requestId:randomUUID(),allowArtifactWrites:session.kind==='main'};}
