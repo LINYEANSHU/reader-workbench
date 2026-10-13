@@ -6,6 +6,7 @@ import {SessionRepository} from '../../packages/core/src/sessions/repository.js'
 import {DocumentService} from '../../packages/core/src/documents/service.js';import {CapabilityRegistry} from '../../packages/core/src/plugins/registry.js';import {ToolRegistry} from '../../packages/core/src/tools/registry.js';
 import {RunService} from '../../packages/core/src/runs/service.js';
 import {startServer} from '../../apps/server/src/app.js';
+import {serverIntegrationTimeout,serverIntegrationStages} from '../helpers/server-integration.js';
 import type {AskRequest,SessionRecord} from '../../packages/contracts/src/sessions.js';import type {RunId,RunScope} from '../../packages/contracts/src/ids.js';import type {ModelProvider} from '../../packages/sdk/src/capabilities.js';import type {RunRecord,RunEvent} from '../../packages/contracts/src/runs.js';
 const actor={callerId:'local-owner',transport:'internal' as const};const cleanup:Array<()=>Promise<unknown>>=[];
 afterEach(async()=>{for(const fn of cleanup.splice(0).reverse())await fn();});
@@ -124,16 +125,16 @@ describe('scoped agent runs',()=>{
   }finally{releaseMain();releaseTemporary();}
  });
  it('streams authenticated HTTP events and resumes terminal output using Last-Event-ID',async()=>{
-  const directory=await mkdtemp(join(tmpdir(),'reader run http '));cleanup.push(()=>removeRunDirectory(directory));const root=join(directory,'work');await mkdir(root);
-  const server=await startServer({host:'127.0.0.1',port:0,configDir:join(directory,'config'),noOpen:true,demo:false});let closing:Promise<void>|undefined;cleanup.push(()=>closing??=server.close());const workspace=await server.workspaces.select(root,actor);
-  server.capabilities.register(workspace.id,'model','test',provider(async function*(){yield{kind:'delta',text:'中文流式回答'};yield{kind:'done'};}));const main=await server.sessions.createMain(workspace.id,'HTTP');
-  const headers={authorization:'Bearer '+server.auth.token,'content-type':'application/json'},response=await fetch(server.url+'/api/v1/runs',{method:'POST',headers,body:JSON.stringify(ask(main))});expect(response.status).toBe(202);const {runId}=await response.json() as {runId:RunId};
-  const stream=await fetch(server.url+'/api/v1/runs/'+runId+'/events?workspaceId='+workspace.id,{headers});expect(stream.headers.get('content-type')).toContain('text/event-stream');const text=await stream.text();expect(text).toContain('中文流式回答');expect(text).toContain('"status":"completed"');
-  const resumed=await fetch(server.url+'/api/v1/runs/'+runId+'/events?workspaceId='+workspace.id,{headers:{...headers,'last-event-id':'2'}});expect(await resumed.text()).not.toContain('id: 1\n');expect((await fetch(server.url+'/api/v1/runs/'+runId,{headers})).status).toBe(400);
+  const stage=serverIntegrationStages('run-http');const directory=await mkdtemp(join(tmpdir(),'reader run http '));cleanup.push(()=>removeRunDirectory(directory));const root=join(directory,'work');await mkdir(root);
+  const server=await stage('server-startup',()=>startServer({host:'127.0.0.1',port:0,configDir:join(directory,'config'),noOpen:true,demo:false}));let closing:Promise<void>|undefined;cleanup.push(()=>closing??=stage('server-close',()=>server.close()));const workspace=await stage('workspace-selection',()=>server.workspaces.select(root,actor));
+  server.capabilities.register(workspace.id,'model','test',provider(async function*(){yield{kind:'delta',text:'中文流式回答'};yield{kind:'done'};}));const main=await stage('session-create',()=>server.sessions.createMain(workspace.id,'HTTP'));
+  const headers={authorization:'Bearer '+server.auth.token,'content-type':'application/json'},response=await stage('initial-submit',()=>fetch(server.url+'/api/v1/runs',{method:'POST',headers,body:JSON.stringify(ask(main))}));expect(response.status).toBe(202);const {runId}=await response.json() as {runId:RunId};
+  const stream=await stage('initial-connect',()=>fetch(server.url+'/api/v1/runs/'+runId+'/events?workspaceId='+workspace.id,{headers}));expect(stream.headers.get('content-type')).toContain('text/event-stream');const text=await stage('initial-events',()=>stream.text());expect(text).toContain('中文流式回答');expect(text).toContain('"status":"completed"');
+  const resumed=await stage('resumed-connect',()=>fetch(server.url+'/api/v1/runs/'+runId+'/events?workspaceId='+workspace.id,{headers:{...headers,'last-event-id':'2'}}));expect(await stage('resumed-events',()=>resumed.text())).not.toContain('id: 1\n');expect((await stage('unscoped-request',()=>fetch(server.url+'/api/v1/runs/'+runId,{headers}))).status).toBe(400);
   let entered!:()=>void,aborted=false,completed=false;const started=new Promise<void>(resolve=>entered=resolve);
   server.capabilities.register(workspace.id,'model','long',provider(async function*(_r,signal){signal.addEventListener('abort',()=>aborted=true,{once:true});entered();yield{kind:'delta',text:'部分'};await delay(10000,undefined,{signal});completed=true;yield{kind:'done'};}));
-  const next=await fetch(server.url+'/api/v1/runs',{method:'POST',headers,body:JSON.stringify({...ask(main),providerId:'long'})});const nextId=(await next.json() as {runId:string}).runId;
-  const connection=new AbortController();const pending=await fetch(server.url+'/api/v1/runs/'+nextId+'/events?workspaceId='+workspace.id,{headers,signal:connection.signal});const drained=pending.text().catch(()=>{});
-  try{await started;closing=server.close();await closing;expect(aborted).toBe(true);expect(completed).toBe(false);await expect(fetch(server.url+'/health')).rejects.toThrow();}finally{connection.abort();await drained;}
- });
+  const next=await stage('long-submit',()=>fetch(server.url+'/api/v1/runs',{method:'POST',headers,body:JSON.stringify({...ask(main),providerId:'long'})}));const nextId=(await next.json() as {runId:string}).runId;
+  const connection=new AbortController();const pending=await stage('long-connect',()=>fetch(server.url+'/api/v1/runs/'+nextId+'/events?workspaceId='+workspace.id,{headers,signal:connection.signal}));const drained=pending.text().catch(()=>{});
+  try{await stage('long-provider-entered',()=>started);closing=stage('server-close',()=>server.close());await closing;expect(aborted).toBe(true);expect(completed).toBe(false);await expect(stage('closed-health',()=>fetch(server.url+'/health'))).rejects.toThrow();}finally{connection.abort();await stage('stream-drained',()=>drained);}
+ },serverIntegrationTimeout);
 });
