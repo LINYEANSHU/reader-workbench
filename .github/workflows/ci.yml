@@ -46,6 +46,9 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
       - run: npx playwright install --with-deps chromium chrome
+      - name: Native capture stability on Windows
+        if: runner.os == 'Windows'
+        run: npx playwright test tests/e2e/capture.spec.ts --grep "actual getDisplayMedia" --repeat-each=10 --output=test-results/native-capture-repeat
       - run: node scripts/prepare-speech.mjs --cache .reader-runtime/sensevoice-small-int8
       - run: npm test
       - name: Browser tests on Linux
