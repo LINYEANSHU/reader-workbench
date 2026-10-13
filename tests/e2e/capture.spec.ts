@@ -1,5 +1,6 @@
 import {test,expect,openWorkspace,model} from './fixtures.js';
 import {chromium,type Page} from '@playwright/test';
+import {observeNativeCapture,waitNativeCapture,saveNativeCaptureState} from './native-capture.js';
 import {writeFile,mkdir} from 'node:fs/promises';import {join} from 'node:path';import {createCanvas,loadImage} from '@napi-rs/canvas';
 test.use({deviceScaleFactor:2});
 const file=(page:Page)=>page.getByRole('region',{name:'文件',exact:true}),temp=(page:Page)=>page.getByRole('region',{name:'临时对话',exact:true});
@@ -18,7 +19,7 @@ async function nativeBluePoint(bytes:Uint8Array){
  return{x:left+(140-30)/96*(right-left+1),y:top+(60-30)/96*(bottom-top+1),width:canvas.width,height:canvas.height};
 }
 async function alignedScreenFrame(page:Page){
- await expect.poll(async()=>{const image=(await page.getByAltText('待框选的屏幕图像').boundingBox())!,overlay=(await page.getByRole('dialog',{name:'框选屏幕截图'}).boundingBox())!;return Math.max(...(['x','y','width','height'] as const).map(key=>Math.abs(image[key]-overlay[key])));}).toBeLessThan(1);
+ await expect.poll(async()=>{const image=await page.getByAltText('待框选的屏幕图像').boundingBox(),overlay=await page.getByRole('dialog',{name:'框选屏幕截图'}).boundingBox();if(!image||!overlay)return Infinity;return Math.max(...(['x','y','width','height'] as const).map(key=>Math.abs(image[key]-overlay[key])));}).toBeLessThan(1);
 }
 function nativeFixtureGeometry(node:HTMLImageElement){
  const box=node.getBoundingClientRect(),scroll=node.closest<HTMLElement>('.document-scroll')!;
@@ -77,7 +78,32 @@ test('reports uncapturable images without uploading an empty screenshot',async({
 
 
 test.describe('real native browser tab capture',()=>{
-test('uses actual getDisplayMedia pixels and releases native tracks',async({host,root,modelUrl})=>{const browser=await chromium.launch({channel:process.env.READER_CAPTURE_BROWSER??'chrome',headless:false,args:['--window-size=800,600','--auto-select-tab-capture-source-by-title=Reader Capture Native Fixture']}),context=await browser.newContext({viewport:null,deviceScaleFactor:undefined}),page=await context.newPage();try{const ws=await model(host,root,modelUrl);await openWorkspace(page,host,root);await page.getByRole('button',{name:'reader.md',exact:true}).click();await showNativeFixture(page);await page.evaluate(()=>document.title='Reader Capture Native Fixture');await page.evaluate(()=>{const native=navigator.mediaDevices.getDisplayMedia.bind(navigator.mediaDevices);Object.defineProperty(navigator.mediaDevices,'getDisplayMedia',{value:async(options:DisplayMediaStreamOptions)=>{const stream=await native(options);(window as any).nativeTracks=stream.getTracks();return stream;}});});await page.getByRole('button',{name:'选择屏幕截图',exact:true}).click();await expect(page.getByRole('dialog',{name:'框选屏幕截图'})).toBeVisible();await expect.poll(()=>page.evaluate(()=>(window as any).nativeTracks?.every((track:MediaStreamTrack)=>track.readyState==='ended'))).toBe(true);const rawFrame=await page.getByAltText('待框选的屏幕图像').evaluate((node:HTMLImageElement)=>{const canvas=document.createElement('canvas');canvas.width=node.naturalWidth;canvas.height=node.naturalHeight;canvas.getContext('2d')!.drawImage(node,0,0);return canvas.toDataURL('image/png').split(',')[1]!;});await writeFile('.superpowers/sdd/2026-10-11-reader-workbench/native-raw-frame.png',Buffer.from(rawFrame,'base64'));const point=await nativeBluePoint(Buffer.from(rawFrame,'base64'));await alignedScreenFrame(page);const box=(await page.getByAltText('待框选的屏幕图像').boundingBox())!;const x=point.x/point.width*box.width,y=point.y/point.height*box.height,halfWidth=Math.min(80,x/2,(box.width-x)/2),halfHeight=Math.min(45,y/2,(box.height-y)/2);expect(halfWidth,JSON.stringify({point,box})).toBeGreaterThan(2);expect(halfHeight,JSON.stringify({point,box})).toBeGreaterThan(2);await drag(page,box.x+x,box.y+y,halfWidth,halfHeight);await page.getByRole('button',{name:'放入临时输入框',exact:true}).click();await expect(page.getByRole('dialog',{name:'截图预览'})).toHaveCount(0);const session=(await host.sessions.list(ws.id)).find(s=>s.kind==='temporary')!,attachment=(await(await host.workspaces.storeFor(ws.id)).attachments.list(session.id))[0]!;expect(attachment.captureKind).toBe('screen');const actual=(await pixel(await host.attachments.read({workspaceId:ws.id,sessionId:session.id,actor:{callerId:'local-owner',transport:'internal'}},attachment.id))).color;/* Native video uses RGB/YUV conversion with integer rounding. */const tolerance=8;[18,63,98,255].forEach((expected,index)=>expect(Math.abs(actual[index]!-expected)).toBeLessThanOrEqual(tolerance));await page.screenshot({path:'.superpowers/sdd/2026-10-11-reader-workbench/capture-native-tab.png'});}finally{await browser.close();}});
+test('uses actual getDisplayMedia pixels and releases native tracks',async({host,root,modelUrl},testInfo)=>{
+ // Native grant and capture have separate budgets. Frame capture includes two
+ // 15s fresh-frame waits and a 15s size wait; a 15s UI assertion cut them short.
+ test.setTimeout(process.platform==='win32'?150000:90000);
+ const browser=await chromium.launch({channel:process.env.READER_CAPTURE_BROWSER??'chrome',headless:false,args:['--window-size=800,600','--auto-select-tab-capture-source-by-title=Reader Capture Native Fixture']}),context=await browser.newContext({viewport:null,deviceScaleFactor:undefined}),page=await context.newPage();
+ try{
+  const ws=await model(host,root,modelUrl);await openWorkspace(page,host,root);await page.getByRole('button',{name:'reader.md',exact:true}).click();await showNativeFixture(page);await page.evaluate(()=>document.title='Reader Capture Native Fixture');await observeNativeCapture(page);
+  await page.getByRole('button',{name:'选择屏幕截图',exact:true}).click();
+  await waitNativeCapture(page,'grant',process.platform==='win32'?60000:15000);
+  await waitNativeCapture(page,'frame',50000);
+  await expect(page.getByRole('dialog',{name:'框选屏幕截图'})).toBeVisible();
+  await expect.poll(()=>page.evaluate(()=>(window as any).nativeTracks?.every((track:MediaStreamTrack)=>track.readyState==='ended'))).toBe(true);
+  const rawFrame=await page.getByAltText('待框选的屏幕图像').evaluate((node:HTMLImageElement)=>{const canvas=document.createElement('canvas');canvas.width=node.naturalWidth;canvas.height=node.naturalHeight;canvas.getContext('2d')!.drawImage(node,0,0);return canvas.toDataURL('image/png').split(',')[1]!;});
+  await writeFile('.superpowers/sdd/2026-10-11-reader-workbench/native-raw-frame.png',Buffer.from(rawFrame,'base64'));const point=await nativeBluePoint(Buffer.from(rawFrame,'base64'));await alignedScreenFrame(page);
+  const box=(await page.getByAltText('待框选的屏幕图像').boundingBox())!;const x=point.x/point.width*box.width,y=point.y/point.height*box.height,halfWidth=Math.min(80,x/2,(box.width-x)/2),halfHeight=Math.min(45,y/2,(box.height-y)/2);expect(halfWidth,JSON.stringify({point,box})).toBeGreaterThan(2);expect(halfHeight,JSON.stringify({point,box})).toBeGreaterThan(2);
+  await drag(page,box.x+x,box.y+y,halfWidth,halfHeight);await page.getByRole('button',{name:'放入临时输入框',exact:true}).click();await expect(page.getByRole('dialog',{name:'截图预览'})).toHaveCount(0);
+  const session=(await host.sessions.list(ws.id)).find(s=>s.kind==='temporary')!,attachment=(await(await host.workspaces.storeFor(ws.id)).attachments.list(session.id))[0]!;expect(attachment.captureKind).toBe('screen');const actual=(await pixel(await host.attachments.read({workspaceId:ws.id,sessionId:session.id,actor:{callerId:'local-owner',transport:'internal'}},attachment.id))).color;
+  /* Native video uses RGB/YUV conversion with integer rounding. */const tolerance=8;[18,63,98,255].forEach((expected,index)=>expect(Math.abs(actual[index]!-expected)).toBeLessThanOrEqual(tolerance));await page.screenshot({path:'.superpowers/sdd/2026-10-11-reader-workbench/capture-native-tab.png'});
+  console.info('[native-capture]',JSON.stringify(await page.evaluate(()=>(window as any).nativeCaptureEvents)));
+ }catch(error){
+  // Save this context's active Playwright trace before closing its native window.
+  const diagnostics=await Promise.allSettled([saveNativeCaptureState(page,testInfo),page.screenshot({path:testInfo.outputPath('native-capture-window.png')}),context.tracing.stop({path:testInfo.outputPath('native-capture-trace.zip')})]);
+  for(const result of diagnostics)if(result.status==='rejected')console.warn('Native capture diagnostic failed:',result.reason);
+  throw error;
+ }finally{await browser.close();}
+});
 });
 test.describe('real browser capture refusal',()=>{
 test('handles native permission refusal without keeping capture mode or uploading',async({host,root,modelUrl})=>{const browser=await chromium.launch({channel:process.env.READER_CAPTURE_BROWSER??'chrome',args:['--auto-reject-capture']}),page=await browser.newPage({viewport:{width:1600,height:1000}});try{const ws=await model(host,root,modelUrl);await openWorkspace(page,host,root);await page.getByRole('button',{name:'选择屏幕截图',exact:true}).click();await expect(page.getByRole('alert')).toContainText('屏幕捕获未完成');await expect(page.getByRole('dialog',{name:'等待屏幕授权'})).toHaveCount(0);const session=(await host.sessions.list(ws.id)).find(s=>s.kind==='temporary')!;expect(await(await host.workspaces.storeFor(ws.id)).attachments.list(session.id)).toHaveLength(0);}finally{await browser.close();}});
