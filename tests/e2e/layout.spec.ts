@@ -1,12 +1,27 @@
 import {test,expect,openWorkspace,model} from './fixtures.js';import type {Locator} from '@playwright/test';import {mkdir,writeFile} from 'node:fs/promises';import {join} from 'node:path';import {PDFDocument} from 'pdf-lib';
-async function glyph(locator:Locator){return locator.evaluate(node=>{const walker=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);let text:Node|null;while(text=walker.nextNode()){const start=text.textContent?.indexOf('RI')??-1;if(start>=0){const range=document.createRange();range.setStart(text,start);range.setEnd(text,start+2);const rect=range.getBoundingClientRect();return{height:rect.height,width:rect.width};}}throw new Error('RI glyph absent');});}
+// A locator can resolve the live answer just before history replaces its DOM.
+// Detached ranges report zero size, so obtain a rendered measurement first.
+async function glyph(locator:Locator){let measured={height:0,width:0};await expect.poll(async()=>{measured=await locator.evaluate(node=>{const walker=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);let text:Node|null;while(text=walker.nextNode()){const start=text.textContent?.indexOf('RI')??-1;if(start>=0){const range=document.createRange();range.setStart(text,start);range.setEnd(text,start+2);const rect=range.getBoundingClientRect();return{height:rect.height,width:rect.width};}}throw new Error('RI glyph absent');});return Math.min(measured.height,measured.width);},{message:'RI glyph must be rendered before measuring zoom'}).toBeGreaterThan(0);return measured;}
 async function zoom(region:Locator,value:string){await region.getByRole('button',{name:/栏设置/}).click();await region.page().getByRole('spinbutton',{name:'正文缩放'}).fill(value);await region.page().getByRole('spinbutton',{name:'正文缩放'}).press('Enter');await region.page().keyboard.press('Escape');}
 // Each font measurement can round by one CSS pixel. Scaling the original error
 // also scales that allowance; both measurements together allow 1 + ratio pixels.
 function scaledHeight(before:number,after:number,ratio:number){expect(Math.abs(after-before*ratio),JSON.stringify({before,after,ratio})).toBeLessThanOrEqual(1+ratio);}
+test('measures the replacement glyph when the original text node is detached',async({page})=>{
+ await page.setContent('<h1 id="glyph">RI</h1>');
+ await page.evaluate(()=>{
+  const original=document.createTreeWalker.bind(document);let replaced=false;
+  document.createTreeWalker=(root,whatToShow,filter)=>{
+   const walker=original(root,whatToShow,filter);
+   if(!replaced){replaced=true;(root as Element).replaceWith(root.cloneNode(true));}
+   return walker;
+  };
+ });
+ const measured=await glyph(page.locator('#glyph'));
+ expect(measured.height).toBeGreaterThan(0);expect(measured.width).toBeGreaterThan(0);
+});
 test('zooms each pane while preserving a user-selected vertical layout',async({page,host,root,modelUrl})=>{
  const workspace=await model(host,root,modelUrl);await openWorkspace(page,host,root);await page.getByRole('button',{name:'reader.md',exact:true}).click();const file=page.getByRole('region',{name:'文件',exact:true}),main=page.getByRole('region',{name:'主对话',exact:true}),temp=page.getByRole('region',{name:'临时对话',exact:true});await expect(file).toContainText('RI');
- for(const region of [main,temp]){await region.getByRole('textbox').fill('RI $$E=mc^2$$ `code`');await region.getByRole('button',{name:'发送',exact:true}).click();await expect(region.locator('.assistant-message')).toContainText('RI');await expect(region.locator('.working')).toHaveCount(0);}
+ for(const region of [main,temp]){await region.getByRole('textbox').fill('RI $$E=mc^2$$ `code`');await region.getByRole('button',{name:'发送',exact:true}).click();await expect(region.locator('.assistant-message')).toContainText('RI');await expect(region.locator('.working')).toHaveCount(0);await expect(region.locator('.turn:not(.live-turn) .assistant-message')).toContainText('RI');}
  const content=[file.locator('.markdown-body h1'),main.locator('.assistant-message'),temp.locator('.assistant-message')],before=await Promise.all(content.map(glyph)),dpr=await page.evaluate(()=>devicePixelRatio),header=await main.locator('.pane-header').boundingBox(),composer=await main.getByRole('textbox').boundingBox();
  const imageBefore=(await file.getByRole('img',{name:'示意图'}).boundingBox())!,formulaBefore=(await main.locator('.katex').first().boundingBox())!,codeBefore=(await temp.locator('.assistant-message code').boundingBox())!;
  await zoom(file,'75');await zoom(main,'125');await zoom(temp,'175');const after=await Promise.all(content.map(glyph));for(const [index,ratio] of [.75,1.25,1.75].entries())scaledHeight(before[index]!.height,after[index]!.height,ratio);expect(await page.evaluate(()=>devicePixelRatio)).toBe(dpr);expect((await main.locator('.pane-header').boundingBox())!.height).toBe(header!.height);expect((await main.getByRole('textbox').boundingBox())!.height).toBe(composer!.height);expect((await file.getByRole('img',{name:'示意图'}).boundingBox())!.width/imageBefore.width).toBeCloseTo(.75,1);scaledHeight(formulaBefore.height,(await main.locator('.katex').first().boundingBox())!.height,1.25);scaledHeight(codeBefore.height,(await temp.locator('.assistant-message code').boundingBox())!.height,1.75);
