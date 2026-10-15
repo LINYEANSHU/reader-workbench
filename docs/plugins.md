@@ -12,6 +12,8 @@
 
 ## 文档记忆扩展（SDK 协议 1.1.0）
 
+当前 SDK 协议为 1.2.0，保持本节 1.1.0 文档记忆扩展的兼容。新增 `ModelProvider.contextWindowSource`、可选的 `resolveCapabilities(signal)`，以及 `MemoryProvider.summarize` 的可选第四参数 `SummaryContext`（系统消息、工具定义、既有摘要）；原有三参数摘要插件仍可使用。
+
 `context.register('documentMemory', 'your-plugin.reader', provider)` 注册 `DocumentMemoryProvider`。实现 `promptVersion`、`supports(record)`、`prepareLocal(host, signal)`、`prepare(host, signal)`、`select(record, question, budgetBytes)`。`DocumentImageHost` 提供受控页码图像和本地文字；`DocumentMemoryHost` 额外提供已租约固定的模型能力、图像限制、加载/原子保存记忆、无工具的模型调用和进度。
 
 应用宿主负责工作区与来源版本授权、严格记忆结构/页码覆盖校验、缓存原子保存、共享任务、租约及取消；插件负责阅读提示、顺序分批、概览和相关页选择。完整原文与页记忆保留；上下文装不下全部记忆时发送概览、完整页码索引和相关页，模型可用 `read_document_memory` 读取其他页，用 `revisit_document_page` 核实指定一页图像。

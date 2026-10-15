@@ -1,0 +1,64 @@
+{
+  "date": "2026-10-14",
+  "baseCommit": "e9805e6c25ca1545a3be6c7171bc78877bf4b2ff",
+  "appearances": [
+    "light",
+    "graphite",
+    "ink"
+  ],
+  "typecheck": "passed",
+  "build": {
+    "status": "passed",
+    "jsBytesKB": 1240.64,
+    "jsGzipKB": 381.31,
+    "cssBytesKB": 240.41,
+    "cssGzipKB": 53.22,
+    "existingLargeChunkWarning": true
+  },
+  "core": {
+    "fullRun": {
+      "passed": 122,
+      "failedDueToLibreOfficeMissing": 3,
+      "skippedNativeSpeech": 2
+    },
+    "officeRetry": {
+      "passed": 3
+    },
+    "distinctPassed": 125
+  },
+  "browser": {
+    "distinctPassed": 36,
+    "finalAffectedRun": {
+      "passed": 16,
+      "durationSeconds": 51.4
+    },
+    "regressions": {
+      "lowerRowMenu": "red then green; includes resize to 320x400",
+      "appearanceCropPixels": "red then green; all 3 themes"
+    }
+  },
+  "visual": {
+    "rounds": 2,
+    "screensPerRound": 16,
+    "contrastSamples": 126,
+    "below4_5": 0,
+    "minimumRatio": 4.98,
+    "globalHorizontalOverflow": 0,
+    "toolbarHorizontalOverflow": 0,
+    "pageErrors": 0,
+    "externalHTTPRequests": 0,
+    "touchRatio": [
+      "40",
+      "44"
+    ],
+    "keyboardRatio": "46"
+  },
+  "scopeChecks": {
+    "App": true,
+    "Workbench": true
+  },
+  "review": "two important findings fixed; targeted read-only recheck found none remaining",
+  "diffCheck": "passed",
+  "nativeOSCaptureAndSpeechTested": false,
+  "realRemoteModelTested": false
+}

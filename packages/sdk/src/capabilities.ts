@@ -1,5 +1,5 @@
 import type {Actor,RunScope} from '../../contracts/src/ids.js';
-import type {ModelRequest,ModelEvent,ModelCapabilities} from '../../contracts/src/models.js';
+import type {ModelRequest,ModelEvent,ModelCapabilities,ModelMessage,ModelTool} from '../../contracts/src/models.js';
 import type {DocumentRecord,VersionedFile,ParsedDocument,ViewerDescriptor,SelectionContext,CaptureRequest,CaptureResult} from '../../contracts/src/documents.js';
 import type {ToolDefinition,ActionScope,ActionResult,SelectionActionResult,ProcessToolSpec} from '../../contracts/src/tools.js';
 import type {ArtifactInput,ExportedBytes} from '../../contracts/src/artifacts.js';
@@ -9,12 +9,13 @@ import type {DirectoryEntry} from '../../contracts/src/workspaces.js';
 import type {LifecycleEvent} from '../../contracts/src/runs.js';
 import type {UiContribution,LayoutPreset,LayoutNode,HotkeyBinding,HotkeyRegistration} from '../../contracts/src/layout.js';
 import type {SpeechProgress,SpeechAudio,SpeechResult} from '../../contracts/src/speech.js';
-export interface ModelProvider {identity?:string;imageLimits?:import('../../contracts/src/models.js').ModelImageLimits;capabilities:ModelCapabilities;ocrToolId?:string;generate(request:ModelRequest,signal:AbortSignal):AsyncIterable<ModelEvent>}
+export interface ModelProvider {identity?:string;imageLimits?:import('../../contracts/src/models.js').ModelImageLimits;capabilities:ModelCapabilities;contextWindowSource?:'service'|'manual';resolveCapabilities?(signal:AbortSignal):Promise<void>;ocrToolId?:string;generate(request:ModelRequest,signal:AbortSignal):AsyncIterable<ModelEvent>}
 export interface DocumentAdapter {supports(mime:string,extension:string):boolean;parse(input:VersionedFile,signal:AbortSignal):Promise<ParsedDocument>}
 export interface ViewerProvider {describe(document:DocumentRecord):ViewerDescriptor}
 export interface ToolProvider {tools:ToolDefinition[]}
 export interface ArtifactExporter {formats?:ArtifactInput['format'][];export(input:ArtifactInput,scope:RunScope,signal:AbortSignal):Promise<ExportedBytes>}
-export interface MemoryProvider {summarize(turns:ReadonlyArray<CommittedTurn>,budget:number,signal:AbortSignal):Promise<MemorySummary>}
+export interface SummaryContext {system?:ModelMessage;tools?:ModelTool[];previous?:MemorySummary}
+export interface MemoryProvider {summarize(turns:ReadonlyArray<CommittedTurn>,budget:number,signal:AbortSignal,context?:SummaryContext):Promise<MemorySummary>}
 export interface ContextTransform {transform(input:Readonly<ContextEnvelope>,signal:AbortSignal):Promise<ContextEnvelope>}
 export interface StorageOpenContext {workspaceId:WorkspaceStore['workspaceId'];base:Readonly<WorkspaceStore>}
 export interface StorageProvider {open(root:string,context:StorageOpenContext):Promise<WorkspaceStore>}

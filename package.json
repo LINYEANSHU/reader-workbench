@@ -1,6 +1,6 @@
 {
   "name": "reader-workbench",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "A workspace-first document reading agent",
   "type": "module",
   "private": false,
@@ -37,6 +37,8 @@
     "docs/verification.md",
     "docs/THIRD_PARTY.md",
     "docs/evidence/2026-10-12/visual-document-memory/document-memory-ready.png",
+    "docs/ui-polish/2026-10-14/evidence/final-ink-pdf.png",
+    "docs/evidence/2026-10-15/edithere/workspace-statistics-1600.png",
     "Start-Reader.ps1",
     "scripts/http-client.mjs",
     "scripts/mcp-client.mjs",

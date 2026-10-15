@@ -47,7 +47,10 @@ describe('temporary memory isolation',()=>{
   await commit(repository,main,'B-question','B-answer');
   const next=await context.build(ask(temporary,'T2-question'),new AbortController().signal);expect(next.mainRevision).toBe(2);
   const text=next.messages.map(message=>message.content).join('\n');
-  for(const expected of ['A-question','A-answer','B-question','B-answer','T1-question','T1-answer'])expect(text.split(expected)).toHaveLength(2);
+  for(const expected of ['B-question','B-answer','临时摘要覆盖 A 和 T1'])expect(text.split(expected)).toHaveLength(2);
+  expect(next.summaryCoverage).toEqual([firstTurn.turn.id,temporaryTurn.turn.id]);
+  expect((await repository.getCommittedTurns(main.workspaceId,main.id)).find(turn=>turn.id===firstTurn.turn.id)?.answer).toBe('A-answer');
+  expect((await repository.getCommittedTurns(main.workspaceId,temporary.id)).find(turn=>turn.id===temporaryTurn.turn.id)?.answer).toBe('T1-answer');
   expect(first.mainRevision).toBe(1);expect(first.messages.map(message=>message.content).join('\n')).not.toContain('B-answer');
   expect(Object.isFrozen(first.messages)).toBe(true);
   const partialScope:RunScope={actor,workspaceId:main.workspaceId,sessionId:main.id,runId:randomUUID() as RunId,allowArtifactWrites:true};

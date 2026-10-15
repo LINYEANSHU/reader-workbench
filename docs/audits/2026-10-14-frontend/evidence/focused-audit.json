@@ -1,0 +1,884 @@
+{
+  "checks": {
+    "chatAnnouncements": {
+      "liveRegions": 0,
+      "answerRole": null
+    },
+    "zoom200": [
+      {
+        "className": "workbench-toolbar",
+        "clientWidth": 1374,
+        "scrollWidth": 1374,
+        "clientHeight": 42,
+        "scrollHeight": 42,
+        "x": 226,
+        "y": 0,
+        "width": 1374,
+        "height": 43
+      },
+      {
+        "className": "split-pane",
+        "clientWidth": 547,
+        "scrollWidth": 547,
+        "clientHeight": 934,
+        "scrollHeight": 934,
+        "x": 226,
+        "y": 43,
+        "width": 547.1875,
+        "height": 934
+      },
+      {
+        "className": "pane-header",
+        "clientWidth": 547,
+        "scrollWidth": 547,
+        "clientHeight": 41,
+        "scrollHeight": 41,
+        "x": 226,
+        "y": 43,
+        "width": 547.1875,
+        "height": 42
+      },
+      {
+        "className": "pane-scroll document-scroll",
+        "clientWidth": 547,
+        "scrollWidth": 1094,
+        "clientHeight": 830,
+        "scrollHeight": 4382,
+        "x": 226,
+        "y": 147,
+        "width": 547.1875,
+        "height": 830
+      },
+      {
+        "className": "split-pane",
+        "clientWidth": 407,
+        "scrollWidth": 407,
+        "clientHeight": 934,
+        "scrollHeight": 934,
+        "x": 779.1875,
+        "y": 43,
+        "width": 407.40625,
+        "height": 934
+      },
+      {
+        "className": "pane-header",
+        "clientWidth": 407,
+        "scrollWidth": 407,
+        "clientHeight": 41,
+        "scrollHeight": 41,
+        "x": 779.1875,
+        "y": 43,
+        "width": 407.40625,
+        "height": 42
+      },
+      {
+        "className": "pane-scroll chat-scroll",
+        "clientWidth": 407,
+        "scrollWidth": 776,
+        "clientHeight": 709,
+        "scrollHeight": 709,
+        "x": 779.1875,
+        "y": 85,
+        "width": 407.40625,
+        "height": 709.40625
+      },
+      {
+        "className": "composer-wrap",
+        "clientWidth": 407,
+        "scrollWidth": 407,
+        "clientHeight": 182,
+        "scrollHeight": 182,
+        "x": 779.1875,
+        "y": 794.40625,
+        "width": 407.40625,
+        "height": 182.59375
+      },
+      {
+        "className": "split-pane",
+        "clientWidth": 407,
+        "scrollWidth": 407,
+        "clientHeight": 934,
+        "scrollHeight": 934,
+        "x": 1192.59375,
+        "y": 43,
+        "width": 407.40625,
+        "height": 934
+      },
+      {
+        "className": "pane-header",
+        "clientWidth": 407,
+        "scrollWidth": 407,
+        "clientHeight": 41,
+        "scrollHeight": 41,
+        "x": 1192.59375,
+        "y": 43,
+        "width": 407.40625,
+        "height": 42
+      },
+      {
+        "className": "pane-scroll chat-scroll",
+        "clientWidth": 407,
+        "scrollWidth": 407,
+        "clientHeight": 684,
+        "scrollHeight": 684,
+        "x": 1192.59375,
+        "y": 85,
+        "width": 407.40625,
+        "height": 684.40625
+      },
+      {
+        "className": "composer-wrap",
+        "clientWidth": 407,
+        "scrollWidth": 407,
+        "clientHeight": 207,
+        "scrollHeight": 207,
+        "x": 1192.59375,
+        "y": 769.40625,
+        "width": 407.40625,
+        "height": 207.59375
+      }
+    ],
+    "selectionKeyboardMenu": 1,
+    "selectionFocus": {
+      "tag": "P",
+      "inMenu": false
+    },
+    "primaryStyles": [
+      {
+        "text": "保存设置",
+        "color": "rgb(255, 255, 255)",
+        "bg": "rgb(85, 127, 214)",
+        "font": "12px"
+      }
+    ],
+    "rowsClipping": [
+      {
+        "name": "document",
+        "paneBottom": 245,
+        "paneOverflow": "hidden"
+      },
+      {
+        "name": "main",
+        "paneBottom": 511,
+        "composerBottom": 511.59375,
+        "sendBottom": 472,
+        "sendTop": 444,
+        "paneOverflow": "hidden"
+      },
+      {
+        "name": "temporary",
+        "paneBottom": 777,
+        "composerBottom": 802.59375,
+        "sendBottom": 763,
+        "sendTop": 735,
+        "paneOverflow": "hidden"
+      }
+    ],
+    "shortPopup": {
+      "top": -74,
+      "bottom": 287,
+      "height": 361,
+      "viewportHeight": 256,
+      "overflow": "visible"
+    },
+    "text200": {
+      "clientWidth": 638,
+      "scrollWidth": 638,
+      "clientHeight": 538,
+      "scrollHeight": 1336
+    },
+    "csp": [
+      {
+        "directive": "font-src",
+        "blocked": "data"
+      }
+    ]
+  },
+  "screens": [
+    {
+      "name": "content-zoom-200-desktop",
+      "measurements": [
+        {
+          "className": "workbench-toolbar",
+          "clientWidth": 1374,
+          "scrollWidth": 1374,
+          "clientHeight": 42,
+          "scrollHeight": 42,
+          "x": 226,
+          "y": 0,
+          "width": 1374,
+          "height": 43
+        },
+        {
+          "className": "split-pane",
+          "clientWidth": 547,
+          "scrollWidth": 547,
+          "clientHeight": 934,
+          "scrollHeight": 934,
+          "x": 226,
+          "y": 43,
+          "width": 547.1875,
+          "height": 934
+        },
+        {
+          "className": "pane-header",
+          "clientWidth": 547,
+          "scrollWidth": 547,
+          "clientHeight": 41,
+          "scrollHeight": 41,
+          "x": 226,
+          "y": 43,
+          "width": 547.1875,
+          "height": 42
+        },
+        {
+          "className": "pane-scroll document-scroll",
+          "clientWidth": 547,
+          "scrollWidth": 1094,
+          "clientHeight": 830,
+          "scrollHeight": 4382,
+          "x": 226,
+          "y": 147,
+          "width": 547.1875,
+          "height": 830
+        },
+        {
+          "className": "split-pane",
+          "clientWidth": 407,
+          "scrollWidth": 407,
+          "clientHeight": 934,
+          "scrollHeight": 934,
+          "x": 779.1875,
+          "y": 43,
+          "width": 407.40625,
+          "height": 934
+        },
+        {
+          "className": "pane-header",
+          "clientWidth": 407,
+          "scrollWidth": 407,
+          "clientHeight": 41,
+          "scrollHeight": 41,
+          "x": 779.1875,
+          "y": 43,
+          "width": 407.40625,
+          "height": 42
+        },
+        {
+          "className": "pane-scroll chat-scroll",
+          "clientWidth": 407,
+          "scrollWidth": 776,
+          "clientHeight": 709,
+          "scrollHeight": 709,
+          "x": 779.1875,
+          "y": 85,
+          "width": 407.40625,
+          "height": 709.40625
+        },
+        {
+          "className": "composer-wrap",
+          "clientWidth": 407,
+          "scrollWidth": 407,
+          "clientHeight": 182,
+          "scrollHeight": 182,
+          "x": 779.1875,
+          "y": 794.40625,
+          "width": 407.40625,
+          "height": 182.59375
+        },
+        {
+          "className": "split-pane",
+          "clientWidth": 407,
+          "scrollWidth": 407,
+          "clientHeight": 934,
+          "scrollHeight": 934,
+          "x": 1192.59375,
+          "y": 43,
+          "width": 407.40625,
+          "height": 934
+        },
+        {
+          "className": "pane-header",
+          "clientWidth": 407,
+          "scrollWidth": 407,
+          "clientHeight": 41,
+          "scrollHeight": 41,
+          "x": 1192.59375,
+          "y": 43,
+          "width": 407.40625,
+          "height": 42
+        },
+        {
+          "className": "pane-scroll chat-scroll",
+          "clientWidth": 407,
+          "scrollWidth": 407,
+          "clientHeight": 684,
+          "scrollHeight": 684,
+          "x": 1192.59375,
+          "y": 85,
+          "width": 407.40625,
+          "height": 684.40625
+        },
+        {
+          "className": "composer-wrap",
+          "clientWidth": 407,
+          "scrollWidth": 407,
+          "clientHeight": 207,
+          "scrollHeight": 207,
+          "x": 1192.59375,
+          "y": 769.40625,
+          "width": 407.40625,
+          "height": 207.59375
+        }
+      ]
+    },
+    {
+      "name": "selection-menu-desktop",
+      "measurements": [
+        {
+          "className": "workbench-toolbar",
+          "clientWidth": 1374,
+          "scrollWidth": 1374,
+          "clientHeight": 42,
+          "scrollHeight": 42,
+          "x": 226,
+          "y": 0,
+          "width": 1374,
+          "height": 43
+        },
+        {
+          "className": "split-pane",
+          "clientWidth": 547,
+          "scrollWidth": 547,
+          "clientHeight": 934,
+          "scrollHeight": 934,
+          "x": 226,
+          "y": 43,
+          "width": 547.1875,
+          "height": 934
+        },
+        {
+          "className": "pane-header",
+          "clientWidth": 547,
+          "scrollWidth": 547,
+          "clientHeight": 41,
+          "scrollHeight": 41,
+          "x": 226,
+          "y": 43,
+          "width": 547.1875,
+          "height": 42
+        },
+        {
+          "className": "pane-scroll document-scroll",
+          "clientWidth": 547,
+          "scrollWidth": 547,
+          "clientHeight": 830,
+          "scrollHeight": 2191,
+          "x": 226,
+          "y": 147,
+          "width": 547.1875,
+          "height": 830
+        },
+        {
+          "className": "split-pane",
+          "clientWidth": 407,
+          "scrollWidth": 407,
+          "clientHeight": 934,
+          "scrollHeight": 934,
+          "x": 779.1875,
+          "y": 43,
+          "width": 407.40625,
+          "height": 934
+        },
+        {
+          "className": "pane-header",
+          "clientWidth": 407,
+          "scrollWidth": 407,
+          "clientHeight": 41,
+          "scrollHeight": 41,
+          "x": 779.1875,
+          "y": 43,
+          "width": 407.40625,
+          "height": 42
+        },
+        {
+          "className": "pane-scroll chat-scroll",
+          "clientWidth": 407,
+          "scrollWidth": 407,
+          "clientHeight": 709,
+          "scrollHeight": 709,
+          "x": 779.1875,
+          "y": 85,
+          "width": 407.40625,
+          "height": 709.40625
+        },
+        {
+          "className": "composer-wrap",
+          "clientWidth": 407,
+          "scrollWidth": 407,
+          "clientHeight": 182,
+          "scrollHeight": 182,
+          "x": 779.1875,
+          "y": 794.40625,
+          "width": 407.40625,
+          "height": 182.59375
+        },
+        {
+          "className": "split-pane",
+          "clientWidth": 407,
+          "scrollWidth": 407,
+          "clientHeight": 934,
+          "scrollHeight": 934,
+          "x": 1192.59375,
+          "y": 43,
+          "width": 407.40625,
+          "height": 934
+        },
+        {
+          "className": "pane-header",
+          "clientWidth": 407,
+          "scrollWidth": 407,
+          "clientHeight": 41,
+          "scrollHeight": 41,
+          "x": 1192.59375,
+          "y": 43,
+          "width": 407.40625,
+          "height": 42
+        },
+        {
+          "className": "pane-scroll chat-scroll",
+          "clientWidth": 407,
+          "scrollWidth": 407,
+          "clientHeight": 684,
+          "scrollHeight": 684,
+          "x": 1192.59375,
+          "y": 85,
+          "width": 407.40625,
+          "height": 684.40625
+        },
+        {
+          "className": "composer-wrap",
+          "clientWidth": 407,
+          "scrollWidth": 407,
+          "clientHeight": 207,
+          "scrollHeight": 207,
+          "x": 1192.59375,
+          "y": 769.40625,
+          "width": 407.40625,
+          "height": 207.59375
+        }
+      ]
+    },
+    {
+      "name": "rows-320-scrolled-bottom",
+      "measurements": [
+        {
+          "className": "workbench-toolbar",
+          "clientWidth": 320,
+          "scrollWidth": 338,
+          "clientHeight": 42,
+          "scrollHeight": 42,
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 43
+        },
+        {
+          "className": "split-pane",
+          "clientWidth": 320,
+          "scrollWidth": 320,
+          "clientHeight": 263,
+          "scrollHeight": 263,
+          "x": 0,
+          "y": -18,
+          "width": 320,
+          "height": 263
+        },
+        {
+          "className": "pane-header",
+          "clientWidth": 320,
+          "scrollWidth": 320,
+          "clientHeight": 41,
+          "scrollHeight": 41,
+          "x": 0,
+          "y": -18,
+          "width": 320,
+          "height": 42
+        },
+        {
+          "className": "pane-scroll document-scroll",
+          "clientWidth": 320,
+          "scrollWidth": 320,
+          "clientHeight": 159,
+          "scrollHeight": 2514,
+          "x": 0,
+          "y": 86,
+          "width": 320,
+          "height": 159
+        },
+        {
+          "className": "split-pane",
+          "clientWidth": 320,
+          "scrollWidth": 320,
+          "clientHeight": 260,
+          "scrollHeight": 261,
+          "x": 0,
+          "y": 251,
+          "width": 320,
+          "height": 260
+        },
+        {
+          "className": "pane-header",
+          "clientWidth": 320,
+          "scrollWidth": 320,
+          "clientHeight": 41,
+          "scrollHeight": 41,
+          "x": 0,
+          "y": 251,
+          "width": 320,
+          "height": 42
+        },
+        {
+          "className": "pane-scroll chat-scroll",
+          "clientWidth": 320,
+          "scrollWidth": 320,
+          "clientHeight": 36,
+          "scrollHeight": 239,
+          "x": 0,
+          "y": 293,
+          "width": 320,
+          "height": 36
+        },
+        {
+          "className": "composer-wrap",
+          "clientWidth": 320,
+          "scrollWidth": 320,
+          "clientHeight": 182,
+          "scrollHeight": 182,
+          "x": 0,
+          "y": 329,
+          "width": 320,
+          "height": 182.59375
+        },
+        {
+          "className": "split-pane",
+          "clientWidth": 320,
+          "scrollWidth": 320,
+          "clientHeight": 260,
+          "scrollHeight": 286,
+          "x": 0,
+          "y": 517,
+          "width": 320,
+          "height": 260
+        },
+        {
+          "className": "pane-header",
+          "clientWidth": 320,
+          "scrollWidth": 320,
+          "clientHeight": 41,
+          "scrollHeight": 41,
+          "x": 0,
+          "y": 517,
+          "width": 320,
+          "height": 42
+        },
+        {
+          "className": "pane-scroll chat-scroll",
+          "clientWidth": 320,
+          "scrollWidth": 320,
+          "clientHeight": 36,
+          "scrollHeight": 306,
+          "x": 0,
+          "y": 559,
+          "width": 320,
+          "height": 36
+        },
+        {
+          "className": "composer-wrap",
+          "clientWidth": 320,
+          "scrollWidth": 320,
+          "clientHeight": 207,
+          "scrollHeight": 207,
+          "x": 0,
+          "y": 595,
+          "width": 320,
+          "height": 207.59375
+        }
+      ]
+    },
+    {
+      "name": "pane-popup-short-viewport",
+      "measurements": [
+        {
+          "className": "workbench-toolbar",
+          "clientWidth": 1024,
+          "scrollWidth": 1024,
+          "clientHeight": 42,
+          "scrollHeight": 42,
+          "x": 0,
+          "y": 0,
+          "width": 1024,
+          "height": 43
+        },
+        {
+          "className": "split-pane",
+          "clientWidth": 1024,
+          "scrollWidth": 1024,
+          "clientHeight": 263,
+          "scrollHeight": 263,
+          "x": 0,
+          "y": 43,
+          "width": 1024,
+          "height": 263
+        },
+        {
+          "className": "pane-header",
+          "clientWidth": 1024,
+          "scrollWidth": 1024,
+          "clientHeight": 41,
+          "scrollHeight": 41,
+          "x": 0,
+          "y": 43,
+          "width": 1024,
+          "height": 42
+        },
+        {
+          "className": "pane-scroll document-scroll",
+          "clientWidth": 1024,
+          "scrollWidth": 1024,
+          "clientHeight": 159,
+          "scrollHeight": 2262,
+          "x": 0,
+          "y": 147,
+          "width": 1024,
+          "height": 159
+        },
+        {
+          "className": "split-pane",
+          "clientWidth": 1024,
+          "scrollWidth": 1024,
+          "clientHeight": 260,
+          "scrollHeight": 261,
+          "x": 0,
+          "y": 312,
+          "width": 1024,
+          "height": 260
+        },
+        {
+          "className": "pane-header",
+          "clientWidth": 1024,
+          "scrollWidth": 1024,
+          "clientHeight": 41,
+          "scrollHeight": 41,
+          "x": 0,
+          "y": 312,
+          "width": 1024,
+          "height": 42
+        },
+        {
+          "className": "pane-scroll chat-scroll",
+          "clientWidth": 1024,
+          "scrollWidth": 1024,
+          "clientHeight": 36,
+          "scrollHeight": 193,
+          "x": 0,
+          "y": 354,
+          "width": 1024,
+          "height": 36
+        },
+        {
+          "className": "composer-wrap",
+          "clientWidth": 1024,
+          "scrollWidth": 1024,
+          "clientHeight": 182,
+          "scrollHeight": 182,
+          "x": 0,
+          "y": 390,
+          "width": 1024,
+          "height": 182.59375
+        },
+        {
+          "className": "split-pane",
+          "clientWidth": 1024,
+          "scrollWidth": 1024,
+          "clientHeight": 260,
+          "scrollHeight": 286,
+          "x": 0,
+          "y": 578,
+          "width": 1024,
+          "height": 260
+        },
+        {
+          "className": "pane-header",
+          "clientWidth": 1024,
+          "scrollWidth": 1024,
+          "clientHeight": 41,
+          "scrollHeight": 41,
+          "x": 0,
+          "y": 578,
+          "width": 1024,
+          "height": 42
+        },
+        {
+          "className": "pane-scroll chat-scroll",
+          "clientWidth": 1024,
+          "scrollWidth": 1024,
+          "clientHeight": 36,
+          "scrollHeight": 306,
+          "x": 0,
+          "y": 620,
+          "width": 1024,
+          "height": 36
+        },
+        {
+          "className": "composer-wrap",
+          "clientWidth": 1024,
+          "scrollWidth": 1024,
+          "clientHeight": 207,
+          "scrollHeight": 207,
+          "x": 0,
+          "y": 656,
+          "width": 1024,
+          "height": 207.59375
+        }
+      ]
+    },
+    {
+      "name": "settings-text-200-emulated",
+      "measurements": [
+        {
+          "className": "workbench-toolbar",
+          "clientWidth": 800,
+          "scrollWidth": 800,
+          "clientHeight": 42,
+          "scrollHeight": 42,
+          "x": 0,
+          "y": 0,
+          "width": 800,
+          "height": 43
+        },
+        {
+          "className": "split-pane",
+          "clientWidth": 800,
+          "scrollWidth": 800,
+          "clientHeight": 263,
+          "scrollHeight": 263,
+          "x": 0,
+          "y": 43,
+          "width": 800,
+          "height": 263
+        },
+        {
+          "className": "pane-header",
+          "clientWidth": 800,
+          "scrollWidth": 800,
+          "clientHeight": 41,
+          "scrollHeight": 41,
+          "x": 0,
+          "y": 43,
+          "width": 800,
+          "height": 42
+        },
+        {
+          "className": "pane-scroll document-scroll",
+          "clientWidth": 800,
+          "scrollWidth": 800,
+          "clientHeight": 159,
+          "scrollHeight": 2262,
+          "x": 0,
+          "y": 147,
+          "width": 800,
+          "height": 159
+        },
+        {
+          "className": "split-pane",
+          "clientWidth": 800,
+          "scrollWidth": 800,
+          "clientHeight": 260,
+          "scrollHeight": 261,
+          "x": 0,
+          "y": 312,
+          "width": 800,
+          "height": 260
+        },
+        {
+          "className": "pane-header",
+          "clientWidth": 800,
+          "scrollWidth": 800,
+          "clientHeight": 41,
+          "scrollHeight": 41,
+          "x": 0,
+          "y": 312,
+          "width": 800,
+          "height": 42
+        },
+        {
+          "className": "pane-scroll chat-scroll",
+          "clientWidth": 800,
+          "scrollWidth": 800,
+          "clientHeight": 36,
+          "scrollHeight": 193,
+          "x": 0,
+          "y": 354,
+          "width": 800,
+          "height": 36
+        },
+        {
+          "className": "composer-wrap",
+          "clientWidth": 800,
+          "scrollWidth": 800,
+          "clientHeight": 182,
+          "scrollHeight": 182,
+          "x": 0,
+          "y": 390,
+          "width": 800,
+          "height": 182.59375
+        },
+        {
+          "className": "split-pane",
+          "clientWidth": 800,
+          "scrollWidth": 800,
+          "clientHeight": 260,
+          "scrollHeight": 286,
+          "x": 0,
+          "y": 578,
+          "width": 800,
+          "height": 260
+        },
+        {
+          "className": "pane-header",
+          "clientWidth": 800,
+          "scrollWidth": 800,
+          "clientHeight": 41,
+          "scrollHeight": 41,
+          "x": 0,
+          "y": 578,
+          "width": 800,
+          "height": 42
+        },
+        {
+          "className": "pane-scroll chat-scroll",
+          "clientWidth": 800,
+          "scrollWidth": 800,
+          "clientHeight": 36,
+          "scrollHeight": 306,
+          "x": 0,
+          "y": 620,
+          "width": 800,
+          "height": 36
+        },
+        {
+          "className": "composer-wrap",
+          "clientWidth": 800,
+          "scrollWidth": 800,
+          "clientHeight": 207,
+          "scrollHeight": 207,
+          "x": 0,
+          "y": 656,
+          "width": 800,
+          "height": 207.59375
+        }
+      ]
+    }
+  ]
+}

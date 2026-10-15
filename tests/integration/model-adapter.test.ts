@@ -8,6 +8,7 @@ async function directory(){const dir=await mkdtemp(join(tmpdir(),'reader model '
 async function endpoint(mode='text'){
  const requests:Array<{path:string;authorization?:string;body:Record<string,unknown>}>=[];let aborted=false;
  const server=createServer(async(req,res)=>{
+  if(req.method==='GET'){res.writeHead(200,{'content-type':'application/json'});res.end('{"data":[]}');return;}
   const body=await new Promise<string>(resolve=>{let text='';req.setEncoding('utf8');req.on('data',part=>text+=part);req.on('end',()=>resolve(text));});requests.push({path:req.url!,authorization:req.headers.authorization,body:body?JSON.parse(body):{}});
   if(mode==='401'||mode==='429'||mode==='context'){res.writeHead(mode==='context'?400:Number(mode),{'content-type':'application/json'});res.end(JSON.stringify({error:{code:mode==='context'?'context_length_exceeded':'invalid_api_key',message:testKey}}));return;}
   res.writeHead(200,{'content-type':'text/event-stream'});res.on('close',()=>{aborted=true;});

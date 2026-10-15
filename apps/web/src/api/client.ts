@@ -2,7 +2,8 @@ import type {Workspace,DirectoryEntry,FileEntry} from '../../../../packages/cont
 import type {WorkspaceId,SessionId,RunId,ArtifactId} from '../../../../packages/contracts/src/ids.js';
 import type {DocumentRef,DocumentRecord,DocumentPage,Attachment,CaptureResult} from '../../../../packages/contracts/src/documents.js';
 import type {SessionRecord,HistoryPage,AskRequest} from '../../../../packages/contracts/src/sessions.js';
-import type {MaskedModelSettings,ModelSettings,ModelCapabilities} from '../../../../packages/contracts/src/models.js';
+import type {MaskedModelSettings,ModelSettings,ModelCapabilities,ModelUsageSummary,SessionUsageSummary,WorkspaceUsageSummary} from '../../../../packages/contracts/src/models.js';
+import type {AgentSettings} from '../../../../packages/contracts/src/agent-settings.js';
 import type {RunRecord,DocumentJobRecord} from '../../../../packages/contracts/src/runs.js';
 import type {ArtifactRecord} from '../../../../packages/contracts/src/artifacts.js';
 import type {UiState} from '../../../../packages/contracts/src/ui-state.js';
@@ -37,6 +38,11 @@ export class ApiClient{
  history(id:WorkspaceId,session:SessionId,cursor?:string){return this.request<HistoryPage>('/workspaces/'+id+'/sessions/'+session+'/history'+(cursor?'?cursor='+encodeURIComponent(cursor):''));}
  clear(id:WorkspaceId,session:SessionId){return this.request('/workspaces/'+id+'/sessions/'+session+'/clear',{method:'POST',body:{}});}
  models(id:WorkspaceId){return this.request<MaskedModelSettings[]>('/workspaces/'+id+'/settings/models');}
+ agentSettings(id:WorkspaceId,signal?:AbortSignal){return this.request<AgentSettings>('/workspaces/'+id+'/settings/agent',{signal});}
+ saveAgentSettings(id:WorkspaceId,settings:AgentSettings){return this.request<AgentSettings>('/workspaces/'+id+'/settings/agent',{method:'PUT',body:settings});}
+ sessionUsage(id:WorkspaceId,session:SessionId,provider:string,signal?:AbortSignal){return this.request<SessionUsageSummary>('/workspaces/'+id+'/sessions/'+session+'/usage?providerId='+encodeURIComponent(provider),{signal});}
+ modelUsage(id:WorkspaceId,model:string,signal?:AbortSignal){return this.request<ModelUsageSummary>('/workspaces/'+id+'/settings/models/'+encodeURIComponent(model)+'/usage',{signal});}
+ workspaceUsage(id:WorkspaceId,signal?:AbortSignal){return this.request<WorkspaceUsageSummary>('/workspaces/'+id+'/usage',{signal});}
  saveModel(id:WorkspaceId,settings:ModelSettings,key?:string){return this.request<MaskedModelSettings>('/workspaces/'+id+'/settings/models',{method:'PUT',body:{settings,...(key?{key}:{})}});}
  catalog(id:WorkspaceId,model:string){return this.request<Array<{id:string;capabilities?:ModelCapabilities}>>('/workspaces/'+id+'/settings/models/'+encodeURIComponent(model)+'/catalog');}
  output(id:WorkspaceId){return this.request<{directory:string}>('/workspaces/'+id+'/settings/output');}

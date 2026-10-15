@@ -1,0 +1,16 @@
+.agent-preferences fieldset { display: grid; gap: 16px; min-width: 0; margin: 0; padding: 0; border: 0; }
+.agent-preferences textarea { width: 100%; min-height: 80px; resize: vertical; line-height: 1.7; border: 1px solid var(--border); border-radius: 6px; padding: 10px; background: var(--surface); color: var(--text); font: inherit; }
+.context-discovery { display: flex !important; align-items: center; gap: 8px !important; }
+.context-discovery input { width: auto; }
+.agent-preferences details { min-width: 0; font-size: 13px; }
+.agent-preferences details > summary { cursor: pointer; padding: 8px 0; }
+.agent-preferences details textarea { margin-top: 8px; }
+.agent-preferences-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.session-statistics { flex: 0 0 auto; min-width: 0; padding: 0 16px 10px; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.session-statistics-toggle { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 12px; width: 100%; min-height: 28px; padding: 3px 0; background: transparent; border: 0; border-radius: 4px; color: inherit; font-size: inherit; text-align: left; }
+.session-statistics-toggle > span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.session-statistics-toggle:hover, .session-statistics-toggle[aria-expanded="true"] { color: var(--text); background: transparent; }
+.session-statistics-details { max-height: 210px; overflow: auto; border-top: 1px solid var(--border); padding-top: 6px; line-height: 1.7; overflow-wrap: anywhere; }
+.session-statistics-details p { margin: 5px 0; }
+.session-statistics-error { color: var(--warning); margin: 4px 0; }
+@media (max-width: 480px) { .session-statistics { padding-inline: 12px; } }

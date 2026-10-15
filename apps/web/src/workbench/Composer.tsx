@@ -7,6 +7,7 @@ import {AttachmentPreview} from '../capture/CapturePreview.js';
 import {VoiceInput} from '../voice/VoiceInput.js';
 import type {WorkspaceId,SessionId} from '../../../../packages/contracts/src/ids.js';
 import {getSliderEffortLevels,resolveReasoningEffort} from './reasoningEffort.js';
+import {ReasoningEffortPicker} from './ReasoningEffortPicker.js';
 
 const effortNames:Record<string,string>={none:'关闭',low:'轻度',medium:'中等',high:'深入',max:'最高'};
 
@@ -37,13 +38,7 @@ export function Composer({workspaceId,sessionId,voiceEnabled,selection,onRemoveS
    {kind==='temporary'&&<label className="artifact-permission"><input type="checkbox" aria-label="本次允许生成文件" checked={allowArtifactWrites} disabled={busy||submitting||pending} onChange={event=>onArtifactWrites(event.target.checked)}/>本次允许生成文件</label>}
    <div className="composer-actions">
     <label className="model-select"><select aria-label="模型" value={provider} onChange={event=>onProvider(event.target.value)}><option value="" disabled>选择模型</option>{models.map(model=><option key={model.id} value={model.id}>{model.model}</option>)}</select><ChevronDown size={12}/></label>
-    {sliderEfforts.length>1&&<label className="effort-select">
-     <Brain size={13} aria-hidden="true"/>
-     <span className="effort-slider">
-      <input type="range" aria-label="思考强度" aria-valuetext={selectedEffort} min={0} max={sliderEfforts.length-1} step={1} value={Math.max(0,sliderEfforts.indexOf(selectedEffort))} onChange={event=>{const level=sliderEfforts[Number(event.target.value)];if(level)onEffort(level);}}/>
-      <span className="effort-slider-labels" aria-hidden="true">{sliderEfforts.map(level=><span className={selectedEffort===level?'selected':''} key={level}>{level}</span>)}</span>
-     </span>
-    </label>}
+    {sliderEfforts.length>1&&<ReasoningEffortPicker key={provider} levels={sliderEfforts} value={selectedEffort} onChange={onEffort} kind={kind}/>}
     {sliderEfforts.length===1&&<div className="effort-select effort-single"><Brain size={13} aria-hidden="true"/><output aria-label="思考强度">{sliderEfforts[0]}</output></div>}
     {!sliderEfforts.length&&supportedEfforts.length>0&&<label className="effort-select effort-fallback"><Brain size={13} aria-hidden="true"/><select aria-label="思考强度" value={selectedEffort} onChange={event=>onEffort(event.target.value)}>{supportedEfforts.map(level=><option key={level} value={level}>{effortNames[level]??level}</option>)}</select></label>}
     <span className="composer-spacer"/>

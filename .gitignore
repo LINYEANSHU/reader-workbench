@@ -11,6 +11,7 @@ apps/web/public/pdfjs/
 .reader-workbench/
 .reader-runtime/
 .superpowers/
+/.edithere/
 **/user-config/
 **/credentials.json
 **/connection.json

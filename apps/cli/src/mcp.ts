@@ -7,7 +7,7 @@ import {loadRuntimeConfig} from '../../../packages/core/src/runtime/config.js';
 import {ReaderError} from '../../../packages/contracts/src/errors.js';
 export async function runStdioBridge(url:string,token:string,signal:AbortSignal){
  const address=new URL(url);if(!['127.0.0.1','localhost','[::1]'].includes(address.hostname)||address.protocol!=='http:'||address.username||address.password)throw new ReaderError('MCP_ADDRESS_INVALID','stdio 桥只连接本机 Reader 服务');
- const remote=new Client({name:'reader-workbench-stdio-bridge',version:'0.2.0'}),local=new Server({name:'reader-workbench',version:'0.2.0'},{capabilities:{tools:{},resources:{}}});
+ const remote=new Client({name:'reader-workbench-stdio-bridge',version:'0.3.0'}),local=new Server({name:'reader-workbench',version:'0.3.0'},{capabilities:{tools:{},resources:{}}});
  const close=async()=>{await Promise.allSettled([local.close(),remote.close()]);};
  try{
   await remote.connect(new StreamableHTTPClientTransport(new URL('/mcp',address),{requestInit:{headers:{authorization:'Bearer '+token}}}));

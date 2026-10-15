@@ -1,0 +1,2783 @@
+{
+  "screens": [
+    {
+      "name": "light-desktop",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "theme": "light",
+      "toolbar": {
+        "x": 232,
+        "y": 0,
+        "width": 1368,
+        "height": 52,
+        "client": 1368,
+        "scroll": 1368,
+        "bottom": 52
+      },
+      "sidebar": {
+        "x": 0,
+        "y": 0,
+        "width": 232,
+        "height": 1000,
+        "client": 231,
+        "scroll": 231,
+        "bottom": 1000
+      },
+      "panes": [
+        {
+          "id": "document",
+          "x": 232,
+          "y": 52,
+          "width": 544.796875,
+          "height": 920,
+          "client": 545,
+          "scroll": 545,
+          "bottom": 972,
+          "header": {
+            "x": 232,
+            "y": 52,
+            "width": 544.796875,
+            "height": 48,
+            "client": 545,
+            "scroll": 545,
+            "bottom": 100
+          },
+          "composer": null
+        },
+        {
+          "id": "main",
+          "x": 782.796875,
+          "y": 52,
+          "width": 405.59375,
+          "height": 920,
+          "client": 406,
+          "scroll": 406,
+          "bottom": 972,
+          "header": {
+            "x": 782.796875,
+            "y": 52,
+            "width": 405.59375,
+            "height": 48,
+            "client": 406,
+            "scroll": 406,
+            "bottom": 100
+          },
+          "composer": {
+            "x": 782.796875,
+            "y": 774.3125,
+            "width": 405.59375,
+            "height": 197.6875,
+            "client": 406,
+            "scroll": 406,
+            "bottom": 972
+          }
+        },
+        {
+          "id": "temporary",
+          "x": 1194.390625,
+          "y": 52,
+          "width": 405.609375,
+          "height": 920,
+          "client": 406,
+          "scroll": 406,
+          "bottom": 972,
+          "header": {
+            "x": 1194.390625,
+            "y": 52,
+            "width": 405.609375,
+            "height": 48,
+            "client": 406,
+            "scroll": 406,
+            "bottom": 100
+          },
+          "composer": {
+            "x": 1194.390625,
+            "y": 748.3125,
+            "width": 405.609375,
+            "height": 223.6875,
+            "client": 406,
+            "scroll": 406,
+            "bottom": 972
+          }
+        }
+      ],
+      "dialogs": [],
+      "globalOverflow": false
+    },
+    {
+      "name": "light-settings",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "theme": "light",
+      "toolbar": {
+        "x": 232,
+        "y": 0,
+        "width": 1368,
+        "height": 52,
+        "client": 1368,
+        "scroll": 1368,
+        "bottom": 52
+      },
+      "sidebar": {
+        "x": 0,
+        "y": 0,
+        "width": 232,
+        "height": 1000,
+        "client": 231,
+        "scroll": 231,
+        "bottom": 1000
+      },
+      "panes": [
+        {
+          "id": "document",
+          "x": 232,
+          "y": 52,
+          "width": 544.796875,
+          "height": 920,
+          "client": 545,
+          "scroll": 545,
+          "bottom": 972,
+          "header": {
+            "x": 232,
+            "y": 52,
+            "width": 544.796875,
+            "height": 48,
+            "client": 545,
+            "scroll": 545,
+            "bottom": 100
+          },
+          "composer": null
+        },
+        {
+          "id": "main",
+          "x": 782.796875,
+          "y": 52,
+          "width": 405.59375,
+          "height": 920,
+          "client": 406,
+          "scroll": 406,
+          "bottom": 972,
+          "header": {
+            "x": 782.796875,
+            "y": 52,
+            "width": 405.59375,
+            "height": 48,
+            "client": 406,
+            "scroll": 406,
+            "bottom": 100
+          },
+          "composer": {
+            "x": 782.796875,
+            "y": 774.3125,
+            "width": 405.59375,
+            "height": 197.6875,
+            "client": 406,
+            "scroll": 406,
+            "bottom": 972
+          }
+        },
+        {
+          "id": "temporary",
+          "x": 1194.390625,
+          "y": 52,
+          "width": 405.609375,
+          "height": 920,
+          "client": 406,
+          "scroll": 406,
+          "bottom": 972,
+          "header": {
+            "x": 1194.390625,
+            "y": 52,
+            "width": 405.609375,
+            "height": 48,
+            "client": 406,
+            "scroll": 406,
+            "bottom": 100
+          },
+          "composer": {
+            "x": 1194.390625,
+            "y": 748.3125,
+            "width": 405.609375,
+            "height": 223.6875,
+            "client": 406,
+            "scroll": 406,
+            "bottom": 972
+          }
+        }
+      ],
+      "dialogs": [
+        {
+          "name": "设置",
+          "x": 460,
+          "y": 50,
+          "width": 680,
+          "height": 898,
+          "client": 678,
+          "scroll": 678,
+          "bottom": 950,
+          "scrollHeight": 996
+        }
+      ],
+      "globalOverflow": false
+    },
+    {
+      "name": "graphite-desktop",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "theme": "graphite",
+      "toolbar": {
+        "x": 232,
+        "y": 0,
+        "width": 1368,
+        "height": 52,
+        "client": 1368,
+        "scroll": 1368,
+        "bottom": 52
+      },
+      "sidebar": {
+        "x": 0,
+        "y": 0,
+        "width": 232,
+        "height": 1000,
+        "client": 231,
+        "scroll": 231,
+        "bottom": 1000
+      },
+      "panes": [
+        {
+          "id": "document",
+          "x": 232,
+          "y": 52,
+          "width": 544.796875,
+          "height": 920,
+          "client": 545,
+          "scroll": 545,
+          "bottom": 972,
+          "header": {
+            "x": 232,
+            "y": 52,
+            "width": 544.796875,
+            "height": 48,
+            "client": 545,
+            "scroll": 545,
+            "bottom": 100
+          },
+          "composer": null
+        },
+        {
+          "id": "main",
+          "x": 782.796875,
+          "y": 52,
+          "width": 405.59375,
+          "height": 920,
+          "client": 406,
+          "scroll": 406,
+          "bottom": 972,
+          "header": {
+            "x": 782.796875,
+            "y": 52,
+            "width": 405.59375,
+            "height": 48,
+            "client": 406,
+            "scroll": 406,
+            "bottom": 100
+          },
+          "composer": {
+            "x": 782.796875,
+            "y": 774.3125,
+            "width": 405.59375,
+            "height": 197.6875,
+            "client": 406,
+            "scroll": 406,
+            "bottom": 972
+          }
+        },
+        {
+          "id": "temporary",
+          "x": 1194.390625,
+          "y": 52,
+          "width": 405.609375,
+          "height": 920,
+          "client": 406,
+          "scroll": 406,
+          "bottom": 972,
+          "header": {
+            "x": 1194.390625,
+            "y": 52,
+            "width": 405.609375,
+            "height": 48,
+            "client": 406,
+            "scroll": 406,
+            "bottom": 100
+          },
+          "composer": {
+            "x": 1194.390625,
+            "y": 748.3125,
+            "width": 405.609375,
+            "height": 223.6875,
+            "client": 406,
+            "scroll": 406,
+            "bottom": 972
+          }
+        }
+      ],
+      "dialogs": [],
+      "globalOverflow": false
+    },
+    {
+      "name": "graphite-settings",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "theme": "graphite",
+      "toolbar": {
+        "x": 232,
+        "y": 0,
+        "width": 1368,
+        "height": 52,
+        "client": 1368,
+        "scroll": 1368,
+        "bottom": 52
+      },
+      "sidebar": {
+        "x": 0,
+        "y": 0,
+        "width": 232,
+        "height": 1000,
+        "client": 231,
+        "scroll": 231,
+        "bottom": 1000
+      },
+      "panes": [
+        {
+          "id": "document",
+          "x": 232,
+          "y": 52,
+          "width": 544.796875,
+          "height": 920,
+          "client": 545,
+          "scroll": 545,
+          "bottom": 972,
+          "header": {
+            "x": 232,
+            "y": 52,
+            "width": 544.796875,
+            "height": 48,
+            "client": 545,
+            "scroll": 545,
+            "bottom": 100
+          },
+          "composer": null
+        },
+        {
+          "id": "main",
+          "x": 782.796875,
+          "y": 52,
+          "width": 405.59375,
+          "height": 920,
+          "client": 406,
+          "scroll": 406,
+          "bottom": 972,
+          "header": {
+            "x": 782.796875,
+            "y": 52,
+            "width": 405.59375,
+            "height": 48,
+            "client": 406,
+            "scroll": 406,
+            "bottom": 100
+          },
+          "composer": {
+            "x": 782.796875,
+            "y": 774.3125,
+            "width": 405.59375,
+            "height": 197.6875,
+            "client": 406,
+            "scroll": 406,
+            "bottom": 972
+          }
+        },
+        {
+          "id": "temporary",
+          "x": 1194.390625,
+          "y": 52,
+          "width": 405.609375,
+          "height": 920,
+          "client": 406,
+          "scroll": 406,
+          "bottom": 972,
+          "header": {
+            "x": 1194.390625,
+            "y": 52,
+            "width": 405.609375,
+            "height": 48,
+            "client": 406,
+            "scroll": 406,
+            "bottom": 100
+          },
+          "composer": {
+            "x": 1194.390625,
+            "y": 748.3125,
+            "width": 405.609375,
+            "height": 223.6875,
+            "client": 406,
+            "scroll": 406,
+            "bottom": 972
+          }
+        }
+      ],
+      "dialogs": [
+        {
+          "name": "设置",
+          "x": 460,
+          "y": 50,
+          "width": 680,
+          "height": 898,
+          "client": 678,
+          "scroll": 678,
+          "bottom": 950,
+          "scrollHeight": 996
+        }
+      ],
+      "globalOverflow": false
+    },
+    {
+      "name": "ink-desktop",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "theme": "ink",
+      "toolbar": {
+        "x": 232,
+        "y": 0,
+        "width": 1368,
+        "height": 52,
+        "client": 1368,
+        "scroll": 1368,
+        "bottom": 52
+      },
+      "sidebar": {
+        "x": 0,
+        "y": 0,
+        "width": 232,
+        "height": 1000,
+        "client": 231,
+        "scroll": 231,
+        "bottom": 1000
+      },
+      "panes": [
+        {
+          "id": "document",
+          "x": 232,
+          "y": 52,
+          "width": 544.796875,
+          "height": 920,
+          "client": 545,
+          "scroll": 545,
+          "bottom": 972,
+          "header": {
+            "x": 232,
+            "y": 52,
+            "width": 544.796875,
+            "height": 48,
+            "client": 545,
+            "scroll": 545,
+            "bottom": 100
+          },
+          "composer": null
+        },
+        {
+          "id": "main",
+          "x": 782.796875,
+          "y": 52,
+          "width": 405.59375,
+          "height": 920,
+          "client": 406,
+          "scroll": 406,
+          "bottom": 972,
+          "header": {
+            "x": 782.796875,
+            "y": 52,
+            "width": 405.59375,
+            "height": 48,
+            "client": 406,
+            "scroll": 406,
+            "bottom": 100
+          },
+          "composer": {
+            "x": 782.796875,
+            "y": 774.3125,
+            "width": 405.59375,
+            "height": 197.6875,
+            "client": 406,
+            "scroll": 406,
+            "bottom": 972
+          }
+        },
+        {
+          "id": "temporary",
+          "x": 1194.390625,
+          "y": 52,
+          "width": 405.609375,
+          "height": 920,
+          "client": 406,
+          "scroll": 406,
+          "bottom": 972,
+          "header": {
+            "x": 1194.390625,
+            "y": 52,
+            "width": 405.609375,
+            "height": 48,
+            "client": 406,
+            "scroll": 406,
+            "bottom": 100
+          },
+          "composer": {
+            "x": 1194.390625,
+            "y": 748.3125,
+            "width": 405.609375,
+            "height": 223.6875,
+            "client": 406,
+            "scroll": 406,
+            "bottom": 972
+          }
+        }
+      ],
+      "dialogs": [],
+      "globalOverflow": false
+    },
+    {
+      "name": "ink-settings",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "theme": "ink",
+      "toolbar": {
+        "x": 232,
+        "y": 0,
+        "width": 1368,
+        "height": 52,
+        "client": 1368,
+        "scroll": 1368,
+        "bottom": 52
+      },
+      "sidebar": {
+        "x": 0,
+        "y": 0,
+        "width": 232,
+        "height": 1000,
+        "client": 231,
+        "scroll": 231,
+        "bottom": 1000
+      },
+      "panes": [
+        {
+          "id": "document",
+          "x": 232,
+          "y": 52,
+          "width": 544.796875,
+          "height": 920,
+          "client": 545,
+          "scroll": 545,
+          "bottom": 972,
+          "header": {
+            "x": 232,
+            "y": 52,
+            "width": 544.796875,
+            "height": 48,
+            "client": 545,
+            "scroll": 545,
+            "bottom": 100
+          },
+          "composer": null
+        },
+        {
+          "id": "main",
+          "x": 782.796875,
+          "y": 52,
+          "width": 405.59375,
+          "height": 920,
+          "client": 406,
+          "scroll": 406,
+          "bottom": 972,
+          "header": {
+            "x": 782.796875,
+            "y": 52,
+            "width": 405.59375,
+            "height": 48,
+            "client": 406,
+            "scroll": 406,
+            "bottom": 100
+          },
+          "composer": {
+            "x": 782.796875,
+            "y": 774.3125,
+            "width": 405.59375,
+            "height": 197.6875,
+            "client": 406,
+            "scroll": 406,
+            "bottom": 972
+          }
+        },
+        {
+          "id": "temporary",
+          "x": 1194.390625,
+          "y": 52,
+          "width": 405.609375,
+          "height": 920,
+          "client": 406,
+          "scroll": 406,
+          "bottom": 972,
+          "header": {
+            "x": 1194.390625,
+            "y": 52,
+            "width": 405.609375,
+            "height": 48,
+            "client": 406,
+            "scroll": 406,
+            "bottom": 100
+          },
+          "composer": {
+            "x": 1194.390625,
+            "y": 748.3125,
+            "width": 405.609375,
+            "height": 223.6875,
+            "client": 406,
+            "scroll": 406,
+            "bottom": 972
+          }
+        }
+      ],
+      "dialogs": [
+        {
+          "name": "设置",
+          "x": 460,
+          "y": 50,
+          "width": 680,
+          "height": 898,
+          "client": 678,
+          "scroll": 678,
+          "bottom": 950,
+          "scrollHeight": 996
+        }
+      ],
+      "globalOverflow": false
+    },
+    {
+      "name": "ink-answer",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "theme": "ink",
+      "toolbar": {
+        "x": 232,
+        "y": 0,
+        "width": 1368,
+        "height": 52,
+        "client": 1368,
+        "scroll": 1368,
+        "bottom": 52
+      },
+      "sidebar": {
+        "x": 0,
+        "y": 0,
+        "width": 232,
+        "height": 1000,
+        "client": 231,
+        "scroll": 231,
+        "bottom": 1000
+      },
+      "panes": [
+        {
+          "id": "document",
+          "x": 232,
+          "y": 52,
+          "width": 544.796875,
+          "height": 920,
+          "client": 545,
+          "scroll": 545,
+          "bottom": 972,
+          "header": {
+            "x": 232,
+            "y": 52,
+            "width": 544.796875,
+            "height": 48,
+            "client": 545,
+            "scroll": 545,
+            "bottom": 100
+          },
+          "composer": null
+        },
+        {
+          "id": "main",
+          "x": 782.796875,
+          "y": 52,
+          "width": 405.59375,
+          "height": 920,
+          "client": 406,
+          "scroll": 406,
+          "bottom": 972,
+          "header": {
+            "x": 782.796875,
+            "y": 52,
+            "width": 405.59375,
+            "height": 48,
+            "client": 406,
+            "scroll": 406,
+            "bottom": 100
+          },
+          "composer": {
+            "x": 782.796875,
+            "y": 774.3125,
+            "width": 405.59375,
+            "height": 197.6875,
+            "client": 406,
+            "scroll": 406,
+            "bottom": 972
+          }
+        },
+        {
+          "id": "temporary",
+          "x": 1194.390625,
+          "y": 52,
+          "width": 405.609375,
+          "height": 920,
+          "client": 406,
+          "scroll": 406,
+          "bottom": 972,
+          "header": {
+            "x": 1194.390625,
+            "y": 52,
+            "width": 405.609375,
+            "height": 48,
+            "client": 406,
+            "scroll": 406,
+            "bottom": 100
+          },
+          "composer": {
+            "x": 1194.390625,
+            "y": 748.3125,
+            "width": 405.609375,
+            "height": 223.6875,
+            "client": 406,
+            "scroll": 406,
+            "bottom": 972
+          }
+        }
+      ],
+      "dialogs": [],
+      "globalOverflow": false
+    },
+    {
+      "name": "ink-pdf",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "theme": "ink",
+      "toolbar": {
+        "x": 232,
+        "y": 0,
+        "width": 1368,
+        "height": 52,
+        "client": 1368,
+        "scroll": 1368,
+        "bottom": 52
+      },
+      "sidebar": {
+        "x": 0,
+        "y": 0,
+        "width": 232,
+        "height": 1000,
+        "client": 231,
+        "scroll": 231,
+        "bottom": 1000
+      },
+      "panes": [
+        {
+          "id": "document",
+          "x": 232,
+          "y": 52,
+          "width": 544.796875,
+          "height": 920,
+          "client": 545,
+          "scroll": 545,
+          "bottom": 972,
+          "header": {
+            "x": 232,
+            "y": 52,
+            "width": 544.796875,
+            "height": 48,
+            "client": 545,
+            "scroll": 545,
+            "bottom": 100
+          },
+          "composer": null
+        },
+        {
+          "id": "main",
+          "x": 782.796875,
+          "y": 52,
+          "width": 405.59375,
+          "height": 920,
+          "client": 406,
+          "scroll": 406,
+          "bottom": 972,
+          "header": {
+            "x": 782.796875,
+            "y": 52,
+            "width": 405.59375,
+            "height": 48,
+            "client": 406,
+            "scroll": 406,
+            "bottom": 100
+          },
+          "composer": {
+            "x": 782.796875,
+            "y": 774.3125,
+            "width": 405.59375,
+            "height": 197.6875,
+            "client": 406,
+            "scroll": 406,
+            "bottom": 972
+          }
+        },
+        {
+          "id": "temporary",
+          "x": 1194.390625,
+          "y": 52,
+          "width": 405.609375,
+          "height": 920,
+          "client": 406,
+          "scroll": 406,
+          "bottom": 972,
+          "header": {
+            "x": 1194.390625,
+            "y": 52,
+            "width": 405.609375,
+            "height": 48,
+            "client": 406,
+            "scroll": 406,
+            "bottom": 100
+          },
+          "composer": {
+            "x": 1194.390625,
+            "y": 748.3125,
+            "width": 405.609375,
+            "height": 223.6875,
+            "client": 406,
+            "scroll": 406,
+            "bottom": 972
+          }
+        }
+      ],
+      "dialogs": [],
+      "globalOverflow": false
+    },
+    {
+      "name": "ink-320-sidebar",
+      "viewport": {
+        "width": 320,
+        "height": 800
+      },
+      "theme": "ink",
+      "toolbar": {
+        "x": 0,
+        "y": 0,
+        "width": 320,
+        "height": 96,
+        "client": 320,
+        "scroll": 320,
+        "bottom": 96
+      },
+      "sidebar": {
+        "x": 0,
+        "y": 96,
+        "width": 240,
+        "height": 704,
+        "client": 239,
+        "scroll": 239,
+        "bottom": 800
+      },
+      "panes": [
+        {
+          "id": "document",
+          "x": 0,
+          "y": 96,
+          "width": 430.796875,
+          "height": 676,
+          "client": 431,
+          "scroll": 431,
+          "bottom": 772,
+          "header": {
+            "x": 0,
+            "y": 96,
+            "width": 430.796875,
+            "height": 48,
+            "client": 431,
+            "scroll": 431,
+            "bottom": 144
+          },
+          "composer": null
+        },
+        {
+          "id": "main",
+          "x": 436.796875,
+          "y": 96,
+          "width": 320.09375,
+          "height": 676,
+          "client": 320,
+          "scroll": 320,
+          "bottom": 772,
+          "header": {
+            "x": 436.796875,
+            "y": 96,
+            "width": 320.09375,
+            "height": 48,
+            "client": 320,
+            "scroll": 320,
+            "bottom": 144
+          },
+          "composer": {
+            "x": 436.796875,
+            "y": 574.3125,
+            "width": 320.09375,
+            "height": 197.6875,
+            "client": 320,
+            "scroll": 320,
+            "bottom": 772
+          }
+        },
+        {
+          "id": "temporary",
+          "x": 762.890625,
+          "y": 96,
+          "width": 320.109375,
+          "height": 676,
+          "client": 320,
+          "scroll": 320,
+          "bottom": 772,
+          "header": {
+            "x": 762.890625,
+            "y": 96,
+            "width": 320.109375,
+            "height": 48,
+            "client": 320,
+            "scroll": 320,
+            "bottom": 144
+          },
+          "composer": {
+            "x": 762.890625,
+            "y": 548.3125,
+            "width": 320.109375,
+            "height": 223.6875,
+            "client": 320,
+            "scroll": 320,
+            "bottom": 772
+          }
+        }
+      ],
+      "dialogs": [],
+      "globalOverflow": false
+    },
+    {
+      "name": "light-320-rows",
+      "viewport": {
+        "width": 320,
+        "height": 800
+      },
+      "theme": "light",
+      "toolbar": {
+        "x": 0,
+        "y": 0,
+        "width": 320,
+        "height": 96,
+        "client": 320,
+        "scroll": 320,
+        "bottom": 96
+      },
+      "sidebar": null,
+      "panes": [
+        {
+          "id": "document",
+          "x": 0,
+          "y": 96,
+          "width": 320,
+          "height": 363,
+          "client": 320,
+          "scroll": 320,
+          "bottom": 459,
+          "header": {
+            "x": 0,
+            "y": 96,
+            "width": 320,
+            "height": 48,
+            "client": 320,
+            "scroll": 320,
+            "bottom": 144
+          },
+          "composer": null
+        },
+        {
+          "id": "main",
+          "x": 0,
+          "y": 465,
+          "width": 320,
+          "height": 360,
+          "client": 320,
+          "scroll": 320,
+          "bottom": 825,
+          "header": {
+            "x": 0,
+            "y": 465,
+            "width": 320,
+            "height": 48,
+            "client": 320,
+            "scroll": 320,
+            "bottom": 513
+          },
+          "composer": {
+            "x": 0,
+            "y": 627.3125,
+            "width": 320,
+            "height": 197.6875,
+            "client": 320,
+            "scroll": 320,
+            "bottom": 825
+          }
+        },
+        {
+          "id": "temporary",
+          "x": 0,
+          "y": 831,
+          "width": 320,
+          "height": 360,
+          "client": 320,
+          "scroll": 320,
+          "bottom": 1191,
+          "header": {
+            "x": 0,
+            "y": 831,
+            "width": 320,
+            "height": 48,
+            "client": 320,
+            "scroll": 320,
+            "bottom": 879
+          },
+          "composer": {
+            "x": 0,
+            "y": 967.3125,
+            "width": 320,
+            "height": 223.6875,
+            "client": 320,
+            "scroll": 320,
+            "bottom": 1191
+          }
+        }
+      ],
+      "dialogs": [],
+      "globalOverflow": false
+    },
+    {
+      "name": "light-320-settings",
+      "viewport": {
+        "width": 320,
+        "height": 800
+      },
+      "theme": "light",
+      "toolbar": {
+        "x": 0,
+        "y": 0,
+        "width": 320,
+        "height": 96,
+        "client": 320,
+        "scroll": 320,
+        "bottom": 96
+      },
+      "sidebar": null,
+      "panes": [
+        {
+          "id": "document",
+          "x": 0,
+          "y": 96,
+          "width": 320,
+          "height": 363,
+          "client": 320,
+          "scroll": 320,
+          "bottom": 459,
+          "header": {
+            "x": 0,
+            "y": 96,
+            "width": 320,
+            "height": 48,
+            "client": 320,
+            "scroll": 320,
+            "bottom": 144
+          },
+          "composer": null
+        },
+        {
+          "id": "main",
+          "x": 0,
+          "y": 465,
+          "width": 320,
+          "height": 360,
+          "client": 320,
+          "scroll": 320,
+          "bottom": 825,
+          "header": {
+            "x": 0,
+            "y": 465,
+            "width": 320,
+            "height": 48,
+            "client": 320,
+            "scroll": 320,
+            "bottom": 513
+          },
+          "composer": {
+            "x": 0,
+            "y": 627.3125,
+            "width": 320,
+            "height": 197.6875,
+            "client": 320,
+            "scroll": 320,
+            "bottom": 825
+          }
+        },
+        {
+          "id": "temporary",
+          "x": 0,
+          "y": 831,
+          "width": 320,
+          "height": 360,
+          "client": 320,
+          "scroll": 320,
+          "bottom": 1191,
+          "header": {
+            "x": 0,
+            "y": 831,
+            "width": 320,
+            "height": 48,
+            "client": 320,
+            "scroll": 320,
+            "bottom": 879
+          },
+          "composer": {
+            "x": 0,
+            "y": 967.3125,
+            "width": 320,
+            "height": 223.6875,
+            "client": 320,
+            "scroll": 320,
+            "bottom": 1191
+          }
+        }
+      ],
+      "dialogs": [
+        {
+          "name": "设置",
+          "x": 20,
+          "y": 40,
+          "width": 280,
+          "height": 718,
+          "client": 278,
+          "scroll": 278,
+          "bottom": 760,
+          "scrollHeight": 1284
+        }
+      ],
+      "globalOverflow": false
+    },
+    {
+      "name": "graphite-320-rows",
+      "viewport": {
+        "width": 320,
+        "height": 800
+      },
+      "theme": "graphite",
+      "toolbar": {
+        "x": 0,
+        "y": 0,
+        "width": 320,
+        "height": 96,
+        "client": 320,
+        "scroll": 320,
+        "bottom": 96
+      },
+      "sidebar": null,
+      "panes": [
+        {
+          "id": "document",
+          "x": 0,
+          "y": 96,
+          "width": 320,
+          "height": 363,
+          "client": 320,
+          "scroll": 320,
+          "bottom": 459,
+          "header": {
+            "x": 0,
+            "y": 96,
+            "width": 320,
+            "height": 48,
+            "client": 320,
+            "scroll": 320,
+            "bottom": 144
+          },
+          "composer": null
+        },
+        {
+          "id": "main",
+          "x": 0,
+          "y": 465,
+          "width": 320,
+          "height": 360,
+          "client": 320,
+          "scroll": 320,
+          "bottom": 825,
+          "header": {
+            "x": 0,
+            "y": 465,
+            "width": 320,
+            "height": 48,
+            "client": 320,
+            "scroll": 320,
+            "bottom": 513
+          },
+          "composer": {
+            "x": 0,
+            "y": 627.3125,
+            "width": 320,
+            "height": 197.6875,
+            "client": 320,
+            "scroll": 320,
+            "bottom": 825
+          }
+        },
+        {
+          "id": "temporary",
+          "x": 0,
+          "y": 831,
+          "width": 320,
+          "height": 360,
+          "client": 320,
+          "scroll": 320,
+          "bottom": 1191,
+          "header": {
+            "x": 0,
+            "y": 831,
+            "width": 320,
+            "height": 48,
+            "client": 320,
+            "scroll": 320,
+            "bottom": 879
+          },
+          "composer": {
+            "x": 0,
+            "y": 967.3125,
+            "width": 320,
+            "height": 223.6875,
+            "client": 320,
+            "scroll": 320,
+            "bottom": 1191
+          }
+        }
+      ],
+      "dialogs": [],
+      "globalOverflow": false
+    },
+    {
+      "name": "graphite-320-settings",
+      "viewport": {
+        "width": 320,
+        "height": 800
+      },
+      "theme": "graphite",
+      "toolbar": {
+        "x": 0,
+        "y": 0,
+        "width": 320,
+        "height": 96,
+        "client": 320,
+        "scroll": 320,
+        "bottom": 96
+      },
+      "sidebar": null,
+      "panes": [
+        {
+          "id": "document",
+          "x": 0,
+          "y": 96,
+          "width": 320,
+          "height": 363,
+          "client": 320,
+          "scroll": 320,
+          "bottom": 459,
+          "header": {
+            "x": 0,
+            "y": 96,
+            "width": 320,
+            "height": 48,
+            "client": 320,
+            "scroll": 320,
+            "bottom": 144
+          },
+          "composer": null
+        },
+        {
+          "id": "main",
+          "x": 0,
+          "y": 465,
+          "width": 320,
+          "height": 360,
+          "client": 320,
+          "scroll": 320,
+          "bottom": 825,
+          "header": {
+            "x": 0,
+            "y": 465,
+            "width": 320,
+            "height": 48,
+            "client": 320,
+            "scroll": 320,
+            "bottom": 513
+          },
+          "composer": {
+            "x": 0,
+            "y": 627.3125,
+            "width": 320,
+            "height": 197.6875,
+            "client": 320,
+            "scroll": 320,
+            "bottom": 825
+          }
+        },
+        {
+          "id": "temporary",
+          "x": 0,
+          "y": 831,
+          "width": 320,
+          "height": 360,
+          "client": 320,
+          "scroll": 320,
+          "bottom": 1191,
+          "header": {
+            "x": 0,
+            "y": 831,
+            "width": 320,
+            "height": 48,
+            "client": 320,
+            "scroll": 320,
+            "bottom": 879
+          },
+          "composer": {
+            "x": 0,
+            "y": 967.3125,
+            "width": 320,
+            "height": 223.6875,
+            "client": 320,
+            "scroll": 320,
+            "bottom": 1191
+          }
+        }
+      ],
+      "dialogs": [
+        {
+          "name": "设置",
+          "x": 20,
+          "y": 40,
+          "width": 280,
+          "height": 718,
+          "client": 278,
+          "scroll": 278,
+          "bottom": 760,
+          "scrollHeight": 1284
+        }
+      ],
+      "globalOverflow": false
+    },
+    {
+      "name": "ink-320-rows",
+      "viewport": {
+        "width": 320,
+        "height": 800
+      },
+      "theme": "ink",
+      "toolbar": {
+        "x": 0,
+        "y": 0,
+        "width": 320,
+        "height": 96,
+        "client": 320,
+        "scroll": 320,
+        "bottom": 96
+      },
+      "sidebar": null,
+      "panes": [
+        {
+          "id": "document",
+          "x": 0,
+          "y": 96,
+          "width": 320,
+          "height": 363,
+          "client": 320,
+          "scroll": 320,
+          "bottom": 459,
+          "header": {
+            "x": 0,
+            "y": 96,
+            "width": 320,
+            "height": 48,
+            "client": 320,
+            "scroll": 320,
+            "bottom": 144
+          },
+          "composer": null
+        },
+        {
+          "id": "main",
+          "x": 0,
+          "y": 465,
+          "width": 320,
+          "height": 360,
+          "client": 320,
+          "scroll": 320,
+          "bottom": 825,
+          "header": {
+            "x": 0,
+            "y": 465,
+            "width": 320,
+            "height": 48,
+            "client": 320,
+            "scroll": 320,
+            "bottom": 513
+          },
+          "composer": {
+            "x": 0,
+            "y": 627.3125,
+            "width": 320,
+            "height": 197.6875,
+            "client": 320,
+            "scroll": 320,
+            "bottom": 825
+          }
+        },
+        {
+          "id": "temporary",
+          "x": 0,
+          "y": 831,
+          "width": 320,
+          "height": 360,
+          "client": 320,
+          "scroll": 320,
+          "bottom": 1191,
+          "header": {
+            "x": 0,
+            "y": 831,
+            "width": 320,
+            "height": 48,
+            "client": 320,
+            "scroll": 320,
+            "bottom": 879
+          },
+          "composer": {
+            "x": 0,
+            "y": 967.3125,
+            "width": 320,
+            "height": 223.6875,
+            "client": 320,
+            "scroll": 320,
+            "bottom": 1191
+          }
+        }
+      ],
+      "dialogs": [],
+      "globalOverflow": false
+    },
+    {
+      "name": "ink-320-settings",
+      "viewport": {
+        "width": 320,
+        "height": 800
+      },
+      "theme": "ink",
+      "toolbar": {
+        "x": 0,
+        "y": 0,
+        "width": 320,
+        "height": 96,
+        "client": 320,
+        "scroll": 320,
+        "bottom": 96
+      },
+      "sidebar": null,
+      "panes": [
+        {
+          "id": "document",
+          "x": 0,
+          "y": 96,
+          "width": 320,
+          "height": 363,
+          "client": 320,
+          "scroll": 320,
+          "bottom": 459,
+          "header": {
+            "x": 0,
+            "y": 96,
+            "width": 320,
+            "height": 48,
+            "client": 320,
+            "scroll": 320,
+            "bottom": 144
+          },
+          "composer": null
+        },
+        {
+          "id": "main",
+          "x": 0,
+          "y": 465,
+          "width": 320,
+          "height": 360,
+          "client": 320,
+          "scroll": 320,
+          "bottom": 825,
+          "header": {
+            "x": 0,
+            "y": 465,
+            "width": 320,
+            "height": 48,
+            "client": 320,
+            "scroll": 320,
+            "bottom": 513
+          },
+          "composer": {
+            "x": 0,
+            "y": 627.3125,
+            "width": 320,
+            "height": 197.6875,
+            "client": 320,
+            "scroll": 320,
+            "bottom": 825
+          }
+        },
+        {
+          "id": "temporary",
+          "x": 0,
+          "y": 831,
+          "width": 320,
+          "height": 360,
+          "client": 320,
+          "scroll": 320,
+          "bottom": 1191,
+          "header": {
+            "x": 0,
+            "y": 831,
+            "width": 320,
+            "height": 48,
+            "client": 320,
+            "scroll": 320,
+            "bottom": 879
+          },
+          "composer": {
+            "x": 0,
+            "y": 967.3125,
+            "width": 320,
+            "height": 223.6875,
+            "client": 320,
+            "scroll": 320,
+            "bottom": 1191
+          }
+        }
+      ],
+      "dialogs": [
+        {
+          "name": "设置",
+          "x": 20,
+          "y": 40,
+          "width": 280,
+          "height": 718,
+          "client": 278,
+          "scroll": 278,
+          "bottom": 760,
+          "scrollHeight": 1284
+        }
+      ],
+      "globalOverflow": false
+    },
+    {
+      "name": "ink-short-popup",
+      "viewport": {
+        "width": 1024,
+        "height": 256
+      },
+      "theme": "ink",
+      "toolbar": {
+        "x": 0,
+        "y": 0,
+        "width": 1024,
+        "height": 52,
+        "client": 1024,
+        "scroll": 1024,
+        "bottom": 52
+      },
+      "sidebar": null,
+      "panes": [
+        {
+          "id": "document",
+          "x": 0,
+          "y": 52,
+          "width": 1024,
+          "height": 363,
+          "client": 1024,
+          "scroll": 1024,
+          "bottom": 415,
+          "header": {
+            "x": 0,
+            "y": 52,
+            "width": 1024,
+            "height": 48,
+            "client": 1024,
+            "scroll": 1024,
+            "bottom": 100
+          },
+          "composer": null
+        },
+        {
+          "id": "main",
+          "x": 0,
+          "y": 421,
+          "width": 1024,
+          "height": 360,
+          "client": 1024,
+          "scroll": 1024,
+          "bottom": 781,
+          "header": {
+            "x": 0,
+            "y": 421,
+            "width": 1024,
+            "height": 48,
+            "client": 1024,
+            "scroll": 1024,
+            "bottom": 469
+          },
+          "composer": {
+            "x": 0,
+            "y": 583.3125,
+            "width": 1024,
+            "height": 197.6875,
+            "client": 1024,
+            "scroll": 1024,
+            "bottom": 781
+          }
+        },
+        {
+          "id": "temporary",
+          "x": 0,
+          "y": 787,
+          "width": 1024,
+          "height": 360,
+          "client": 1024,
+          "scroll": 1024,
+          "bottom": 1147,
+          "header": {
+            "x": 0,
+            "y": 787,
+            "width": 1024,
+            "height": 48,
+            "client": 1024,
+            "scroll": 1024,
+            "bottom": 835
+          },
+          "composer": {
+            "x": 0,
+            "y": 923.3125,
+            "width": 1024,
+            "height": 223.6875,
+            "client": 1024,
+            "scroll": 1024,
+            "bottom": 1147
+          }
+        }
+      ],
+      "dialogs": [
+        {
+          "name": "文件栏设置",
+          "x": 726,
+          "y": 8,
+          "width": 288,
+          "height": 174,
+          "client": 286,
+          "scroll": 286,
+          "bottom": 184,
+          "scrollHeight": 429
+        }
+      ],
+      "globalOverflow": false
+    }
+  ],
+  "contrast": [
+    {
+      "theme": "light",
+      "state": "workbench",
+      "values": [
+        {
+          "selector": ".sidebar-action",
+          "text": "切换工作区",
+          "fg": "rgb(38, 52, 68)",
+          "bg": "233,232,225",
+          "ratio": 10.31610209520478,
+          "font": "13px"
+        },
+        {
+          "selector": ".sidebar-action",
+          "text": "设置",
+          "fg": "rgb(38, 52, 68)",
+          "bg": "233,232,225",
+          "ratio": 10.31610209520478,
+          "font": "13px"
+        },
+        {
+          "selector": ".new-session",
+          "text": "新建主对话",
+          "fg": "rgb(38, 52, 68)",
+          "bg": "214,217,208",
+          "ratio": 8.86811170376234,
+          "font": "13px"
+        },
+        {
+          "selector": ".session-list .selected",
+          "text": "阅读会话",
+          "fg": "rgb(38, 52, 68)",
+          "bg": "214,217,208",
+          "ratio": 8.86811170376234,
+          "font": "13px"
+        },
+        {
+          "selector": ".file-tree button",
+          "text": "assets",
+          "fg": "rgb(38, 52, 68)",
+          "bg": "233,232,225",
+          "ratio": 10.31610209520478,
+          "font": "13px"
+        },
+        {
+          "selector": ".file-tree button",
+          "text": "audit.md",
+          "fg": "rgb(38, 52, 68)",
+          "bg": "221,222,214",
+          "ratio": 9.350143216309709,
+          "font": "13px"
+        },
+        {
+          "selector": ".pane-header strong",
+          "text": "文件",
+          "fg": "rgb(38, 52, 68)",
+          "bg": "255,253,249",
+          "ratio": 12.47375177511825,
+          "font": "13px"
+        },
+        {
+          "selector": ".pane-header strong",
+          "text": "主对话",
+          "fg": "rgb(38, 52, 68)",
+          "bg": "239,241,250",
+          "ratio": 11.244280665699046,
+          "font": "13px"
+        },
+        {
+          "selector": ".chat-empty h3",
+          "text": "把小问题留在这里",
+          "fg": "rgb(38, 52, 68)",
+          "bg": "245,249,246",
+          "ratio": 11.926711586460481,
+          "font": "20px"
+        },
+        {
+          "selector": ".chat-empty p",
+          "text": "继承主对话中已完成的记忆，保留自己的追问历史。",
+          "fg": "rgb(88, 100, 116)",
+          "bg": "245,249,246",
+          "ratio": 5.662901907874444,
+          "font": "14px"
+        },
+        {
+          "selector": ".chat-empty small",
+          "text": "每次提问读取最新主记忆 · 不回写主对话",
+          "fg": "rgb(88, 100, 116)",
+          "bg": "245,249,246",
+          "ratio": 5.662901907874444,
+          "font": "12px"
+        },
+        {
+          "selector": ".composer-hint",
+          "text": "Enter 发送 · Shift + Enter 换行",
+          "fg": "rgb(88, 100, 116)",
+          "bg": "255,253,249",
+          "ratio": 5.922641141574941,
+          "font": "11px"
+        },
+        {
+          "selector": ".composer-hint",
+          "text": "Enter 发送 · Shift + Enter 换行 · 继承最新完",
+          "fg": "rgb(88, 100, 116)",
+          "bg": "245,249,246",
+          "ratio": 5.662901907874444,
+          "font": "11px"
+        },
+        {
+          "selector": ".artifact-permission",
+          "text": "本次允许生成文件",
+          "fg": "rgb(38, 52, 68)",
+          "bg": "255,253,251",
+          "ratio": 12.488896657175902,
+          "font": "12px"
+        },
+        {
+          "selector": ".appearance-switch select",
+          "text": "浅色石墨灰墨蓝",
+          "fg": "rgb(38, 52, 68)",
+          "bg": "255,253,249",
+          "ratio": 12.47375177511825,
+          "font": "12px"
+        },
+        {
+          "selector": ".markdown-paper p",
+          "text": "用于核对文字、图片、引用、公式和表格。",
+          "fg": "rgb(37, 52, 68)",
+          "bg": "255,253,249",
+          "ratio": 12.502050611593901,
+          "font": "15px"
+        },
+        {
+          "selector": ".markdown-paper p",
+          "text": "引用内容的对比度。",
+          "fg": "rgb(88, 106, 123)",
+          "bg": "255,253,249",
+          "ratio": 5.4935956532825,
+          "font": "15px"
+        },
+        {
+          "selector": ".markdown-paper blockquote",
+          "text": "引用内容的对比度。",
+          "fg": "rgb(88, 106, 123)",
+          "bg": "255,253,249",
+          "ratio": 5.4935956532825,
+          "font": "15px"
+        },
+        {
+          "selector": ".statusbar",
+          "text": "本地工作区原文与追问并排 · 临时对话独立保存",
+          "fg": "rgb(88, 100, 116)",
+          "bg": "255,253,249",
+          "ratio": 5.922641141574941,
+          "font": "11px"
+        }
+      ]
+    },
+    {
+      "theme": "light",
+      "state": "settings",
+      "values": [
+        {
+          "selector": ".sidebar-action",
+          "text": "切换工作区",
+          "fg": "rgb(38, 52, 68)",
+          "bg": "233,232,225",
+          "ratio": 10.31610209520478,
+          "font": "13px"
+        },
+        {
+          "selector": ".sidebar-action",
+          "text": "设置",
+          "fg": "rgb(38, 52, 68)",
+          "bg": "233,232,225",
+          "ratio": 10.31610209520478,
+          "font": "13px"
+        },
+        {
+          "selector": ".new-session",
+          "text": "新建主对话",
+          "fg": "rgb(38, 52, 68)",
+          "bg": "214,217,208",
+          "ratio": 8.86811170376234,
+          "font": "13px"
+        },
+        {
+          "selector": ".session-list .selected",
+          "text": "阅读会话",
+          "fg": "rgb(38, 52, 68)",
+          "bg": "214,217,208",
+          "ratio": 8.86811170376234,
+          "font": "13px"
+        },
+        {
+          "selector": ".file-tree button",
+          "text": "assets",
+          "fg": "rgb(38, 52, 68)",
+          "bg": "233,232,225",
+          "ratio": 10.31610209520478,
+          "font": "13px"
+        },
+        {
+          "selector": ".file-tree button",
+          "text": "audit.md",
+          "fg": "rgb(38, 52, 68)",
+          "bg": "233,232,225",
+          "ratio": 10.31610209520478,
+          "font": "13px"
+        },
+        {
+          "selector": ".pane-header strong",
+          "text": "文件",
+          "fg": "rgb(38, 52, 68)",
+          "bg": "255,253,249",
+          "ratio": 12.47375177511825,
+          "font": "13px"
+        },
+        {
+          "selector": ".pane-header strong",
+          "text": "主对话",
+          "fg": "rgb(38, 52, 68)",
+          "bg": "239,241,250",
+          "ratio": 11.244280665699046,
+          "font": "13px"
+        },
+        {
+          "selector": ".chat-empty h3",
+          "text": "把小问题留在这里",
+          "fg": "rgb(38, 52, 68)",
+          "bg": "245,249,246",
+          "ratio": 11.926711586460481,
+          "font": "20px"
+        },
+        {
+          "selector": ".chat-empty p",
+          "text": "继承主对话中已完成的记忆，保留自己的追问历史。",
+          "fg": "rgb(88, 100, 116)",
+          "bg": "245,249,246",
+          "ratio": 5.662901907874444,
+          "font": "14px"
+        },
+        {
+          "selector": ".chat-empty small",
+          "text": "每次提问读取最新主记忆 · 不回写主对话",
+          "fg": "rgb(88, 100, 116)",
+          "bg": "245,249,246",
+          "ratio": 5.662901907874444,
+          "font": "12px"
+        },
+        {
+          "selector": ".composer-hint",
+          "text": "Enter 发送 · Shift + Enter 换行",
+          "fg": "rgb(88, 100, 116)",
+          "bg": "255,253,249",
+          "ratio": 5.922641141574941,
+          "font": "11px"
+        },
+        {
+          "selector": ".composer-hint",
+          "text": "Enter 发送 · Shift + Enter 换行 · 继承最新完",
+          "fg": "rgb(88, 100, 116)",
+          "bg": "245,249,246",
+          "ratio": 5.662901907874444,
+          "font": "11px"
+        },
+        {
+          "selector": ".artifact-permission",
+          "text": "本次允许生成文件",
+          "fg": "rgb(38, 52, 68)",
+          "bg": "255,253,251",
+          "ratio": 12.488896657175902,
+          "font": "12px"
+        },
+        {
+          "selector": ".appearance-switch select",
+          "text": "浅色石墨灰墨蓝",
+          "fg": "rgb(38, 52, 68)",
+          "bg": "255,253,249",
+          "ratio": 12.47375177511825,
+          "font": "12px"
+        },
+        {
+          "selector": ".primary",
+          "text": "保存设置",
+          "fg": "rgb(255, 255, 255)",
+          "bg": "66,83,184",
+          "ratio": 6.643275821564782,
+          "font": "13px"
+        },
+        {
+          "selector": ".settings-tabs .selected",
+          "text": "模型连接",
+          "fg": "rgb(62, 80, 180)",
+          "bg": "232,237,248",
+          "ratio": 5.9442798957334775,
+          "font": "13px"
+        },
+        {
+          "selector": ".settings-body label",
+          "text": "连接配置新建连接",
+          "fg": "rgb(38, 52, 68)",
+          "bg": "255,253,249",
+          "ratio": 12.47375177511825,
+          "font": "13px"
+        },
+        {
+          "selector": ".settings-body label",
+          "text": "配置名称",
+          "fg": "rgb(38, 52, 68)",
+          "bg": "255,253,249",
+          "ratio": 12.47375177511825,
+          "font": "13px"
+        },
+        {
+          "selector": ".markdown-paper p",
+          "text": "用于核对文字、图片、引用、公式和表格。",
+          "fg": "rgb(37, 52, 68)",
+          "bg": "255,253,249",
+          "ratio": 12.502050611593901,
+          "font": "15px"
+        },
+        {
+          "selector": ".markdown-paper p",
+          "text": "引用内容的对比度。",
+          "fg": "rgb(88, 106, 123)",
+          "bg": "255,253,249",
+          "ratio": 5.4935956532825,
+          "font": "15px"
+        },
+        {
+          "selector": ".markdown-paper blockquote",
+          "text": "引用内容的对比度。",
+          "fg": "rgb(88, 106, 123)",
+          "bg": "255,253,249",
+          "ratio": 5.4935956532825,
+          "font": "15px"
+        },
+        {
+          "selector": ".statusbar",
+          "text": "本地工作区原文与追问并排 · 临时对话独立保存",
+          "fg": "rgb(88, 100, 116)",
+          "bg": "255,253,249",
+          "ratio": 5.922641141574941,
+          "font": "11px"
+        }
+      ]
+    },
+    {
+      "theme": "graphite",
+      "state": "workbench",
+      "values": [
+        {
+          "selector": ".sidebar-action",
+          "text": "切换工作区",
+          "fg": "rgb(237, 240, 245)",
+          "bg": "48,52,59",
+          "ratio": 10.94236556947769,
+          "font": "13px"
+        },
+        {
+          "selector": ".sidebar-action",
+          "text": "设置",
+          "fg": "rgb(237, 240, 245)",
+          "bg": "48,52,59",
+          "ratio": 10.94236556947769,
+          "font": "13px"
+        },
+        {
+          "selector": ".new-session",
+          "text": "新建主对话",
+          "fg": "rgb(237, 240, 245)",
+          "bg": "69,76,87",
+          "ratio": 7.582549836397556,
+          "font": "13px"
+        },
+        {
+          "selector": ".session-list .selected",
+          "text": "阅读会话",
+          "fg": "rgb(237, 240, 245)",
+          "bg": "69,76,87",
+          "ratio": 7.582549836397556,
+          "font": "13px"
+        },
+        {
+          "selector": ".file-tree button",
+          "text": "assets",
+          "fg": "rgb(237, 240, 245)",
+          "bg": "48,52,59",
+          "ratio": 10.94236556947769,
+          "font": "13px"
+        },
+        {
+          "selector": ".file-tree button",
+          "text": "audit.md",
+          "fg": "rgb(237, 240, 245)",
+          "bg": "48,52,59",
+          "ratio": 10.94236556947769,
+          "font": "13px"
+        },
+        {
+          "selector": ".pane-header strong",
+          "text": "文件",
+          "fg": "rgb(237, 240, 245)",
+          "bg": "36,40,47",
+          "ratio": 12.949947783810247,
+          "font": "13px"
+        },
+        {
+          "selector": ".pane-header strong",
+          "text": "主对话",
+          "fg": "rgb(237, 240, 245)",
+          "bg": "43,48,59",
+          "ratio": 11.571727363139198,
+          "font": "13px"
+        },
+        {
+          "selector": ".chat-empty h3",
+          "text": "把小问题留在这里",
+          "fg": "rgb(237, 240, 245)",
+          "bg": "36,46,44",
+          "ratio": 12.237838983523964,
+          "font": "20px"
+        },
+        {
+          "selector": ".chat-empty p",
+          "text": "继承主对话中已完成的记忆，保留自己的追问历史。",
+          "fg": "rgb(182, 192, 204)",
+          "bg": "36,46,44",
+          "ratio": 7.589494689906959,
+          "font": "14px"
+        },
+        {
+          "selector": ".chat-empty small",
+          "text": "每次提问读取最新主记忆 · 不回写主对话",
+          "fg": "rgb(182, 192, 204)",
+          "bg": "36,46,44",
+          "ratio": 7.589494689906959,
+          "font": "12px"
+        },
+        {
+          "selector": ".composer-hint",
+          "text": "Enter 发送 · Shift + Enter 换行",
+          "fg": "rgb(182, 192, 204)",
+          "bg": "36,40,47",
+          "ratio": 8.031120532973288,
+          "font": "11px"
+        },
+        {
+          "selector": ".composer-hint",
+          "text": "Enter 发送 · Shift + Enter 换行 · 继承最新完",
+          "fg": "rgb(182, 192, 204)",
+          "bg": "36,46,44",
+          "ratio": 7.589494689906959,
+          "font": "11px"
+        },
+        {
+          "selector": ".artifact-permission",
+          "text": "本次允许生成文件",
+          "fg": "rgb(237, 240, 245)",
+          "bg": "44,49,58",
+          "ratio": 11.435929597563684,
+          "font": "12px"
+        },
+        {
+          "selector": ".appearance-switch select",
+          "text": "浅色石墨灰墨蓝",
+          "fg": "rgb(237, 240, 245)",
+          "bg": "36,40,47",
+          "ratio": 12.949947783810247,
+          "font": "12px"
+        },
+        {
+          "selector": ".markdown-paper p",
+          "text": "用于核对文字、图片、引用、公式和表格。",
+          "fg": "rgb(37, 52, 68)",
+          "bg": "255,253,249",
+          "ratio": 12.502050611593901,
+          "font": "15px"
+        },
+        {
+          "selector": ".markdown-paper p",
+          "text": "引用内容的对比度。",
+          "fg": "rgb(88, 106, 123)",
+          "bg": "255,253,249",
+          "ratio": 5.4935956532825,
+          "font": "15px"
+        },
+        {
+          "selector": ".markdown-paper blockquote",
+          "text": "引用内容的对比度。",
+          "fg": "rgb(88, 106, 123)",
+          "bg": "255,253,249",
+          "ratio": 5.4935956532825,
+          "font": "15px"
+        },
+        {
+          "selector": ".statusbar",
+          "text": "本地工作区原文与追问并排 · 临时对话独立保存",
+          "fg": "rgb(182, 192, 204)",
+          "bg": "36,40,47",
+          "ratio": 8.031120532973288,
+          "font": "11px"
+        }
+      ]
+    },
+    {
+      "theme": "graphite",
+      "state": "settings",
+      "values": [
+        {
+          "selector": ".sidebar-action",
+          "text": "切换工作区",
+          "fg": "rgb(237, 240, 245)",
+          "bg": "48,52,59",
+          "ratio": 10.94236556947769,
+          "font": "13px"
+        },
+        {
+          "selector": ".sidebar-action",
+          "text": "设置",
+          "fg": "rgb(237, 240, 245)",
+          "bg": "48,52,59",
+          "ratio": 10.94236556947769,
+          "font": "13px"
+        },
+        {
+          "selector": ".new-session",
+          "text": "新建主对话",
+          "fg": "rgb(237, 240, 245)",
+          "bg": "69,76,87",
+          "ratio": 7.582549836397556,
+          "font": "13px"
+        },
+        {
+          "selector": ".session-list .selected",
+          "text": "阅读会话",
+          "fg": "rgb(237, 240, 245)",
+          "bg": "69,76,87",
+          "ratio": 7.582549836397556,
+          "font": "13px"
+        },
+        {
+          "selector": ".file-tree button",
+          "text": "assets",
+          "fg": "rgb(237, 240, 245)",
+          "bg": "48,52,59",
+          "ratio": 10.94236556947769,
+          "font": "13px"
+        },
+        {
+          "selector": ".file-tree button",
+          "text": "audit.md",
+          "fg": "rgb(237, 240, 245)",
+          "bg": "48,52,59",
+          "ratio": 10.94236556947769,
+          "font": "13px"
+        },
+        {
+          "selector": ".pane-header strong",
+          "text": "文件",
+          "fg": "rgb(237, 240, 245)",
+          "bg": "36,40,47",
+          "ratio": 12.949947783810247,
+          "font": "13px"
+        },
+        {
+          "selector": ".pane-header strong",
+          "text": "主对话",
+          "fg": "rgb(237, 240, 245)",
+          "bg": "43,48,59",
+          "ratio": 11.571727363139198,
+          "font": "13px"
+        },
+        {
+          "selector": ".chat-empty h3",
+          "text": "把小问题留在这里",
+          "fg": "rgb(237, 240, 245)",
+          "bg": "36,46,44",
+          "ratio": 12.237838983523964,
+          "font": "20px"
+        },
+        {
+          "selector": ".chat-empty p",
+          "text": "继承主对话中已完成的记忆，保留自己的追问历史。",
+          "fg": "rgb(182, 192, 204)",
+          "bg": "36,46,44",
+          "ratio": 7.589494689906959,
+          "font": "14px"
+        },
+        {
+          "selector": ".chat-empty small",
+          "text": "每次提问读取最新主记忆 · 不回写主对话",
+          "fg": "rgb(182, 192, 204)",
+          "bg": "36,46,44",
+          "ratio": 7.589494689906959,
+          "font": "12px"
+        },
+        {
+          "selector": ".composer-hint",
+          "text": "Enter 发送 · Shift + Enter 换行",
+          "fg": "rgb(182, 192, 204)",
+          "bg": "36,40,47",
+          "ratio": 8.031120532973288,
+          "font": "11px"
+        },
+        {
+          "selector": ".composer-hint",
+          "text": "Enter 发送 · Shift + Enter 换行 · 继承最新完",
+          "fg": "rgb(182, 192, 204)",
+          "bg": "36,46,44",
+          "ratio": 7.589494689906959,
+          "font": "11px"
+        },
+        {
+          "selector": ".artifact-permission",
+          "text": "本次允许生成文件",
+          "fg": "rgb(237, 240, 245)",
+          "bg": "44,49,58",
+          "ratio": 11.435929597563684,
+          "font": "12px"
+        },
+        {
+          "selector": ".appearance-switch select",
+          "text": "浅色石墨灰墨蓝",
+          "fg": "rgb(237, 240, 245)",
+          "bg": "36,40,47",
+          "ratio": 12.949947783810247,
+          "font": "12px"
+        },
+        {
+          "selector": ".primary",
+          "text": "保存设置",
+          "fg": "rgb(255, 255, 255)",
+          "bg": "82,98,142",
+          "ratio": 6.006109999089496,
+          "font": "13px"
+        },
+        {
+          "selector": ".settings-tabs .selected",
+          "text": "模型连接",
+          "fg": "rgb(179, 191, 255)",
+          "bg": "52,61,84",
+          "ratio": 6.084411983456058,
+          "font": "13px"
+        },
+        {
+          "selector": ".settings-body label",
+          "text": "连接配置新建连接",
+          "fg": "rgb(237, 240, 245)",
+          "bg": "36,40,47",
+          "ratio": 12.949947783810247,
+          "font": "13px"
+        },
+        {
+          "selector": ".settings-body label",
+          "text": "配置名称",
+          "fg": "rgb(237, 240, 245)",
+          "bg": "36,40,47",
+          "ratio": 12.949947783810247,
+          "font": "13px"
+        },
+        {
+          "selector": ".markdown-paper p",
+          "text": "用于核对文字、图片、引用、公式和表格。",
+          "fg": "rgb(37, 52, 68)",
+          "bg": "255,253,249",
+          "ratio": 12.502050611593901,
+          "font": "15px"
+        },
+        {
+          "selector": ".markdown-paper p",
+          "text": "引用内容的对比度。",
+          "fg": "rgb(88, 106, 123)",
+          "bg": "255,253,249",
+          "ratio": 5.4935956532825,
+          "font": "15px"
+        },
+        {
+          "selector": ".markdown-paper blockquote",
+          "text": "引用内容的对比度。",
+          "fg": "rgb(88, 106, 123)",
+          "bg": "255,253,249",
+          "ratio": 5.4935956532825,
+          "font": "15px"
+        },
+        {
+          "selector": ".statusbar",
+          "text": "本地工作区原文与追问并排 · 临时对话独立保存",
+          "fg": "rgb(182, 192, 204)",
+          "bg": "36,40,47",
+          "ratio": 8.031120532973288,
+          "font": "11px"
+        }
+      ]
+    },
+    {
+      "theme": "ink",
+      "state": "workbench",
+      "values": [
+        {
+          "selector": ".sidebar-action",
+          "text": "切换工作区",
+          "fg": "rgb(237, 241, 244)",
+          "bg": "48,61,73",
+          "ratio": 9.785932725143052,
+          "font": "13px"
+        },
+        {
+          "selector": ".sidebar-action",
+          "text": "设置",
+          "fg": "rgb(237, 241, 244)",
+          "bg": "48,61,73",
+          "ratio": 9.785932725143052,
+          "font": "13px"
+        },
+        {
+          "selector": ".new-session",
+          "text": "新建主对话",
+          "fg": "rgb(237, 241, 244)",
+          "bg": "70,89,102",
+          "ratio": 6.417170768752693,
+          "font": "13px"
+        },
+        {
+          "selector": ".session-list .selected",
+          "text": "阅读会话",
+          "fg": "rgb(237, 241, 244)",
+          "bg": "70,89,102",
+          "ratio": 6.417170768752693,
+          "font": "13px"
+        },
+        {
+          "selector": ".file-tree button",
+          "text": "assets",
+          "fg": "rgb(237, 241, 244)",
+          "bg": "48,61,73",
+          "ratio": 9.785932725143052,
+          "font": "13px"
+        },
+        {
+          "selector": ".file-tree button",
+          "text": "audit.md",
+          "fg": "rgb(237, 241, 244)",
+          "bg": "48,61,73",
+          "ratio": 9.785932725143052,
+          "font": "13px"
+        },
+        {
+          "selector": ".pane-header strong",
+          "text": "文件",
+          "fg": "rgb(237, 241, 244)",
+          "bg": "36,51,64",
+          "ratio": 11.39505330802849,
+          "font": "13px"
+        },
+        {
+          "selector": ".pane-header strong",
+          "text": "主对话",
+          "fg": "rgb(237, 241, 244)",
+          "bg": "42,59,77",
+          "ratio": 10.096860527253439,
+          "font": "13px"
+        },
+        {
+          "selector": ".chat-empty h3",
+          "text": "把小问题留在这里",
+          "fg": "rgb(237, 241, 244)",
+          "bg": "35,59,56",
+          "ratio": 10.540316178701286,
+          "font": "20px"
+        },
+        {
+          "selector": ".chat-empty p",
+          "text": "继承主对话中已完成的记忆，保留自己的追问历史。",
+          "fg": "rgb(182, 197, 208)",
+          "bg": "35,59,56",
+          "ratio": 6.776098453384295,
+          "font": "14px"
+        },
+        {
+          "selector": ".chat-empty small",
+          "text": "每次提问读取最新主记忆 · 不回写主对话",
+          "fg": "rgb(182, 197, 208)",
+          "bg": "35,59,56",
+          "ratio": 6.776098453384295,
+          "font": "12px"
+        },
+        {
+          "selector": ".composer-hint",
+          "text": "Enter 发送 · Shift + Enter 换行",
+          "fg": "rgb(182, 197, 208)",
+          "bg": "36,51,64",
+          "ratio": 7.325586992616884,
+          "font": "11px"
+        },
+        {
+          "selector": ".composer-hint",
+          "text": "Enter 发送 · Shift + Enter 换行 · 继承最新完",
+          "fg": "rgb(182, 197, 208)",
+          "bg": "35,59,56",
+          "ratio": 6.776098453384295,
+          "font": "11px"
+        },
+        {
+          "selector": ".artifact-permission",
+          "text": "本次允许生成文件",
+          "fg": "rgb(237, 241, 244)",
+          "bg": "44,61,76",
+          "ratio": 9.840245952131578,
+          "font": "12px"
+        },
+        {
+          "selector": ".appearance-switch select",
+          "text": "浅色石墨灰墨蓝",
+          "fg": "rgb(237, 241, 244)",
+          "bg": "36,51,64",
+          "ratio": 11.39505330802849,
+          "font": "12px"
+        },
+        {
+          "selector": ".markdown-paper p",
+          "text": "用于核对文字、图片、引用、公式和表格。",
+          "fg": "rgb(37, 52, 68)",
+          "bg": "255,253,249",
+          "ratio": 12.502050611593901,
+          "font": "15px"
+        },
+        {
+          "selector": ".markdown-paper p",
+          "text": "引用内容的对比度。",
+          "fg": "rgb(88, 106, 123)",
+          "bg": "255,253,249",
+          "ratio": 5.4935956532825,
+          "font": "15px"
+        },
+        {
+          "selector": ".markdown-paper blockquote",
+          "text": "引用内容的对比度。",
+          "fg": "rgb(88, 106, 123)",
+          "bg": "255,253,249",
+          "ratio": 5.4935956532825,
+          "font": "15px"
+        },
+        {
+          "selector": ".statusbar",
+          "text": "本地工作区原文与追问并排 · 临时对话独立保存",
+          "fg": "rgb(182, 197, 208)",
+          "bg": "36,51,64",
+          "ratio": 7.325586992616884,
+          "font": "11px"
+        }
+      ]
+    },
+    {
+      "theme": "ink",
+      "state": "settings",
+      "values": [
+        {
+          "selector": ".sidebar-action",
+          "text": "切换工作区",
+          "fg": "rgb(237, 241, 244)",
+          "bg": "48,61,73",
+          "ratio": 9.785932725143052,
+          "font": "13px"
+        },
+        {
+          "selector": ".sidebar-action",
+          "text": "设置",
+          "fg": "rgb(237, 241, 244)",
+          "bg": "48,61,73",
+          "ratio": 9.785932725143052,
+          "font": "13px"
+        },
+        {
+          "selector": ".new-session",
+          "text": "新建主对话",
+          "fg": "rgb(237, 241, 244)",
+          "bg": "70,89,102",
+          "ratio": 6.417170768752693,
+          "font": "13px"
+        },
+        {
+          "selector": ".session-list .selected",
+          "text": "阅读会话",
+          "fg": "rgb(237, 241, 244)",
+          "bg": "70,89,102",
+          "ratio": 6.417170768752693,
+          "font": "13px"
+        },
+        {
+          "selector": ".file-tree button",
+          "text": "assets",
+          "fg": "rgb(237, 241, 244)",
+          "bg": "48,61,73",
+          "ratio": 9.785932725143052,
+          "font": "13px"
+        },
+        {
+          "selector": ".file-tree button",
+          "text": "audit.md",
+          "fg": "rgb(237, 241, 244)",
+          "bg": "48,61,73",
+          "ratio": 9.785932725143052,
+          "font": "13px"
+        },
+        {
+          "selector": ".pane-header strong",
+          "text": "文件",
+          "fg": "rgb(237, 241, 244)",
+          "bg": "36,51,64",
+          "ratio": 11.39505330802849,
+          "font": "13px"
+        },
+        {
+          "selector": ".pane-header strong",
+          "text": "主对话",
+          "fg": "rgb(237, 241, 244)",
+          "bg": "42,59,77",
+          "ratio": 10.096860527253439,
+          "font": "13px"
+        },
+        {
+          "selector": ".chat-empty h3",
+          "text": "把小问题留在这里",
+          "fg": "rgb(237, 241, 244)",
+          "bg": "35,59,56",
+          "ratio": 10.540316178701286,
+          "font": "20px"
+        },
+        {
+          "selector": ".chat-empty p",
+          "text": "继承主对话中已完成的记忆，保留自己的追问历史。",
+          "fg": "rgb(182, 197, 208)",
+          "bg": "35,59,56",
+          "ratio": 6.776098453384295,
+          "font": "14px"
+        },
+        {
+          "selector": ".chat-empty small",
+          "text": "每次提问读取最新主记忆 · 不回写主对话",
+          "fg": "rgb(182, 197, 208)",
+          "bg": "35,59,56",
+          "ratio": 6.776098453384295,
+          "font": "12px"
+        },
+        {
+          "selector": ".composer-hint",
+          "text": "Enter 发送 · Shift + Enter 换行",
+          "fg": "rgb(182, 197, 208)",
+          "bg": "36,51,64",
+          "ratio": 7.325586992616884,
+          "font": "11px"
+        },
+        {
+          "selector": ".composer-hint",
+          "text": "Enter 发送 · Shift + Enter 换行 · 继承最新完",
+          "fg": "rgb(182, 197, 208)",
+          "bg": "35,59,56",
+          "ratio": 6.776098453384295,
+          "font": "11px"
+        },
+        {
+          "selector": ".artifact-permission",
+          "text": "本次允许生成文件",
+          "fg": "rgb(237, 241, 244)",
+          "bg": "44,61,76",
+          "ratio": 9.840245952131578,
+          "font": "12px"
+        },
+        {
+          "selector": ".appearance-switch select",
+          "text": "浅色石墨灰墨蓝",
+          "fg": "rgb(237, 241, 244)",
+          "bg": "36,51,64",
+          "ratio": 11.39505330802849,
+          "font": "12px"
+        },
+        {
+          "selector": ".primary",
+          "text": "保存设置",
+          "fg": "rgb(255, 255, 255)",
+          "bg": "52,95,117",
+          "ratio": 6.9084235074594025,
+          "font": "13px"
+        },
+        {
+          "selector": ".settings-tabs .selected",
+          "text": "模型连接",
+          "fg": "rgb(163, 198, 240)",
+          "bg": "53,77,98",
+          "ratio": 4.977697713160322,
+          "font": "13px"
+        },
+        {
+          "selector": ".settings-body label",
+          "text": "连接配置新建连接",
+          "fg": "rgb(237, 241, 244)",
+          "bg": "36,51,64",
+          "ratio": 11.39505330802849,
+          "font": "13px"
+        },
+        {
+          "selector": ".settings-body label",
+          "text": "配置名称",
+          "fg": "rgb(237, 241, 244)",
+          "bg": "36,51,64",
+          "ratio": 11.39505330802849,
+          "font": "13px"
+        },
+        {
+          "selector": ".markdown-paper p",
+          "text": "用于核对文字、图片、引用、公式和表格。",
+          "fg": "rgb(37, 52, 68)",
+          "bg": "255,253,249",
+          "ratio": 12.502050611593901,
+          "font": "15px"
+        },
+        {
+          "selector": ".markdown-paper p",
+          "text": "引用内容的对比度。",
+          "fg": "rgb(88, 106, 123)",
+          "bg": "255,253,249",
+          "ratio": 5.4935956532825,
+          "font": "15px"
+        },
+        {
+          "selector": ".markdown-paper blockquote",
+          "text": "引用内容的对比度。",
+          "fg": "rgb(88, 106, 123)",
+          "bg": "255,253,249",
+          "ratio": 5.4935956532825,
+          "font": "15px"
+        },
+        {
+          "selector": ".statusbar",
+          "text": "本地工作区原文与追问并排 · 临时对话独立保存",
+          "fg": "rgb(182, 197, 208)",
+          "bg": "36,51,64",
+          "ratio": 7.325586992616884,
+          "font": "11px"
+        }
+      ]
+    }
+  ],
+  "consoleErrors": [],
+  "externalRequests": [],
+  "touch": {
+    "before": "40",
+    "after": "44",
+    "afterKeyboard": "46"
+  },
+  "round": "first",
+  "persistedAppearance": "light"
+}

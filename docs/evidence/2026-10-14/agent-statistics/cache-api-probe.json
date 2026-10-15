@@ -1,0 +1,17 @@
+[
+  {
+    "model": "deepseek-flash",
+    "configuredContextWindow": 1000000,
+    "configuredMaxOutputTokens": 100000,
+    "httpStatus": 200,
+    "usage": {
+      "prompt_tokens": 16,
+      "completion_tokens": 1,
+      "total_tokens": 17,
+      "prompt_cache_hit_tokens": 0,
+      "prompt_cache_miss_tokens": 16,
+      "cached_tokens": 0
+    },
+    "cacheFieldsReturned": true
+  }
+]

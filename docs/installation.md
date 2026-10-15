@@ -5,7 +5,7 @@
 发行包安装后，日常使用一条命令：
 
 ```sh
-npm install --global /path/to/reader-workbench-0.2.0.tgz
+npm install --global /path/to/reader-workbench-0.3.0.tgz
 reader-workbench web
 ```
 

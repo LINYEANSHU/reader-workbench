@@ -2,7 +2,7 @@
 
 仓库根目录为 `G:\My_project\try`，正式分支为 `main`，首个发布标签为 `v0.1.0`。此前的全部开发提交已保留；使用 `git log --oneline --decorate --graph --all` 查看历史。
 
-本次功能迭代发布 `v0.2.0`：视觉文档记忆插件 1.0.0，SDK 协议 1.1.0。源码与启动入口采用当前根目录；旧 worktree 的资源和私有配置可就地复用。
+当前功能迭代为 `v0.3.0`：三套外观、提示词与个性化、上下文压缩、思考控制及工作区用量统计；视觉文档记忆插件 1.0.0，SDK 协议 1.2.0。源码与启动入口采用当前根目录；旧 worktree 的资源和私有配置可就地复用。`v0.1.0` 和 `v0.2.0` 标签保留。
 
 原开发 worktree `.worktrees/reader-workbench` 保留，因为现有应用、Office 资源及语音模型正在使用那里。它不再是唯一源码位置；当前根目录包含完整应用源码。不要运行 `git clean -fdx`，这会删除忽略的运行资源与私有配置。
 
@@ -76,7 +76,7 @@ git revert COMMIT_ID
 
 ```powershell
 git push origin main
-git push origin v0.2.0
+git push origin v0.3.0
 ```
 
 发布前同时检查当前文件及待推送的 Git 历史，确认没有真实凭据或工作区数据；`.gitignore` 不会移除历史中已提交的内容。跨平台 CI 状态以 GitHub Actions 实际结果为准。

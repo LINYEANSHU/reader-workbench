@@ -1,0 +1,10 @@
+{
+  "command": "C:/Users/Shu Yan/.agents/skills/impeccable/scripts/impeccable.cmd detect --json src",
+  "cwd": "G:/My_project/try/apps/web",
+  "exitCode": 1,
+  "findings": [
+    {"antipattern":"side-tab","severity":"warning","file":"apps/web/src/styles/selection.css","line":1,"snippet":"border-left:3px solid #7ca1d8","review":"Meaningful source-selection quote, excluded from technical issue count."},
+    {"antipattern":"overused-font","severity":"warning","file":"apps/web/src/styles/tokens.css","line":1,"snippet":"font-family:Inter","review":"Incumbent font stack, excluded from technical issue count."},
+    {"antipattern":"side-tab","severity":"warning","file":"apps/web/src/styles/viewers.css","line":1,"snippet":"border-left:3px solid #719ee0","review":"Semantic Markdown quotation, excluded from technical issue count."}
+  ]
+}

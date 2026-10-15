@@ -8,6 +8,6 @@ export function attachReaderOpenApi(app:FastifyInstance,services:ReaderServices,
  paths[memory]={get:{operationId:'document_memory_status',parameters:[...parameters,query],responses,security:[{bearerAuth:[]}]}};
  paths[memory+'/pages/{page}']={get:{operationId:'document_memory_page',parameters:[...parameters,{name:'page',in:'path',required:true,schema:{type:'integer',minimum:1}},query],responses,security:[{bearerAuth:[]}]}};
  paths[memory+'/rebuild']={post:{operationId:'rebuild_document_memory',parameters,requestBody:{required:true,content:{'application/json':{schema:{type:'object',properties:{providerId:{type:'string'}},required:['providerId']}}}},responses,security:[{bearerAuth:[]}]}};
- app.get('/api/v1/openapi.json',async()=>({openapi:'3.1.0',info:{title:'Reader Workbench Agent API',version:'0.2.0'},paths,components:{securitySchemes:{bearerAuth:{type:'http',scheme:'bearer'}}}}));
+ app.get('/api/v1/openapi.json',async()=>({openapi:'3.1.0',info:{title:'Reader Workbench Agent API',version:'0.3.0'},paths,components:{securitySchemes:{bearerAuth:{type:'http',scheme:'bearer'}}}}));
  app.post<{Params:{name:string}}>('/api/v1/agent-tools/:name',request=>invokeReaderOperation(services,auth.actor(request),request.params.name,request.body,new AbortController().signal));
 }
