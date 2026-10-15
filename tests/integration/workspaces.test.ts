@@ -1,4 +1,4 @@
-import {afterEach,describe,expect,it} from 'vitest';
+import {afterEach,describe,expect,it,vi} from 'vitest';
 import {mkdtemp,mkdir,writeFile,readFile,rm,symlink,access,chmod} from 'node:fs/promises';
 import {execFile} from 'node:child_process';import {promisify} from 'node:util';import {userInfo} from 'node:os';
 import {join,win32} from 'node:path';import {tmpdir} from 'node:os';import {createHash} from 'node:crypto';
@@ -12,6 +12,26 @@ async function setup(){const dir=await mkdtemp(join(tmpdir(),'reader workspace �
   const service=new WorkspaceService(config);clean.push(()=>service.close());return{dir,config,a,b,service};}
 const hash=(data:Uint8Array)=>createHash('sha256').update(data).digest('hex');
 describe('workspace boundaries',()=>{
+  it('waits for in-flight storage access and never reopens storage after close',async()=>{
+    const {a,service}=await setup();const workspace=await service.select(a,actor);
+    let entered!:()=>void,release!:()=>void;
+    const started=new Promise<void>(resolve=>{entered=resolve;}),gate=new Promise<void>(resolve=>{release=resolve;});
+    const get=service.get.bind(service);
+    vi.spyOn(service,'get').mockImplementationOnce(async id=>{entered();await gate;return get(id);});
+    const reading=service.storeFor(workspace.id);await started;
+    let closed=false;const closing=service.close().then(()=>{closed=true;});
+    await new Promise<void>(resolve=>setImmediate(resolve));const closedBeforeReadFinished=closed;
+    release();await Promise.all([reading,closing]);
+    expect(closedBeforeReadFinished).toBe(false);
+    await expect(service.storeFor(workspace.id)).rejects.toMatchObject({code:'SERVER_CLOSING'});
+    await expect(service.select(a,actor)).rejects.toMatchObject({code:'SERVER_CLOSING'});
+  });
+  it('shares one storage handle for concurrent first reads of a reopened workspace',async()=>{
+    const {a,config,service}=await setup();const workspace=await service.select(a,actor);await service.close();
+    const reopened=new WorkspaceService(config);clean.push(()=>reopened.close());
+    const stores=await Promise.all(Array.from({length:8},()=>reopened.storeFor(workspace.id)));
+    try{expect(new Set(stores).size).toBe(1);}finally{for(const store of new Set(stores))await store.close();}
+  });
   it('rejects traversal without changing originals',async()=>{
     const {a,b,service}=await setup();await writeFile(join(a,'原文 空格.md'),'中文 original\n');
     const before=hash(await readFile(join(a,'原文 空格.md')));

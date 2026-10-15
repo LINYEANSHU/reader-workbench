@@ -19,6 +19,8 @@ export class WorkspaceService {
   attachCapabilities(registry:CapabilityRegistry){this.capabilities=registry;this.storage=new StorageConsumer(registry);}
   private workspaces=new Map<WorkspaceId,SavedWorkspace>();private stores=new Map<WorkspaceId,SqliteWorkspaceStore>();private ready:Promise<void>;
   private internals=new Map<WorkspaceId,string>();
+  private opening=new Map<WorkspaceId,Promise<SqliteWorkspaceStore>>();
+  private closing?:Promise<void>;
   private selecting:Promise<unknown>=Promise.resolve();
   private configRoot:string;
   constructor(readonly configDir:string){this.configRoot=resolve(configDir);this.ready=this.load();}
@@ -27,6 +29,7 @@ export class WorkspaceService {
     for(const record of records)this.workspaces.set(record.id,record);}catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;}}
   async get(id:WorkspaceId):Promise<Workspace>{await this.ready;const record=this.workspaces.get(id);if(!record)throw new ReaderError('WORKSPACE_REQUIRED','请先选择工作区',409);return {id:record.id,root:record.root,name:record.name};}
   async select(root:string,actor:Actor):Promise<Workspace>{
+    if(this.closing)throw new ReaderError('SERVER_CLOSING','服务正在退出',503);
     const operation=this.selecting.catch(()=>{}).then(async()=>{
       await this.ready;let actual:string;
       try{actual=await realpath(resolve(root));if(!(await stat(actual)).isDirectory())throw new Error('not directory');}
@@ -61,6 +64,16 @@ export class WorkspaceService {
     }catch(error){if(error instanceof ReaderError)throw error;throw new ReaderError('WORKSPACE_NOT_WRITABLE','工作区不可写，请选择可写目录',403);}
   }
   async storeFor(id:WorkspaceId):Promise<SqliteWorkspaceStore>{
+    if(this.closing)throw new ReaderError('SERVER_CLOSING','服务正在退出',503);
+    let opening=this.opening.get(id);
+    if(!opening){
+      opening=this.openStore(id);this.opening.set(id,opening);
+      const settled=()=>{if(this.opening.get(id)===opening)this.opening.delete(id);};
+      void opening.then(settled,settled);
+    }
+    return opening;
+  }
+  private async openStore(id:WorkspaceId):Promise<SqliteWorkspaceStore>{
     const workspace=await this.get(id);let store=this.stores.get(id);
     if(!store){let internal=await this.ensureStorage(workspace.root);const owner=databaseWorkspaceId(join(internal,'state.sqlite'));if(owner&&owner!==id)internal=await this.ensureStorage(workspace.root,['identities',id]);store=new SqliteWorkspaceStore(id,join(internal,'state.sqlite'));this.stores.set(id,store);this.internals.set(id,internal);}
     if(!this.storage)return store;let wrapped=this.wrapped.get(id);if(!wrapped){wrapped=this.storage.wrap(store,workspace.root);this.wrapped.set(id,wrapped);}return wrapped;
@@ -83,5 +96,10 @@ export class WorkspaceService {
   }
   async saveUiState(id:WorkspaceId,clientId:string,state:UiState){if(!clientId||clientId.length>128||JSON.stringify(state).length>1024*1024)throw new ReaderError('INVALID_UI_STATE','界面状态无效');await(await this.storeFor(id)).saveUiState(clientId,state);}
   async getUiState(id:WorkspaceId,clientId:string){return(await this.storeFor(id)).getUiState(clientId);}
-  async close(){await this.storage?.close();this.wrapped.clear();for(const store of this.stores.values())await store.close();this.stores.clear();}
+  close(){return this.closing??=this.closeStorage();}
+  private async closeStorage(){
+    await this.ready;await this.selecting.catch(()=>{});
+    await Promise.allSettled([...this.opening.values()]);
+    await this.storage?.close();this.wrapped.clear();for(const store of this.stores.values())await store.close();this.stores.clear();
+  }
 }

@@ -38,9 +38,11 @@ test('keeps the effort popup within a shrinking viewport and follows the current
   await page.getByRole('combobox',{name:'界面外观'}).selectOption(theme);
   await main.getByRole('button',{name:'选择思考强度'}).click();
   await page.setViewportSize({width:320,height:400});
-  const bounds=(await popup.boundingBox())!;
-  expect(bounds.x).toBeGreaterThanOrEqual(8);expect(bounds.x+bounds.width).toBeLessThanOrEqual(312);
-  expect(bounds.y).toBeGreaterThanOrEqual(8);expect(bounds.y+bounds.height).toBeLessThanOrEqual(392);
+  await expect(async()=>{
+   const bounds=(await popup.boundingBox())!;
+   expect(bounds.x).toBeGreaterThanOrEqual(8);expect(bounds.x+bounds.width).toBeLessThanOrEqual(312);
+   expect(bounds.y).toBeGreaterThanOrEqual(8);expect(bounds.y+bounds.height).toBeLessThanOrEqual(392);
+  }).toPass({timeout:15000});
   const colors=await popup.locator('.effort-slider').evaluate(node=>{const css=getComputedStyle(node);return{accent:css.getPropertyValue('--effort-accent').trim(),theme:css.getPropertyValue('--blue').trim()};});
   expect(colors.accent).toBe(colors.theme);
   await page.keyboard.press('Escape');

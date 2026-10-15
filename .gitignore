@@ -58,3 +58,7 @@ __pycache__/
 .DS_Store
 Thumbs.db
 Desktop.ini
+
+# Local agent instructions
+/Agents.md
+/AGENTS.md
