@@ -32,6 +32,35 @@ test('creates and restores independent temporary branches with drafts, scroll an
  try{await openWorkspace(page,host,root);const parent=(await host.sessions.list(workspace.id)).find(s=>s.kind==='main')!,before=await host.sessionRepository.snapshot(workspace.id,parent.id),first=await temp(page).getAttribute('data-session-id');await temp(page).getByRole('textbox',{name:'临时对话输入'}).fill('分支一');await temp(page).getByRole('button',{name:'发送',exact:true}).click();await expect(temp(page).locator('.working')).toBeVisible();await temp(page).getByRole('textbox',{name:'临时对话输入'}).fill('分支一草稿');await temp(page).getByRole('button',{name:'新建临时分支'}).click();await expect.poll(()=>temp(page).getAttribute('data-session-id')).not.toBe(first);const second=await temp(page).getAttribute('data-session-id');await temp(page).getByRole('textbox',{name:'临时对话输入'}).fill('分支二');await temp(page).getByRole('button',{name:'发送',exact:true}).click();await expect(temp(page).locator('.assistant-message')).toContainText('分支二完成');await temp(page).getByRole('textbox',{name:'临时对话输入'}).fill('分支二草稿');await temp(page).getByRole('combobox',{name:'临时分支'}).selectOption(first!);await expect(temp(page).getByRole('textbox',{name:'临时对话输入'})).toHaveValue('分支一草稿');await expect(temp(page).locator('.working')).toBeVisible();release();await expect(temp(page).locator('.working')).toHaveCount(0);const position=await temp(page).locator('.pane-scroll').evaluate(node=>{node.scrollTop=40;return node.scrollTop;});expect(position).toBe(40);await temp(page).getByRole('combobox',{name:'临时分支'}).selectOption(second!);await expect(temp(page).getByRole('textbox',{name:'临时对话输入'})).toHaveValue('分支二草稿');await temp(page).getByRole('combobox',{name:'临时分支'}).selectOption(first!);await expect.poll(()=>temp(page).locator('.pane-scroll').evaluate(node=>node.scrollTop)).toBe(40);await page.route('**/api/v1/ui-state/**',route=>route.request().method()==='PUT'?route.abort('failed'):route.continue());await page.reload();await expect(temp(page)).toHaveAttribute('data-session-id',first!);await expect(temp(page).getByRole('textbox',{name:'临时对话输入'})).toHaveValue('分支一草稿');await expect.poll(()=>temp(page).locator('.pane-scroll').evaluate(node=>node.scrollTop)).toBe(40);expect(await host.sessionRepository.snapshot(workspace.id,parent.id)).toEqual(before);await page.screenshot({path:'.superpowers/sdd/2026-10-11-reader-workbench/review-temporary-branches.png'});
  }finally{release();}
 });
+test('restores readable branch history atomically with delayed artifact data',async({page,host,root,modelUrl})=>{
+ const workspace=await model(host,root,modelUrl);
+ await host.capabilities.retireOwner(workspace.id,'model.test');
+ host.capabilities.register(workspace.id,'model','test',{capabilities,async *generate(){yield{kind:'delta',text:'长回答段落。\n\n'.repeat(100)};yield{kind:'done'};}});
+ await openWorkspace(page,host,root);
+ const pane=temp(page),first=await pane.getAttribute('data-session-id');
+ await pane.getByRole('textbox',{name:'临时对话输入'}).fill('长回答');
+ await pane.getByRole('button',{name:'发送',exact:true}).click();
+ await expect(pane.locator('.assistant-message')).toContainText('长回答段落');
+ await expect(pane.locator('.working')).toHaveCount(0);
+ await expect(pane.getByRole('combobox',{name:'临时分支'}).locator('option:checked')).not.toContainText('运行中');
+ await pane.locator('.pane-scroll').evaluate(node=>{node.scrollTop=0;});
+ await pane.getByRole('button',{name:'新建临时分支'}).click();
+ await expect(pane).not.toHaveAttribute('data-session-id',first!);
+ let release!:()=>void,pending=0;
+ const gate=new Promise<void>(resolve=>{release=resolve;});
+ await page.route('**/api/v1/artifacts?**',async route=>{pending++;try{const response=await route.fetch();await gate;await route.fulfill({response});}finally{pending--;}});
+ try{
+  await pane.getByRole('combobox',{name:'临时分支'}).selectOption(first!);
+  await expect.poll(()=>pending).toBeGreaterThan(0);
+  await expect(pane.locator('.assistant-message')).toHaveCount(0);
+  release();await expect(pane.locator('.assistant-message')).toContainText('长回答段落');
+  expect(await pane.locator('.pane-scroll').evaluate(node=>{node.scrollTop=40;return node.scrollTop;})).toBe(40);
+  await expect.poll(()=>pending).toBe(0);
+  await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));
+  expect(await pane.locator('.pane-scroll').evaluate(node=>node.scrollTop)).toBe(40);
+ }finally{release();}
+});
+
 test('renders Unicode, spaced and reference images and captures their actual pixels',async({page,host,root,modelUrl})=>{
  const workspace=await model(host,root,modelUrl),png=createCanvas(200,100),ctx=png.getContext('2d');ctx.fillStyle='red';ctx.fillRect(0,0,200,100);for(const name of ['图.png','图 1.png','引用.png'])await writeFile(join(root,'assets',name),png.toBuffer('image/png'));await writeFile(join(root,'images.md'),'# Images\n\n![中文](assets/图.png)\n\n![空格](<assets/图 1.png>)\n\n![引用][figure]\n\n[figure]: assets/引用.png\n');await openWorkspace(page,host,root);await page.getByRole('button',{name:'images.md',exact:true}).click();for(const alt of ['中文','空格','引用']){const image=file(page).getByRole('img',{name:alt,exact:true});await expect(image).toHaveJSProperty('naturalWidth',200);expect(await image.evaluate(node=>{const canvas=document.createElement('canvas');canvas.width=1;canvas.height=1;const ctx=canvas.getContext('2d')!;ctx.drawImage(node as HTMLImageElement,0,0,1,1);return[...ctx.getImageData(0,0,1,1).data];})).toEqual([255,0,0,255]);}
  await capture(page,file(page).getByRole('img',{name:'中文',exact:true}));await page.getByRole('button',{name:'放入临时输入框',exact:true}).click();await expect(page.getByRole('dialog',{name:'截图预览'})).toHaveCount(0);const session=(await host.sessions.list(workspace.id)).find(s=>s.kind==='temporary')!,attachment=(await(await host.workspaces.storeFor(workspace.id)).attachments.list(session.id)).at(-1)!,image=await loadImage(await host.attachments.read({actor:{callerId:'local-owner',transport:'internal'},workspaceId:workspace.id,sessionId:session.id},attachment.id)),canvas=createCanvas(image.width,image.height);canvas.getContext('2d').drawImage(image,0,0);expect([...canvas.getContext('2d').getImageData(Math.floor(image.width/2),Math.floor(image.height/2),1,1).data]).toEqual([255,0,0,255]);await page.screenshot({path:'.superpowers/sdd/2026-10-11-reader-workbench/review-markdown-images.png'});
