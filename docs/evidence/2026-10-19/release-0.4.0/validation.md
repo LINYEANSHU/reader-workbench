@@ -24,6 +24,8 @@
 - 发行包预检包含 307 个文件、全部四个翻译插件文件及安装脚本，未包含私有运行库、凭据、数据库、日志、Agents.md 或 Python 字节码。
 - 提交前核对暂存文件与实际发行包，并比较本地凭据值及高置信凭据模式；扫描过程不输出凭据。原始运行日志和扫描记录只留在忽略的本地运行目录。
 
+首次远程验收的 Linux、macOS 全部通过；Windows 的中文伴随 PDF 文字顺序断言失败。该任务此前只安装 LibreOffice，缺少其他两平台已准备的中文字体。后续 CI 补齐固定官方版本、SHA-256 校验与新进程字体族枚举；保留原 PDF 内容断言和全部平台检查，后续结果必须以修复后提交重新验收。
+
 本文件记录可复查的本地验收。远程 Windows、macOS、Linux 结果以 [`v0.4.0` 对应提交](https://github.com/LINYEANSHU/reader-workbench/tree/v0.4.0) 的 [GitHub Actions](https://github.com/LINYEANSHU/reader-workbench/actions/workflows/ci.yml) 为准，不能用旧提交的绿色结果替代。
 
 ## 实际边界
