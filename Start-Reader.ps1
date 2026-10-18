@@ -8,13 +8,6 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $readerRoot = $PSScriptRoot
-if ([string]::IsNullOrWhiteSpace($ConfigDir)) {
-    $ConfigDir = Join-Path $readerRoot '.reader-runtime/user-config'
-    $readerPreviousConfig = Join-Path $readerRoot '.worktrees/reader-workbench/.reader-runtime/user-config'
-    if (-not (Test-Path -LiteralPath $ConfigDir) -and (Test-Path -LiteralPath $readerPreviousConfig)) {
-        $ConfigDir = $readerPreviousConfig
-    }
-}
 $readerCli = Join-Path $readerRoot 'bin/reader-workbench.mjs'
 $readerBuild = Join-Path $readerRoot 'dist/cli.mjs'
 if (-not (Test-Path -LiteralPath $readerBuild)) {
@@ -44,10 +37,12 @@ try {
     if (-not $env:READER_SPEECH_ASSET_DIR -and (Test-Path -LiteralPath (Join-Path $readerSpeech 'model.int8.onnx')) -and (Test-Path -LiteralPath (Join-Path $readerSpeech 'tokens.txt'))) {
         $env:READER_SPEECH_ASSET_DIR = $readerSpeech
     }
-    $readerArguments = @($readerCli, 'web', '--port', [string] $Port, '--config-dir', $ConfigDir)
+    $readerArguments = @($readerCli, 'web', '--port', [string] $Port)
+    if (-not [string]::IsNullOrWhiteSpace($ConfigDir)) { $readerArguments += @('--config-dir', $ConfigDir) }
     if ($NoOpen) { $readerArguments += '--no-open' }
     if ($Demo) { $readerArguments += '--demo' }
     & $readerNode @readerArguments
+    $readerExitCode = $LASTEXITCODE
 }
 finally {
     $env:READER_LIBREOFFICE = $readerPreviousOffice
@@ -55,3 +50,4 @@ finally {
     $env:TEMP = $readerPreviousTemp
     $env:TMP = $readerPreviousTmp
 }
+exit $readerExitCode

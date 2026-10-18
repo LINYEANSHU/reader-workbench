@@ -14,7 +14,7 @@ const targetKey=(target:ContextTarget)=>JSON.stringify([target.sessionId,target.
 export function WorkspaceStatistics({workspaceId,targets,liveContexts,busy,revision,demo}:{workspaceId:WorkspaceId;targets:ContextTarget[];liveContexts:Record<string,LiveSessionContext>;busy:boolean;revision:string;demo:boolean}){
  const [usage,setUsage]=useState<WorkspaceUsageSummary|null>(null),[contexts,setContexts]=useState<Record<string,SessionUsageSummary>>({}),[error,setError]=useState(false),[expanded,setExpanded]=useState(false);
  const container=useRef<HTMLElement>(null),button=useRef<HTMLButtonElement>(null);
- const queryKey=JSON.stringify(targets.map(target=>[targetKey(target),target.model?.capabilities.contextWindow,target.model?.capabilities.maxOutputTokens]));
+ const queryKey=JSON.stringify(targets.map(target=>[targetKey(target),target.model?.capabilities.contextWindow]));
  useEffect(()=>{
   const controller=new AbortController();let timer:ReturnType<typeof setTimeout>;
   const selected=targets.filter(target=>target.sessionId&&target.model&&target.model.id!=='demo');
@@ -61,7 +61,7 @@ export function WorkspaceStatistics({workspaceId,targets,liveContexts,busy,revis
    </>:<p>{error?'统计读取失败，正在重试。':'正在读取工作区用量…'}</p>}
    {targets.map(target=>{const context=contextFor(target);return<section className="workspace-context" key={target.title} aria-label={target.title+'上下文'}>
     <h4>{target.title} · {target.model?.model??'未配置模型'}</h4>
-    {target.model?<><p>当前上下文 {context?numbers.format(context.usedTokens):'尚未发送'} / {numbers.format(context?.limit??target.model.capabilities.contextWindow)} token{context?' · '+(context.estimated?'本地估算':'服务回传')+' · '+(context.capacitySource==='service'?'服务端容量':'手填容量'):' · 手填容量'}</p><p>输出预留 {numbers.format(context?.reservedOutputTokens??target.model.capabilities.maxOutputTokens)} token · 上下文达到容量的 80% 时尝试 AI 压缩</p></>:<p>配置模型后显示上下文容量。</p>}
+    {target.model?<><p>当前输入 {context?numbers.format(context.usedTokens):'尚未发送'} / {numbers.format(context?.limit??target.model.capabilities.contextWindow)} token{context?' · '+(context.estimated?'本地估算':'服务回传')+' · '+(context.capacitySource==='application'?'固定输入上限':context.capacitySource==='service'?'服务端容量':'历史配置容量'):' · 固定输入上限'}</p><p>输出长度由供应商默认决定 · 输入达到上限的 80% 时尝试 AI 压缩</p></>:<p>配置模型后显示上下文容量。</p>}
    </section>;})}
    <p>{usage?.trackedSince?'自 '+new Date(usage.trackedSince).toLocaleString('zh-CN',{hour12:false})+' 起统计。':'首次请求后开始记录。'}此前用量无法追溯。</p>
    <p>包含本工作区全部主对话、临时追问、工具续答、文档预读和 AI 压缩请求，跨模型及历史连接配置累计，重启或清空对话后保留。上下文按当前打开的会话及所选模型分别显示。</p>

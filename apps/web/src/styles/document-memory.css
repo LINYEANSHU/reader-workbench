@@ -1,0 +1,15 @@
+.memory-search, .memory-supplement { display: grid; gap: 6px; margin-top: 12px; }
+.memory-search > label, .memory-supplement > label { color: var(--muted); font-size: 12px; }
+.memory-search-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.document-memory .memory-search-row input { flex: 1 1 130px; width: auto; min-width: 0; margin: 0; }
+.memory-kinds { display: flex; flex-wrap: wrap; gap: 4px; }
+.document-memory .memory-kinds button { border-color: transparent; color: var(--muted); }
+.document-memory .memory-kinds button[aria-pressed="true"] { border-color: var(--border); color: var(--text); background: var(--surface-hover); }
+.memory-search-results { margin-top: 12px; font-size: 12px; }
+.memory-search-results > p { color: var(--muted); }
+.memory-search-results ol { list-style: none; margin: 0; padding: 0; }
+.memory-search-results li { padding: 10px 0; border-top: 1px solid var(--border); }
+.memory-search-results li > div { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; justify-content: space-between; }
+.memory-search-results li > div > span { color: var(--muted); }
+.memory-search-results button { display: inline-flex; align-items: center; gap: 4px; }
+.document-memory .memory-search-results pre { max-height: none; margin: 8px 0 0; line-height: 1.6; }

@@ -4,8 +4,8 @@ import type {CredentialStore} from '../runtime/credentials.js';
 import {ReaderError} from '../../../contracts/src/errors.js';
 import {parseSSE} from './sse-parser.js';
 import {createHash} from 'node:crypto';import {resolveImageLimits,validateImageRequest} from './image-budget.js';
-import {metadataContextWindow} from './metadata.js';
-import {estimateTokens} from './tokens.js';
+import {inputOnlyCapabilities} from '../../../contracts/src/models.js';
+import {estimateTokens,messageTokens} from './tokens.js';
 class CredentialRedactor{
  private pending='';constructor(private secret:string){}
  append(text:string,final=false):string{
@@ -21,39 +21,24 @@ export function completionUrl(baseUrl:string):string{
 }
 export class OpenAICompatibleProvider implements ModelProvider{
  readonly identity:string;readonly imageLimits:import('../../../contracts/src/models.js').ModelImageLimits;
- private effectiveCapabilities:ModelCapabilities;get capabilities(){return this.effectiveCapabilities;}contextWindowSource:'service'|'manual'='manual';private metadata?:Promise<void>;
+ private effectiveCapabilities:ModelCapabilities;get capabilities(){return this.effectiveCapabilities;}contextWindowSource='application' as const;
  readonly ocrToolId?:string;private settings:ModelSettings;private key:Promise<string>;private endpoint:string;
  constructor(settings:ModelSettings,credentials:CredentialStore,private onUsage?:(report:ModelUsageRequest,startedAt:string)=>Promise<void>){
-  this.settings=structuredClone(settings);this.effectiveCapabilities=Object.freeze(structuredClone(settings.capabilities));this.ocrToolId=settings.ocrToolId;this.endpoint=completionUrl(settings.baseUrl);
+  this.settings=structuredClone(settings);this.effectiveCapabilities=Object.freeze(inputOnlyCapabilities(settings.capabilities));this.ocrToolId=settings.ocrToolId;this.endpoint=completionUrl(settings.baseUrl);
   this.imageLimits=resolveImageLimits(settings);this.identity=createHash('sha256').update(JSON.stringify([this.endpoint,settings.model,this.capabilities,this.imageLimits,settings.reasoningFormat])).digest('hex');
   this.key=credentials.getSecret(settings.credentialRef);void this.key.catch(()=>{});
  }
- async resolveCapabilities(signal:AbortSignal):Promise<void>{
-  signal.throwIfAborted();if(this.settings.autoDiscoverContext===false)return;
-  this.metadata??=this.readMetadata();await this.metadata;signal.throwIfAborted();
- }
- private async readMetadata(){
-  try{
-   const url=new URL(this.endpoint);url.pathname=url.pathname.replace(/\/chat\/completions$/,'/models');
-   const response=await fetch(url,{headers:{authorization:'Bearer '+await this.key},signal:AbortSignal.timeout(2000),redirect:'error'});
-   if(!response.ok||!response.headers.get('content-type')?.includes('application/json')){await response.body?.cancel();return;}
-   const data=await response.json() as {data?:Array<Record<string,unknown>>};const item=data.data?.find(model=>model.id===this.settings.model);if(!item)return;
-   const contextWindow=metadataContextWindow(item);if(!contextWindow)return;
-   const declaredOutput=Number.isSafeInteger(item.max_output_tokens)&&(item.max_output_tokens as number)>0?item.max_output_tokens as number:this.settings.capabilities.maxOutputTokens;
-   this.effectiveCapabilities=Object.freeze({...this.settings.capabilities,contextWindow,maxOutputTokens:Math.min(this.settings.capabilities.maxOutputTokens,declaredOutput,Math.floor(contextWindow/4))});this.contextWindowSource='service';
-  }catch{/* Metadata is optional: retain the user's saved input and output capacities. */}
- }
+ async resolveCapabilities(signal:AbortSignal):Promise<void>{signal.throwIfAborted();}
  async *generate(request:ModelRequest,signal:AbortSignal):AsyncIterable<ModelEvent>{
-  let startedAt:string|undefined,usage:Extract<ModelEvent,{kind:'usage'}>|undefined,completed=false,outputEstimate=0;
+  let startedAt:string|undefined,usage:Extract<ModelEvent,{kind:'usage'}>|undefined,completed=false;
   try{
    for await(const event of this.generateResponse(request,signal,()=>{startedAt=new Date().toISOString();})){
     if(event.kind==='usage')usage=event;
-    if(event.kind==='delta'||event.kind==='reasoning')outputEstimate+=estimateTokens(event.text);
     if(event.kind==='done')completed=true;
     yield event;
    }
   }finally{
-   if(startedAt&&this.onUsage)await this.onUsage({at:new Date().toISOString(),inputTokens:usage?.inputTokens??null,outputTokens:usage?.outputTokens??null,totalTokens:usage?usage.inputTokens+usage.outputTokens:null,cachedInputTokens:usage?.cachedInputTokens??null,uncachedInputTokens:usage?.uncachedInputTokens??null,...(request.contextUsage?{context:{...request.contextUsage,usedTokens:usage?usage.inputTokens+usage.outputTokens:request.contextUsage.usedTokens+outputEstimate,estimated:!usage}}:{}),status:completed?'completed':signal.aborted?'cancelled':'failed'},startedAt);
+   if(startedAt&&this.onUsage)await this.onUsage({at:new Date().toISOString(),inputTokens:usage?.inputTokens??null,outputTokens:usage?.outputTokens??null,totalTokens:usage?usage.inputTokens+usage.outputTokens:null,cachedInputTokens:usage?.cachedInputTokens??null,uncachedInputTokens:usage?.uncachedInputTokens??null,...(request.contextUsage?{context:{...request.contextUsage,usedTokens:usage?usage.inputTokens:request.contextUsage.usedTokens,estimated:!usage}}:{}),status:completed?'completed':signal.aborted?'cancelled':'failed'},startedAt);
   }
  }
  private async *generateResponse(request:ModelRequest,signal:AbortSignal,onSubmitted:()=>void):AsyncIterable<ModelEvent>{
@@ -63,9 +48,9 @@ export class OpenAICompatibleProvider implements ModelProvider{
   if(images.length&&!capabilities.vision)throw new ReaderError('VISION_UNAVAILABLE','所选模型不支持图像，请选择视觉模型或配置 OCR');
   const effort=request.reasoningEffort??capabilities.defaultReasoningEffort;
   if(effort!==undefined&&!capabilities.reasoningEfforts?.includes(effort))throw new ReaderError('REASONING_UNSUPPORTED','所选模型不支持此思考档位');
-  if(!Number.isSafeInteger(request.maxOutputTokens)||request.maxOutputTokens<1||request.maxOutputTokens>capabilities.maxOutputTokens)throw new ReaderError('MODEL_OUTPUT_LIMIT','输出容量设置超出所选模型范围');
+  if(messageTokens(request.messages,this.imageLimits.imageTokens)+estimateTokens(JSON.stringify(request.tools))+64>capabilities.contextWindow)throw new ReaderError('CONTEXT_LIMIT','本次输入超过 1,000,000 token，请减少文档或上下文');
   const key=await this.key;signal.throwIfAborted();
-  const body:Record<string,unknown>={model:settings.model,messages:structuredClone(request.messages),stream:true,stream_options:{include_usage:true},max_tokens:request.maxOutputTokens};
+  const body:Record<string,unknown>={model:settings.model,messages:structuredClone(request.messages),stream:true,stream_options:{include_usage:true}};
   if(request.tools.length)body.tools=structuredClone(request.tools);
   if(request.tools.length&&request.toolChoice)body.tool_choice=request.toolChoice;
   if(effort!==undefined){body.reasoning_effort=effort;if(settings.reasoningFormat==='deepseek')body.thinking={type:effort==='none'?'disabled':'enabled'};}

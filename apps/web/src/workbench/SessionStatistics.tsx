@@ -26,8 +26,8 @@ export function SessionStatistics({workspaceId,sessionId,model,liveContext,busy,
    <p>本会话 · 当前模型 {model.model}</p>
    <p>累计输入 {numbers.format(usage?.inputTokens??0)} · 输出 {numbers.format(usage?.outputTokens??0)} · 合计 {unknown?'未回传':numbers.format(usage?.totalTokens??0)} token</p>
    <p>缓存读取 {usage?.cacheReportedRequests?numbers.format(usage.cachedInputTokens??0):'未回传'} · 未缓存输入 {usage?.cacheReportedRequests?numbers.format(usage.uncachedInputTokens??0):'未回传'}</p>
-   <p>当前上下文 {context?numbers.format(context.usedTokens):'尚未发送'} / {numbers.format(context?.limit??model.capabilities.contextWindow)} token{context?' · '+(context.estimated?'本地估算':'服务回传')+' · '+(context.capacitySource==='service'?'服务端容量':'手填容量'):' · 手填容量'}</p>
-   <p>输出预留 {numbers.format(context?.reservedOutputTokens??model.capabilities.maxOutputTokens)} token · 上下文达到容量的 80% 时尝试 AI 压缩</p>
+   <p>当前输入 {context?numbers.format(context.usedTokens):'尚未发送'} / {numbers.format(context?.limit??model.capabilities.contextWindow)} token{context?' · '+(context.estimated?'本地估算':'服务回传')+' · '+(context.capacitySource==='application'?'固定输入上限':context.capacitySource==='service'?'服务端容量':'历史配置容量'):' · 固定输入上限'}</p>
+   <p>输出长度由供应商默认决定 · 输入达到上限的 80% 时尝试 AI 压缩</p>
    {Boolean(usage?.missingUsageRequests)&&<p>有 {usage!.missingUsageRequests} 次请求未回传用量，累计值只包含已回传部分。</p>}
    {usage&&usage.requests>(usage.cacheReportedRequests??0)&&<p>缓存命中率只统计回传缓存字段的请求。</p>}
    <p>{usage?.trackedSince?'自 '+new Date(usage.trackedSince).toLocaleString('zh-CN',{hour12:false})+' 起统计。':'首次请求后开始记录。'}此前用量无法追溯。</p>

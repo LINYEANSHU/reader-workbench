@@ -6,7 +6,7 @@ import type {MaskedModelSettings,ModelSettings,ModelCapabilities,ModelUsageSumma
 import type {AgentSettings} from '../../../../packages/contracts/src/agent-settings.js';
 import type {RunRecord,DocumentJobRecord} from '../../../../packages/contracts/src/runs.js';
 import type {ArtifactRecord} from '../../../../packages/contracts/src/artifacts.js';
-import type {UiState} from '../../../../packages/contracts/src/ui-state.js';
+import type {UiState,AgentUiPreferences} from '../../../../packages/contracts/src/ui-state.js';
 import type {LayoutPreset} from '../../../../packages/contracts/src/layout.js';
 import type {SelectionContext} from '../../../../packages/contracts/src/documents.js';import type {SelectionActionResult} from '../../../../packages/contracts/src/tools.js';
 export class ApiError extends Error{constructor(readonly code:string,message:string,readonly status:number){super(message);}}
@@ -33,6 +33,9 @@ export class ApiClient{
  document(ref:DocumentRef,signal?:AbortSignal){return this.request<DocumentRecord>(documentPath(ref),{signal});}
  page(ref:DocumentRef,page:number,signal?:AbortSignal){return this.request<DocumentPage>(documentPath(ref,'/pages/'+page),{signal});}
  sessions(id:WorkspaceId){return this.request<SessionRecord[]>('/workspaces/'+id+'/sessions');}
+ archiveSession(id:WorkspaceId,session:SessionId,archived:boolean){return this.request<SessionRecord>('/workspaces/'+id+'/sessions/'+session+'/archive',{method:'PUT',body:{archived}});}
+ preferences(){return this.request<AgentUiPreferences|null>('/settings/preferences');}
+ savePreferences(preferences:Partial<AgentUiPreferences>){return this.request<AgentUiPreferences>('/settings/preferences',{method:'PUT',body:preferences});}
  main(id:WorkspaceId,title='阅读会话'){return this.request<SessionRecord>('/workspaces/'+id+'/sessions',{method:'POST',body:{title}});}
  temporary(id:WorkspaceId,parent:SessionId){return this.request<SessionRecord>('/workspaces/'+id+'/sessions/'+parent+'/temporary',{method:'POST',body:{}});}
  history(id:WorkspaceId,session:SessionId,cursor?:string){return this.request<HistoryPage>('/workspaces/'+id+'/sessions/'+session+'/history'+(cursor?'?cursor='+encodeURIComponent(cursor):''));}
@@ -51,7 +54,7 @@ export class ApiClient{
  run(id:WorkspaceId,run:RunId){return this.request<RunRecord|DocumentJobRecord>('/runs/'+run+'?workspaceId='+id);}
  cancel(id:WorkspaceId,run:RunId){return this.request('/runs/'+run+'/cancel',{method:'POST',body:{workspaceId:id}});}
  uiState(id:WorkspaceId,client:string){return this.request<UiState|null>('/ui-state/'+client+'?workspaceId='+id);}
- saveUiState(id:WorkspaceId,client:string,state:UiState,unloading=false){const body={workspaceId:id,state},keepalive=unloading&&new TextEncoder().encode(JSON.stringify(body)).byteLength<60*1024;return this.request('/ui-state/'+client,{method:'PUT',body,keepalive});}
+ saveUiState(id:WorkspaceId,client:string,state:UiState,unloading=false){const {providers,efforts,captureBinding,...workspaceState}=state;const body={workspaceId:id,state:workspaceState},keepalive=unloading&&new TextEncoder().encode(JSON.stringify(body)).byteLength<60*1024;return this.request('/ui-state/'+client,{method:'PUT',body,keepalive});}
  artifacts(id:WorkspaceId){return this.request<ArtifactRecord[]>('/artifacts?workspaceId='+id);}
  openArtifact(id:WorkspaceId,artifact:ArtifactId){return this.request<DocumentRecord>('/artifacts/'+artifact+'/open?workspaceId='+id,{method:'POST',body:{}});}
 }

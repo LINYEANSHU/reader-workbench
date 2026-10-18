@@ -1,9 +1,11 @@
 import Fastify from 'fastify';
-import { join } from 'node:path';
+import { join,resolve } from 'node:path';
+import {existsSync} from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import type { RuntimeConfig } from '../../../packages/contracts/src/runtime.js';
 import { ReaderError,publicError } from '../../../packages/contracts/src/errors.js';
 import { writePrivateJson } from '../../../packages/core/src/runtime/secure-file.js';
+import {UiPreferencesService} from '../../../packages/core/src/runtime/ui-preferences.js';
 import { doctor } from '../../../packages/core/src/runtime/doctor.js';
 import { Authentication } from './auth.js';
 import {WorkspaceService} from '../../../packages/core/src/workspaces/service.js';
@@ -15,8 +17,11 @@ import {DocumentService} from '../../../packages/core/src/documents/service.js';
 import {DocumentMemoryStore} from '../../../packages/core/src/documents/memory-store.js';
 import {DocumentMemoryConsumer} from '../../../packages/core/src/documents/memory-consumer.js';
 import {documentMemoryTools} from '../../../packages/core/src/tools/document-memory.js';
-import {ensureBundledPlugins} from '../../../packages/core/src/plugins/bundled.js';
+import {ensureBundledPlugins,bundledPluginPath} from '../../../packages/core/src/plugins/bundled.js';
+import {createLocalTranslationProvider,getLocalTranslationStatus,LOCAL_TRANSLATION_PROVIDER_ID} from '../../../packages/core/src/translation/local-provider.js';
 import {documentMemoryRoutes} from './routes/document-memory.js';
+import {DocumentProcessingService} from '../../../packages/core/src/documents/processing.js';
+import {documentProcessingRoutes} from './routes/document-processing.js';
 import {documentRoutes} from './routes/documents.js';
 import {SessionRepository} from '../../../packages/core/src/sessions/repository.js';
 import {SessionService} from '../../../packages/core/src/sessions/service.js';
@@ -46,19 +51,26 @@ export async function startServer(config:RuntimeConfig){
   auth.url='http://'+(config.host.includes(':')?'['+config.host+']':config.host)+':'+config.port;
   auth.attach(app);
   const workspaces=new WorkspaceService(config.configDir);
+  const preferences=new UiPreferencesService(config.configDir);
+  app.get('/api/v1/settings/preferences',()=>preferences.get());
+  app.put('/api/v1/settings/preferences',request=>preferences.save(request.body));
   const capabilities=new CapabilityRegistry();
+  const bundledTranslationRuntime=resolve(bundledPluginPath('document-translation'),'../../.reader-runtime/translation');
+  const localTranslation={runtimeDirectory:process.env.READER_TRANSLATION_RUNTIME??(existsSync(bundledTranslationRuntime)?bundledTranslationRuntime:join(config.configDir,'translation')),workerPath:join(bundledPluginPath('document-translation'),'local-worker.py')};
+  capabilities.register('*','model',LOCAL_TRANSLATION_PROVIDER_ID,createLocalTranslationProvider(localTranslation));
+  app.get('/api/v1/translation/local',()=>getLocalTranslationStatus(localTranslation));
   workspaces.attachCapabilities(capabilities);const lifecycle=new LifecycleDispatcher(capabilities,workspaces);workspaces.onLifecycle=event=>lifecycle.emit(event);
   const models=new ModelSettingsService(workspaces,capabilities);if(config.demo)capabilities.register('*','model','demo',demoProvider);
   const documents=new DocumentService(workspaces,capabilities);
   const plugins=new PluginManager(capabilities,workspaces);
   const sessionRepository=new SessionRepository(workspaces);
   const documentMemory=new DocumentMemoryConsumer(documents,sessionRepository,capabilities,new DocumentMemoryStore(workspaces));
-  documents.onParsed=ref=>{void documentMemory.prepareLocal(ref,new AbortController().signal).catch(()=>{});};
   const sessions=new SessionService(sessionRepository);
   const nativeSpeech=new NativeSpeechProvider(new SpeechAssets(process.env.READER_SPEECH_ASSET_DIR??join(config.configDir,'speech','sensevoice-small-int8')));capabilities.register('*','speech','core.sensevoice',nativeSpeech);const speech=new SpeechService(capabilities,sessionRepository);speechRoutes(app,speech,auth);
   const selections=new SelectionService(capabilities,sessionRepository,documents);
   const artifacts=new ArtifactService(workspaces,sessionRepository,documents,capabilities);
   const attachments=new AttachmentService(workspaces,sessionRepository,documents);
+  const documentProcessing=new DocumentProcessingService({workspaces,documents,repository:sessionRepository,capabilities,artifacts});
   const context=new ContextBuilder(sessionRepository,documents,capabilities);
   context.attachAttachments(attachments);
   context.attachDocumentMemory(documentMemory);
@@ -67,11 +79,12 @@ export async function startServer(config:RuntimeConfig){
   capabilities.register('*','tool','core.document-memory',documentMemoryTools(documentMemory,runs.records));
   const externalMcp=new ExternalMcpManager(capabilities,workspaces),ui=new UiBridge(capabilities,sessionRepository,selections);
   const native=new NativeInteractions(capabilities,sessionRepository,attachments);plugins.onBeforeDisable=(id,owner)=>native.releaseOwner(id,owner);
-  workspaces.onSelected=async id=>{await ensureBundledPlugins(plugins,id);await externalMcp.loadWorkspace(id);};
+  workspaces.onSelected=async id=>{await ensureBundledPlugins(plugins,id);await externalMcp.loadWorkspace(id);await models.listModelSettings(id);};
   pluginRoutes(app,{plugins,externalMcp,ui,native,runs,repository:sessionRepository,workspaces},auth);
   workspaceRoutes(app,workspaces,auth);uiStateRoutes(app,workspaces);
   documentRoutes(app,documents);
   documentMemoryRoutes(app,documentMemory,workspaces,auth);
+  documentProcessingRoutes(app,documentProcessing,auth);
   sessionRoutes(app,sessions,auth);
   runRoutes(app,runs,auth);
   settingsRoutes(app,models,context.agentSettings);
@@ -79,7 +92,7 @@ export async function startServer(config:RuntimeConfig){
   layoutRoutes(app,workspaces,capabilities);
   selectionRoutes(app,selections,auth);attachmentRoutes(app,attachments,auth);
   const services={workspaces,documents,sessions,runs,artifacts,plugins};await attachMcpHttp(app,services,auth);attachReaderOpenApi(app,services,auth);
-  app.addHook('preClose',async()=>{native.close();await speech.close();await nativeSpeech.dispose();await runs.close();await documentMemory.close();await artifacts.close();await documents.close();await lifecycle.close();await externalMcp.close();await plugins.close();});
+  app.addHook('preClose',async()=>{native.close();await speech.close();await nativeSpeech.dispose();await runs.close();await documentMemory.close();await documentProcessing.close();await artifacts.close();await documents.close();await lifecycle.close();await externalMcp.close();await plugins.close();});
   app.addHook('onClose',async()=>{await workspaces.close();});
   app.setErrorHandler((error,_request,reply)=>{
     const status=error instanceof ReaderError?error.status:(error as {statusCode?:number}).statusCode??500;
@@ -99,8 +112,8 @@ export async function startServer(config:RuntimeConfig){
     await writePrivateJson(join(config.configDir,'connection.json'),{url,token:auth.token,pid:process.pid});
     if(config.workspace)await workspaces.select(config.workspace,{callerId:'local-owner',transport:'internal'});
     await plugins.loadRecent();await externalMcp.loadRecent();await models.loadRecent();
-    for(const workspace of await workspaces.listRecent({callerId:'local-owner',transport:'internal'}))lifecycle.emit({workspaceId:workspace.id,kind:'server.started',data:{version:'0.3.0'}});
-    return {url,bootstrapUrl:url+'/#bootstrap='+auth.code,app,auth,workspaces,documents,documentMemory,capabilities,plugins,externalMcp,ui,speech,sessionRepository,sessions,context,runs,tools,models,artifacts,attachments,selections,close:async()=>{await app.close();}};
+    for(const workspace of await workspaces.listRecent({callerId:'local-owner',transport:'internal'}))lifecycle.emit({workspaceId:workspace.id,kind:'server.started',data:{version:'0.4.0'}});
+    return {url,bootstrapUrl:url+'/#bootstrap='+auth.code,app,auth,workspaces,documents,documentMemory,documentProcessing,capabilities,plugins,externalMcp,ui,speech,sessionRepository,sessions,context,runs,tools,models,artifacts,attachments,selections,close:async()=>{await app.close();}};
   }catch(error){await app.close();if((error as NodeJS.ErrnoException).code==='EADDRINUSE')throw new ReaderError('PORT_IN_USE','端口 '+config.port+' 已被占用，请使用 --port 指定其他端口');throw error;}
 }
 

@@ -1,3 +1,4 @@
+import {selectControlValue} from './controls.js';
 import {test,expect,openWorkspace} from './fixtures.js';
 
 test('changes local appearance without changing documents, sessions or the chosen layout',async({page,host,root})=>{
@@ -6,25 +7,25 @@ test('changes local appearance without changing documents, sessions or the chose
  const file=page.getByRole('region',{name:'文件',exact:true});
  await expect(file.locator('.markdown-body')).toContainText('RI');
  await page.getByRole('button',{name:'布局设置',exact:true}).click();
- await page.getByRole('combobox',{name:'布局预设'}).selectOption('rows');
+ await selectControlValue(page.getByRole('combobox',{name:'布局预设'}),'rows');
  await page.keyboard.press('Escape');
  const layout=await page.locator('.split-workspace').getAttribute('data-layout');
  const main=await page.getByRole('region',{name:'主对话',exact:true}).getAttribute('data-session-id');
  const temporary=await page.getByRole('region',{name:'临时对话',exact:true}).getAttribute('data-session-id');
  const appearance=page.getByRole('combobox',{name:'界面外观'});
  await expect(appearance).toHaveCount(1);
- await expect(appearance).toHaveValue('light');
+ await expect(appearance).toHaveAttribute('data-value','light');
  for(const value of ['graphite','ink','light']){
-  await appearance.selectOption(value);
+  await selectControlValue(appearance,value);
   await expect(page.locator('html')).toHaveAttribute('data-appearance',value);
   await expect(file.locator('.markdown-body')).toContainText('RI');
   await expect(page.locator('.split-workspace')).toHaveAttribute('data-layout',layout!);
   await expect(page.getByRole('region',{name:'主对话',exact:true})).toHaveAttribute('data-session-id',main!);
   await expect(page.getByRole('region',{name:'临时对话',exact:true})).toHaveAttribute('data-session-id',temporary!);
  }
- await appearance.selectOption('ink');
+ await selectControlValue(appearance,'ink');
  await page.reload();
- await expect(appearance).toHaveValue('ink');
+ await expect(appearance).toHaveAttribute('data-value','ink');
  await expect(page.locator('html')).toHaveAttribute('data-appearance','ink');
  await expect(file.locator('.markdown-body')).toContainText('RI');
  await expect(page.locator('.split-workspace')).toHaveAttribute('data-layout',layout!);
@@ -36,7 +37,7 @@ test('keeps a lower-row pane menu inside a medium-height viewport',async({page,h
  await openWorkspace(page,host,root);
  await page.setViewportSize({width:1000,height:600});
  await page.getByRole('button',{name:'布局设置',exact:true}).click();
- await page.getByRole('combobox',{name:'布局预设'}).selectOption('rows');
+ await selectControlValue(page.getByRole('combobox',{name:'布局预设'}),'rows');
  await page.keyboard.press('Escape');
  await page.getByRole('button',{name:'主对话栏设置',exact:true}).click();
  const menu=page.getByRole('dialog',{name:'主对话栏设置',exact:true});
@@ -55,7 +56,7 @@ test('captures the displayed document margin background in every appearance',asy
  const file=page.getByRole('region',{name:'文件',exact:true});
  await expect(file.locator('.markdown-body')).toContainText('RI');
  for(const value of ['light','graphite','ink']){
-  await page.getByRole('combobox',{name:'界面外观'}).selectOption(value);
+  await selectControlValue(page.getByRole('combobox',{name:'界面外观'}),value);
   const scroll=file.locator('.document-scroll');
   const background=await scroll.evaluate(node=>getComputedStyle(node).backgroundColor.match(/[\d.]+/g)!.slice(0,3).map(Number));
   const bounds=(await scroll.boundingBox())!;

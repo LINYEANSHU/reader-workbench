@@ -68,6 +68,12 @@ describe('workspace boundaries',()=>{
     await expect(service.select(join(dir,'nonexistent'),actor)).rejects.toMatchObject({code:'WORKSPACE_UNAVAILABLE'});
     await expect(access(join(dir,'nonexistent'))).rejects.toThrow();
   });
+  it('does not recreate a deleted remembered root when reopening its storage',async()=>{
+    const {a,config,service}=await setup(),workspace=await service.select(a,actor);await service.close();
+    await rm(a,{recursive:true,force:true});const reopened=new WorkspaceService(config);clean.push(()=>reopened.close());
+    await expect(reopened.storeFor(workspace.id)).rejects.toMatchObject({code:'WORKSPACE_UNAVAILABLE'});
+    await expect(access(a)).rejects.toMatchObject({code:'ENOENT'});
+  });
   it('uses component boundaries for Windows drive and UNC paths',()=>{
     expect(isWithin('C:\\Read','C:\\Read\\中文.md',win32)).toBe(true);
     expect(isWithin('C:\\Read','C:\\Reader\\a.md',win32)).toBe(false);

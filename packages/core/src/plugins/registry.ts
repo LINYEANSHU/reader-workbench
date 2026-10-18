@@ -8,6 +8,7 @@ export function validateContextTransform(before:ContextEnvelope,after:ContextEnv
   const allowed=new Set([...before.documents,...before.sourceRanges].map(key));
   if(after.workspaceId!==before.workspaceId||after.sessionId!==before.sessionId||after.mainRevision!==before.mainRevision||after.ownRevision!==before.ownRevision||
     JSON.stringify(after.documentMemories??[])!==JSON.stringify(before.documentMemories??[])||
+    JSON.stringify(after.documentReadScopes??[])!==JSON.stringify(before.documentReadScopes??[])||
     [...after.documents,...after.sourceRanges].some(ref=>ref.workspaceId!==before.workspaceId||!allowed.has(key(ref)))||
     after.summaryCoverage.some(turn=>!before.summaryCoverage.includes(turn))||
     after.memory&&(!before.memory||after.memory.revision!==before.memory.revision||after.memory.parentRevision!==before.memory.parentRevision||[...after.memory.turnIds,...after.memory.parentTurnIds??[]].some(id=>!before.summaryCoverage.includes(id))))

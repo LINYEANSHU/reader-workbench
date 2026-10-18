@@ -12,7 +12,11 @@ export function sessionRoutes(app:FastifyInstance,sessions:SessionService,auth:A
     if(typeof title!=='string')throw new ReaderError('INVALID_ARGUMENT','标题必须是文字');
     return sessions.createMain(request.params.id,title);
   });
-  app.get<{Params:SessionParams}>(prefix+'/:sessionId',request=>sessions.repository.getSession(request.params.id,request.params.sessionId));
+  app.get<{Params:SessionParams}>(prefix+'/:sessionId',request=>sessions.get(request.params.id,request.params.sessionId));
+  app.put<{Params:SessionParams;Body:{archived:boolean}}>(prefix+'/:sessionId/archive',request=>{
+    if(typeof request.body?.archived!=='boolean')throw new ReaderError('INVALID_ARGUMENT','archived 必须为布尔值');
+    return sessions.setArchived(request.params.id,request.params.sessionId,request.body.archived,auth.actor(request));
+  });
   app.get<{Params:SessionParams;Querystring:{cursor?:string}}>(prefix+'/:sessionId/history',request=>sessions.getHistory(request.params.id,request.params.sessionId,request.query.cursor));
   app.post<{Params:SessionParams}>(prefix+'/:sessionId/temporary',request=>sessions.createTemporary(request.params.id,request.params.sessionId));
   app.post<{Params:SessionParams}>(prefix+'/:sessionId/clear',async request=>{

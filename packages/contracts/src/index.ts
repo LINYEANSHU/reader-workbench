@@ -14,3 +14,4 @@ export * from './layout.js';
 export * from './hotkeys.js';
 export * from './speech.js';
 export * from './document-memory.js';
+export * from './document-processing.js';

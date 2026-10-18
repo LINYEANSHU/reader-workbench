@@ -5,7 +5,7 @@
 发行包安装后，日常使用一条命令：
 
 ```sh
-npm install --global /path/to/reader-workbench-0.3.0.tgz
+npm install --global /path/to/reader-workbench-0.4.0.tgz
 reader-workbench web
 ```
 
@@ -19,7 +19,13 @@ npm run build
 npm start
 ```
 
+Windows 完成依赖安装和构建后，可直接双击根目录的 `Start-Reader.cmd`。启动器会自动打开浏览器，复用既有本地配置及可用的 Office、语音资源；使用期间保持窗口打开，按 `Ctrl+C` 或关闭窗口停止服务。启动失败时，窗口会保留错误提示。也可用 `Start-Reader.cmd -Port 4320` 指定其他端口；`-NoOpen`、`-ConfigDir` 和 `-Demo` 参数会传给原有 PowerShell 脚本。
+
 应用打开后先选择实际工作区，然后在设置中配置兼容 OpenAI Chat Completions 的 Base URL、模型和 API Key。主对话与临时对话分别选择思考深度；临时对话不会写入主对话。生成文件保存在所选工作区的 `outputs` 目录，配置与凭据存放于本机用户配置目录。
+
+模型连接、API Key、提示词、模型选择、思考档位与截图快捷键统一保存在用户配置目录的 `agent/` 中，切换工作区继续共用。默认路径：Windows 为 `%APPDATA%\reader-workbench\Config\agent`，macOS 为 `~/Library/Preferences/reader-workbench/agent`，Linux 为 `${XDG_CONFIG_HOME:-~/.config}/reader-workbench/agent`。`--config-dir`（Windows 启动器的 `-ConfigDir`）可显式指定其他私有目录。
+
+默认启动时会迁移旧项目 `.reader-runtime/user-config` 或旧工作树同名目录中的配置，在新目录 `agent/legacy/` 保存受保护备份，再移除原位置的凭据和工作区列表。若旧服务仍在运行，会提示先关闭，避免迁移期间两套服务同时改写配置。旧工作区数据库中的模型连接首次加载时迁出；同名但独立的连接保留为不同名称。工作区文件、历史、用量与输出路径仍按工作区隔离。
 
 ## 内置语音
 
@@ -30,6 +36,12 @@ npm start
 运行库固定为 sherpa-onnx-node 1.13.8，应用自动配置受管理识别进程所需的动态库路径。提供 Windows x64、macOS arm64/x64、Linux arm64/x64 原生依赖；本轮实际验收在 Windows x64，其余平台仍需真实机器或 CI 验证。浏览器必须支持安全上下文中的 getUserMedia 和 AudioWorklet。
 
 模型来源：FunAudioLLM SenseVoiceSmall；ONNX 转换：csukuangfj/sherpa-onnx。固定版本与两个资源的哈希见 `packages/core/src/speech/assets.ts`。模型权重遵循 [FunASR 模型协议](https://github.com/modelscope/FunASR/blob/main/MODEL_LICENSE)，代码的 MIT 许可与模型协议分别处理；[原始模型声明](https://huggingface.co/FunAudioLLM/SenseVoiceSmall)及 [sherpa-onnx Apache-2.0 许可](https://github.com/k2-fsa/sherpa-onnx/blob/master/LICENSE)见第三方说明。
+
+## 本地中英翻译
+
+一键翻译默认选择离线 CPU 引擎，无需翻译模型或 API Key。源码与发行包不包含私有 Python 和模型；新机器需要先运行安装脚本，或复制与操作系统兼容的完整运行库。引擎未准备好时，界面提示安装，也可切换到“已配置的 AI 模型”。推理不联网，安装下载需要联网。
+
+新机器上用 Python 3.12 执行 `./scripts/setup-local-translation.ps1 -Python <Python3.12可执行路径>`。解释器、依赖和两个方向的模型会装入应用私有目录，系统 Python 不受修改；安装下载需要联网。`READER_TRANSLATION_RUNTIME` 可指定另一运行目录。安装器会检查已有资源，损坏时可加 `-Repair`，在新资源验证后将旧目录保留为备份。当前安装脚本仅验收 Windows x64，其他平台没有部署验收。
 
 ## Office 页面
 

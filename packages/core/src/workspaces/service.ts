@@ -2,14 +2,14 @@ import {readFile,realpath,stat,mkdir,lstat,writeFile,rm,readdir} from 'node:fs/p
 import {join,resolve,basename} from 'node:path';
 import {randomUUID,createHash} from 'node:crypto';
 import type {Actor,WorkspaceId} from '../../../contracts/src/ids.js';
-import type {Workspace,DirectoryEntry,FileEntry} from '../../../contracts/src/workspaces.js';
+import type {Workspace,DirectoryEntry,DirectoryBrowser,FileEntry} from '../../../contracts/src/workspaces.js';
 import type {UiState} from '../../../contracts/src/ui-state.js';
 import {ReaderError} from '../../../contracts/src/errors.js';
 import {writePrivateJson} from '../runtime/secure-file.js';
 import {SqliteWorkspaceStore} from '../storage/workspace-store.js';
 import {databaseWorkspaceId} from '../storage/identity.js';
 import {isWithin,resolveScopedPath} from './path-guard.js';
-import {browseDirectories} from './directory-browser.js';
+import {browseDirectories,browseDirectoryBrowser,directoryParent,directoryRoot} from './directory-browser.js';
 import type {CapabilityRegistry} from '../plugins/registry.js';import {StorageConsumer} from '../plugins/storage-consumer.js';import type {LifecycleEvent} from '../../../contracts/src/runs.js';
 interface SavedWorkspace extends Workspace {callerId:string}
 export class WorkspaceService {
@@ -48,12 +48,15 @@ export class WorkspaceService {
     this.selecting=operation;return operation;
   }
   private async ensureStorage(root:string,segments:string[]=[]){
+    try{if(await realpath(root)!==root||!(await stat(root)).isDirectory())throw new Error('unavailable');}
+    catch{throw new ReaderError('WORKSPACE_UNAVAILABLE','工作区目录不存在或不可访问',404);}
     let internal=join(root,'.reader-workbench');
     try{
       for(const segment of ['',...segments]){if(segment){if(!/^[a-zA-Z0-9_-]+$/.test(segment))throw new ReaderError('PATH_OUTSIDE_WORKSPACE','存储身份路径无效',403);internal=join(internal,segment);}
        try{if((await lstat(internal)).isSymbolicLink())throw new ReaderError('PATH_OUTSIDE_WORKSPACE','内部存储目录不能是链接',403);}
        catch(error){if(error instanceof ReaderError)throw error;if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;}
-       await mkdir(internal,{recursive:true});if(await realpath(internal)!==internal)throw new ReaderError('PATH_OUTSIDE_WORKSPACE','内部存储目录路径异常',403);
+       try{await mkdir(internal);}catch(error){if((error as NodeJS.ErrnoException).code!=='EEXIST')throw error;}
+       if((await lstat(internal)).isSymbolicLink()||await realpath(internal)!==internal)throw new ReaderError('PATH_OUTSIDE_WORKSPACE','内部存储目录路径异常',403);
       }
       for(const name of ['state.sqlite','state.sqlite-wal','state.sqlite-shm']){
         try{if((await lstat(join(internal,name))).isSymbolicLink())throw new ReaderError('PATH_OUTSIDE_WORKSPACE','数据库不能指向链接',403);}
@@ -81,6 +84,17 @@ export class WorkspaceService {
   async internalDirectory(id:WorkspaceId):Promise<string>{await this.storeFor(id);return this.internals.get(id)!;}
   async listRecent(actor:Actor):Promise<Workspace[]>{await this.ready;return [...this.workspaces.values()].filter(w=>w.callerId===actor.callerId).map(({callerId,...workspace})=>workspace);}
   async browseDirectories(input:string,actor:Actor,workspaceId?:WorkspaceId):Promise<DirectoryEntry[]>{if(workspaceId){if(!(await this.listRecent(actor)).some(workspace=>workspace.id===workspaceId))throw new ReaderError('WORKSPACE_DENIED','工作区不属于此调用者',403);const id=this.capabilities?.list(workspaceId,'workspace').at(-1);if(id){const lease=this.capabilities!.acquire(workspaceId,'workspace',id);try{const result=await lease.value.browse(input,structuredClone(actor));if(!Array.isArray(result)||result.length>2000||result.some(entry=>typeof entry.name!=='string'||typeof entry.path!=='string'))throw new ReaderError('WORKSPACE_PROVIDER_INVALID','工作区扩展返回的目录无效');return result;}finally{lease.release();}}}return browseDirectories(input);}
+  async browseDirectoryBrowser(input:string,actor:Actor,workspaceId?:WorkspaceId):Promise<DirectoryBrowser>{
+    if(workspaceId){
+      const workspace=(await this.listRecent(actor)).find(workspace=>workspace.id===workspaceId);
+      if(!workspace)throw new ReaderError('WORKSPACE_DENIED','工作区不属于此调用者',403);
+      if(this.capabilities?.list(workspaceId,'workspace').length){
+        const path=input||workspace.root,root=directoryRoot(path);
+        return {path,parent:directoryParent(path),entries:await this.browseDirectories(path,actor,workspaceId),roots:root?[{name:root,path:root}]:[]};
+      }
+    }
+    return browseDirectoryBrowser(input);
+  }
   async resolvePath(id:WorkspaceId,input:string,mode:'read'|'create'):Promise<string>{
     return resolveScopedPath((await this.get(id)).root,input,mode,[this.configRoot]);
   }

@@ -1,3 +1,4 @@
+import {selectControlValue} from './controls.js';
 import {createServer} from 'node:http';
 import {resolve} from 'node:path';
 import {mkdir as makeDirectory} from 'node:fs/promises';
@@ -9,19 +10,19 @@ test('shows missing usage honestly for the selected chat model and separates sav
  await host.models.saveModelSettings(workspace.id,{...first,id:'second',credentialRef:'',model:'second-model'},'second-browser-key');
  await openWorkspace(page,host,root);
  const main=page.getByRole('region',{name:'主对话',exact:true});
- await main.getByRole('combobox',{name:'模型'}).selectOption('second');
+ await selectControlValue(main.getByRole('combobox',{name:'模型'}),'second');
  await main.getByRole('textbox',{name:'主对话输入'}).fill('用量测试');
  await main.getByRole('button',{name:'发送',exact:true}).click();
  await expect(main.getByText('解释：用量测试。独立回答。',{exact:true})).toBeVisible();
  await expect(main.locator('.working')).toHaveCount(0);
  await page.getByRole('button',{name:'打开设置',exact:true}).click();
  const dialog=page.getByRole('dialog',{name:'设置',exact:true});
- await expect(dialog.getByRole('combobox',{name:'连接配置'})).toHaveValue('second');
+ await expect(dialog.getByRole('combobox',{name:'连接配置'})).toHaveAttribute('data-value','second');
  const usage=dialog.getByRole('region',{name:'模型 Token 用量'});
  await expect(usage).toContainText('second-model');
  await expect(usage).toContainText('1 次未回传');
  await expect(usage.getByText('未回传',{exact:true})).toHaveCount(3);
- await dialog.getByRole('combobox',{name:'连接配置'}).selectOption('test');
+ await selectControlValue(dialog.getByRole('combobox',{name:'连接配置'}),'test');
  await expect(usage).toContainText('尚无请求');
  await expect(usage).toContainText('browser-protocol-test');
  await expect(usage).not.toContainText('1 次未回传');

@@ -1,3 +1,4 @@
+import {selectControlValue} from './controls.js';
 import {test,expect,openWorkspace,model} from './fixtures.js';
 import {createCanvas} from '@napi-rs/canvas';
 
@@ -24,7 +25,7 @@ for(const {withAttachment,withArtifact,label} of [{withAttachment:false,withArti
  if(withAttachment)await page.route('**/api/v1/attachments/*?**',async route=>{if(new URL(route.request().url()).searchParams.get('metadata')!=='true'){await route.continue();return;}pending++;try{const response=await route.fetch();await gate;await route.fulfill({response});}finally{pending--;}});
  if(withArtifact)await page.route('**/api/v1/artifacts?**',async route=>{pending++;try{const response=await route.fetch();await gate;await route.fulfill({response});}finally{pending--;}});
  try{
-  await pane.getByRole('combobox',{name:'临时分支'}).selectOption(session.id);
+  await selectControlValue(pane.getByRole('combobox',{name:'临时分支'}),session.id);
   if(withAttachment){await expect.poll(()=>pending).toBeGreaterThan(0);await expect(pane.locator('.assistant-message')).toHaveCount(0);release();await expect(pane.getByRole('img',{name:'对话截图'})).toHaveJSProperty('naturalWidth',100);}
   if(withArtifact){await expect.poll(()=>pending).toBeGreaterThan(0);await expect(pane.locator('.assistant-message')).toHaveCount(0);release();await expect(pane.locator('.artifact-list')).toBeVisible();}
   await expect(pane.locator('.assistant-message')).toContainText('保留阅读位置');

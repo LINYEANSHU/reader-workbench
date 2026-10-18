@@ -14,6 +14,9 @@ describe('tool scope policy',()=>{
     expect(()=>validateContextTransform(envelope,structuredClone(envelope))).not.toThrow();
     expect(()=>validateContextTransform(envelope,{...envelope,workspaceId:'B' as WorkspaceId})).toThrow(/权限|TOOL_SCOPE_DENIED/);
     expect(()=>validateContextTransform(envelope,{...envelope,documents:[{workspaceId:scope.workspaceId,documentId:'unapproved',version:'fake'}] as ContextEnvelope['documents']})).toThrow();
+    const pinned={...envelope,documentReadScopes:[{document:{workspaceId:scope.workspaceId,documentId:'source',version:'v1'},pages:[2]}]} as ContextEnvelope;
+    expect(()=>validateContextTransform(pinned,{...pinned,documentReadScopes:[{...pinned.documentReadScopes![0]!,pages:[1,2]}]})).toThrow();
+    expect(()=>validateContextTransform(pinned,{...pinned,documentReadScopes:undefined})).toThrow();
   });
   it('temporary tool execution cannot mutate its parent',()=>{
     const parentBefore={messages:['main'],revision:1};const parentAfter=structuredClone(parentBefore);

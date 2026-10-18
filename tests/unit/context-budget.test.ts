@@ -16,7 +16,7 @@ describe('context budget',()=>{
  it('uses the selected model for summaries and refuses an empty model result',async()=>{
   let calls=0;
   const turns:CommittedTurn[]=[{id:'archived-turn',runId:'r' as RunId,question:'实际旧问题',answer:'实际旧回答',revision:1,messages:[{role:'user',content:'实际旧问题'},{role:'assistant',content:'实际旧回答'}],sourceAnchors:[],attachmentIds:[]}];
-  const memory=new ModelMemoryProvider(()=>({capabilities:{vision:false,tools:false,contextWindow:1024,maxOutputTokens:16,reasoningEfforts:['none','high'],defaultReasoningEffort:'high'},generate:async function*(request){calls++;expect(request.tools).toEqual([]);expect(request.maxOutputTokens).toBeLessThanOrEqual(16);expect(request.reasoningEffort).toBe('none');yield {kind:'delta',text:'来自模型的摘要'};yield {kind:'done'};}}));
+  const memory=new ModelMemoryProvider(()=>({capabilities:{vision:false,tools:false,contextWindow:1024,maxOutputTokens:16,reasoningEfforts:['none','high'],defaultReasoningEffort:'high'},generate:async function*(request){calls++;expect(request.tools).toEqual([]);expect(request).not.toHaveProperty('maxOutputTokens');expect(request.reasoningEffort).toBe('none');yield {kind:'delta',text:'来自模型的摘要'};yield {kind:'done'};}}));
   const summary=await memory.summarize(turns,128,new AbortController().signal);
   expect(calls).toBeGreaterThan(0);expect(summary.turnIds).toEqual(['archived-turn']);expect(summary.text).toContain('来自模型');
   const empty=new ModelMemoryProvider(()=>({capabilities:{vision:false,tools:false,contextWindow:1024,maxOutputTokens:128},generate:async function*(){yield {kind:'done'};}}));

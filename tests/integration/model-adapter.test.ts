@@ -27,6 +27,18 @@ async function configured(url:string,options:Partial<ModelSettings>={}){
 }
 async function events(provider:OpenAICompatibleProvider,req=request){const result:ModelEvent[]=[];for await(const event of provider.generate(req,new AbortController().signal))result.push(event);return result;}
 describe('OpenAI-compatible HTTP protocol',()=>{
+ it('omits output token limits even when legacy clients or plugins provide them',async()=>{
+  const remote=await endpoint(),{provider}=await configured(remote.url);
+  await events(provider,{...request,maxOutputTokens:1000000});
+  expect(remote.requests).toHaveLength(1);
+  for(const field of ['max_tokens','max_completion_tokens','max_output_tokens'])expect(remote.requests[0]!.body).not.toHaveProperty(field);
+  expect(provider.capabilities.contextWindow).toBe(1000000);
+ });
+ it('rejects input beyond one million tokens before sending any HTTP request',async()=>{
+  const remote=await endpoint(),{provider}=await configured(remote.url);
+  await expect(events(provider,{...request,messages:[{role:'user',content:'文'.repeat(1000001)}]})).rejects.toMatchObject({code:'CONTEXT_LIMIT'});
+  expect(remote.requests).toHaveLength(0);
+ });
  it('preserves endpoint paths and decodes split UTF8, multiline data, usage and completion',async()=>{
   const remote=await endpoint(),{provider}=await configured(remote.url);const received=await events(provider);expect(received.filter(e=>e.kind==='delta').map(e=>e.kind==='delta'?e.text:'').join('')).toBe('中文回答');expect(received).toContainEqual({kind:'usage',inputTokens:12,outputTokens:4});expect(received.at(-1)?.kind).toBe('done');expect(remote.requests[0]?.path).toBe('/api/chat/completions');expect(remote.requests[0]?.authorization).toBe('Bearer '+testKey);
  });

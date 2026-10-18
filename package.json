@@ -1,6 +1,6 @@
 {
   "name": "reader-workbench",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "A workspace-first document reading agent",
   "type": "module",
   "private": false,
@@ -39,10 +39,15 @@
     "docs/evidence/2026-10-12/visual-document-memory/document-memory-ready.png",
     "docs/ui-polish/2026-10-14/evidence/final-ink-pdf.png",
     "docs/evidence/2026-10-15/edithere/workspace-statistics-1600.png",
+    "docs/evidence/2026-10-18/offline-translation/chinese-preview.png",
+    "docs/evidence/2026-10-19/release-0.4.0/validation.md",
     "Start-Reader.ps1",
+    "Start-Reader.cmd",
     "scripts/http-client.mjs",
     "scripts/mcp-client.mjs",
-    "scripts/live-model.mjs"
+    "scripts/live-model.mjs",
+    "scripts/setup-local-translation.ps1",
+    "scripts/setup-local-translation.py"
   ],
   "scripts": {
     "test": "vitest run",

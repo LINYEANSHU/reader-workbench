@@ -4,7 +4,7 @@ import {mkdir} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import {test,expect,model,openWorkspace} from './fixtures.js';
 
-test('keeps totals from all main and temporary chats in one footer and reserves translation',async({page,host,root})=>{
+test('keeps totals from all main and temporary chats in one footer and exposes translation',async({page,host,root})=>{
  const remote=createServer(async(req,res)=>{
   if(req.method==='GET'){res.writeHead(200,{'content-type':'application/json'});res.end('{"data":[]}');return;}
   let body='';for await(const part of req)body+=part;
@@ -33,15 +33,15 @@ test('keeps totals from all main and temporary chats in one footer and reserves 
   expect(await stats.evaluate(node=>Boolean(node.closest('footer.statusbar')))).toBe(true);
   await stats.getByRole('button',{name:'工作区用量与上下文详情'}).click();
   await expect(stats).toContainText('累计输入 460 · 输出 60 · 合计 520 token');
-  await expect(stats.getByRole('region',{name:'主对话上下文'})).toContainText('64,000');
-  await expect(stats.getByRole('region',{name:'临时对话上下文'})).toContainText('64,000');
+  await expect(stats.getByRole('region',{name:'主对话上下文'})).toContainText('1,000,000');
+  await expect(stats.getByRole('region',{name:'临时对话上下文'})).toContainText('1,000,000');
   await page.keyboard.press('Escape');
   await expect(stats.getByRole('button',{name:'工作区用量与上下文详情'})).toBeFocused();
   await page.getByRole('button',{name:'新建主对话',exact:true}).click();
   await expect(stats).toContainText('520 tok');
-  const translate=page.getByRole('button',{name:'一键翻译（即将推出）',exact:true});
+  const translate=page.getByRole('button',{name:'一键翻译',exact:true});
   await expect(translate).toBeVisible();await expect(translate).toBeDisabled();
-  const evidence=resolve('docs/evidence/2026-10-15/edithere');await mkdir(evidence,{recursive:true});
+  const evidence=resolve('docs/evidence/2026-10-16/model-output-policy');await mkdir(evidence,{recursive:true});
   for(const width of [1600,768,320]){
    await page.setViewportSize({width,height:1000});
    if(width<760)await page.getByRole('button',{name:'切换侧栏',exact:true}).click();

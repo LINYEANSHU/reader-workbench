@@ -1,5 +1,6 @@
 import {useState} from 'react';
 import {Sun,Moon} from 'lucide-react';
+import {SelectControl} from '../components/SelectControl.js';
 
 export type Appearance='light'|'graphite'|'ink';
 const preferenceKey='reader:appearance';
@@ -27,13 +28,8 @@ export function AppearanceSwitch(){
   setValue(next);
   try{localStorage.setItem(preferenceKey,next);}catch{}
  };
- return<label className="appearance-switch">
+ return<div className="appearance-switch" data-tooltip="切换浅色、石墨灰或墨蓝外观">
   {value==='light'?<Sun size={16} aria-hidden="true"/>:<Moon size={16} aria-hidden="true"/>}
-  <span className="sr-only">界面外观</span>
-  <select aria-label="界面外观" value={value} onChange={event=>change(event.target.value as Appearance)}>
-   <option value="light">浅色</option>
-   <option value="graphite">石墨灰</option>
-   <option value="ink">墨蓝</option>
-  </select>
- </label>;
+  <SelectControl aria-label="界面外观" value={value} options={[{value:"light",label:"浅色"},{value:"graphite",label:"石墨灰"},{value:"ink",label:"墨蓝"}]} onChange={next=>change(next as Appearance)}/>
+ </div>;
 }

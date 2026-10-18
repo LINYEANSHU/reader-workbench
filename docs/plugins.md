@@ -8,11 +8,22 @@
 
 - `reader-helper`：只读术语工具 `reader_explain_term`，字数设置，以及“把选区带到临时提问”动作。动作携带文档版本和选区，放入可编辑临时草稿，不会自动发送，也不更改主对话。
 - `python-helper`：配置 Python 解释器路径后启用 `python_word_stats`。实际输入 `{"text":"你好 AI"}` 返回 `char_count: 5`。设置页的工具预览仅运行只读工具，结果不加入任何对话历史。
-- `visual-document-memory`（1.0.0）：新工作区自动安装并启用，已有同名包或明确停用状态保持原样。PDF、转换后的 Word/PPT、图片先在本地准备各页图像；首次提问由所选视觉模型逐页建立记忆，后续问题使用本地记忆。页记忆与重建入口在文件栏，停用入口在设置 → 插件。文字和 Markdown 沿用正文路径；需要旧的文字模型/OCR 路径时停用此插件。
+- `visual-document-memory`（1.0.0）：默认安装启用，明确停用状态保留。首次常规提问按首读计划处理：PDF/PPT/图片使用选定页图像，Markdown/Word 使用文本；选区提问跳过整篇预读。记忆保留逐页详情、公式/图表/术语条目和来源，支持补读、检索、回查和重建。现有未修改的内置副本自动升级，自定义副本保留。
+- `document-translation`（1.0.0，本地开发新增）：默认安装启用，通过 `documentProcessor` 能力处理指定版本的全文、页码或文字选区。模型只接收文本块，不调用定位模型或 OCR。预览/下载不写入工作区，明确另存才创建新文件；PDF/PPT 为原页与译文伴随页对照，Word 为可编辑 DOCX，Markdown 包含本地图像资源。
+
+一键翻译默认使用本地 CPU 中英互译，不需要 API Key。当前 Windows 开发目录已部署独立 Python、CTranslate2、OpenCC 和中英双向模型，约 309 MiB；推理期间不联网，也不修改系统 Python。翻译窗口可切换到已配置的 AI 模型。公式、代码、图像和来源定位继续由文档处理器保护；离线模型适合一般正文，专业术语请结合预览校对。
+
+运行目录依次取 `READER_TRANSLATION_RUNTIME`、应用根目录的 `.reader-runtime/translation`、用户配置目录中的 `translation`。新机器可使用 Python 3.12 执行 `scripts/setup-local-translation.ps1 -Python <Python3.12路径>` 下载独立运行库与官方模型；下载仅发生在显式安装时。运行文件不提交到 Git，当前源码包包含安装脚本与工作进程，不包含这些二进制模型。缺少资源时界面提示安装，不会自动下载或要求配置云端模型。
+
+## 文档处理扩展（本地开发）
+
+`context.register('documentProcessor', 'your-plugin.processor', processor)` 注册 `DocumentProcessor`。宿主固定文档版本、会话所有权、模型租约与输入容量，提供受控源文件、PDF 文字块及实际几何信息、版本资源、转换与导出能力。插件报告进度并返回实际文件字节、MIME、扩展名和提示；宿主复核结果后提供预览，只有显式保存才获得工件写入权限。任务取消、会话清空和版本/所有权检查由宿主处理，预览任务重启后需重新开始。
+
+阅读上下文的 `documentReadScopes` 将文档版本和允许页码固定到每次运行；普通源读取与记忆工具共同遵守该范围，选区提问不允许通过普通源工具扩大阅读。插件上下文变换不能修改此字段。旧记忆 schema v1 仍可读取，新增可选 `overviewPages` 记录概览覆盖页，范围变化时只对当前所选页重新生成概览。
 
 ## 文档记忆扩展（SDK 协议 1.1.0）
 
-当前 SDK 协议为 1.2.0，保持本节 1.1.0 文档记忆扩展的兼容。新增 `ModelProvider.contextWindowSource`、可选的 `resolveCapabilities(signal)`，以及 `MemoryProvider.summarize` 的可选第四参数 `SummaryContext`（系统消息、工具定义、既有摘要）；原有三参数摘要插件仍可使用。
+当前 SDK 协议为 1.2.0，保持本节 1.1.0 文档记忆扩展的兼容。 `ModelRequest.maxOutputTokens` 与能力中的同名字段仅兼容旧插件，适配器忽略它们；新插件应省略该字段。未经修改的旧内置阅读插件自动使用随包新版实现，自定义副本保持原样。新增 `ModelProvider.contextWindowSource`、可选的 `resolveCapabilities(signal)`，以及 `MemoryProvider.summarize` 的可选第四参数 `SummaryContext`（系统消息、工具定义、既有摘要）；原有三参数摘要插件仍可使用。
 
 `context.register('documentMemory', 'your-plugin.reader', provider)` 注册 `DocumentMemoryProvider`。实现 `promptVersion`、`supports(record)`、`prepareLocal(host, signal)`、`prepare(host, signal)`、`select(record, question, budgetBytes)`。`DocumentImageHost` 提供受控页码图像和本地文字；`DocumentMemoryHost` 额外提供已租约固定的模型能力、图像限制、加载/原子保存记忆、无工具的模型调用和进度。
 
@@ -20,7 +31,7 @@
 
 缓存位于工作区内部存储的 `document-memory/<hash>/generation-<n>.json`，哈希覆盖工作区/文档/内容版本/插件/提示版本/模型身份。一般内部存储是 `.reader-workbench`；复制的工作区可能使用 `.reader-workbench/identities/<workspace-id>`。原文及页图像在同一内部存储的 `cache/<document-id>/<version>`。重建只递增本地代次，保留旧记录；下一次提问才调用模型。非法或不完整输出不会标记全文读完，已完成批次可继续。
 
-DeepSeek 的接口是无状态调用。所谓“记忆”是每次请求中明确提供的本地模型阅读记录与历史摘要，不能代替原文件中的所有细节。`api.deepseek.com` + `deepseek-flash` 使用 600 张、单图 32 MiB、图像累计 64 MiB、请求体 48 MiB 的上限；还受输出及上下文预算约束，超限会分批。其他端点默认 4 张、单图 4 MiB、累计 12 MiB、请求体 16 MiB，可通过模型设置 `imageLimits` 覆盖。
+DeepSeek 的接口是无状态调用。所谓“记忆”是每次请求中明确提供的本地模型阅读记录与历史摘要，不能代替原文件中的所有细节。`api.deepseek.com` + `deepseek-flash` 使用 600 张、单图 32 MiB、图像累计 64 MiB、请求体 48 MiB 的上限；按输入容量和图像发送限制分批；所有模型请求只限制输入（固定 1,000,000 token），输出使用供应商默认值，不发送输出 token 上限。其他端点默认 4 张、单图 4 MiB、累计 12 MiB、请求体 16 MiB，可通过模型设置 `imageLimits` 覆盖。
 
 最小 manifest：
 

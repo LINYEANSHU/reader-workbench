@@ -9,6 +9,7 @@ import type {SessionRecord,SessionSnapshot,CommittedTurn} from '../../../contrac
 import {ReaderError} from '../../../contracts/src/errors.js';
 import type {ArtifactRecord} from '../../../contracts/src/artifacts.js';
 import type {ArtifactStorePort} from '../../../contracts/src/storage.js';
+import {memorySearchScore} from '../../../contracts/src/document-memory.js';
 export class SqliteWorkspaceStore implements WorkspaceStore {
   private scopes=new Map<RunId,{scope:RunScope;references:number}>();
   bindScope(scope:RunScope):()=>void{
@@ -165,11 +166,11 @@ export class SqliteWorkspaceStore implements WorkspaceStore {
   }
   searchDocument(ref:DocumentRef,query:string,limit:number):SearchHit[]{
     if(ref.workspaceId!==this.workspaceId)throw new Error('Workspace mismatch');
-    if(query.length>1000)return [];
-    const rows=query.length<3?
-      this.database.prepare("SELECT text,anchor,0 AS score FROM document_index WHERE document_id=? AND version=? AND text LIKE ? ESCAPE '\\' LIMIT ?").all(ref.documentId,ref.version,'%'+query.replace(/[\\%_]/g,'\\$&')+'%',limit):
-      this.database.prepare('SELECT text,anchor,bm25(document_index) AS score FROM document_index WHERE document_index MATCH ? AND document_id=? AND version=? ORDER BY score LIMIT ?').all('"'+query.replaceAll('"','""')+'"',ref.documentId,ref.version,limit);
-    return (rows as {text:string;anchor:string;score:number}[]).map(row=>({text:row.text,anchor:JSON.parse(row.anchor),score:row.score}));
+    if(query.length>1000||!query.trim())return [];
+    // FTS phrase matching cannot tokenize Chinese formula descriptions reliably.
+    // Rank only this document version's stored blocks, using complete numeric tokens.
+    const rows=this.database.prepare('SELECT text,anchor FROM document_index WHERE document_id=? AND version=?').all(ref.documentId,ref.version) as {text:string;anchor:string}[];
+    return rows.map(row=>({text:row.text,anchor:JSON.parse(row.anchor),score:memorySearchScore(row.text,query)})).filter(hit=>hit.score>0).sort((a,b)=>b.score-a.score).slice(0,Math.max(1,Math.min(limit,100)));
   }
   transaction<T>(callback:()=>T):T{this.database.exec('BEGIN IMMEDIATE');try{const result=callback();this.database.exec('COMMIT');return result;}catch(error){this.database.exec('ROLLBACK');throw error;}}
   async close(){if(!this.closed){this.database.close();this.closed=true;}}

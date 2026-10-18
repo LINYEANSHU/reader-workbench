@@ -1,82 +1,46 @@
-import {useEffect,useRef,useState} from 'react';
-import {ChevronDown} from 'lucide-react';
-import type {DocumentRecord} from '../../../../packages/contracts/src/documents.js';
+import {useEffect,useRef,useState,useId} from 'react';
+import {ChevronDown,ArrowUpRight} from 'lucide-react';
+import type {DocumentRecord,SourceAnchor} from '../../../../packages/contracts/src/documents.js';
+import type {DocumentMemoryEntryKind,DocumentMemorySearchResult} from '../../../../packages/contracts/src/document-memory.js';
+import {parsePageRanges,type ReadingPlan} from '../../../../packages/contracts/src/reading-plan.js';
 import {api,message} from '../api/client.js';
+import '../styles/document-memory.css';
 
-type Status=Awaited<ReturnType<typeof api.documentMemoryStatus>>;
+type Status=Awaited<ReturnType<typeof api.documentMemoryStatus>>&{selectedPages?:number[];selectedCompletedPages?:number[];rangeComplete?:boolean;fullDocumentComplete?:boolean;mode?:'visual'|'text'};
+const path=(document:DocumentRecord)=>'/workspaces/'+encodeURIComponent(document.workspaceId)+'/documents/'+encodeURIComponent(document.documentId)+'/'+encodeURIComponent(document.version);
+const kinds=[['','全部'],['formula','公式'],['figure','图表'],['term','术语']] as const;
 
-export function DocumentMemoryPanel({document,providerId,running}:{document:DocumentRecord;providerId:string;running:boolean}){
- const [state,setState]=useState<Status|null>(null),[error,setError]=useState(''),[showPageMemory,setShowPageMemory]=useState(false),[page,setPage]=useState(1),[pageText,setPageText]=useState(''),[revision,setRevision]=useState(0),[busy,setBusy]=useState(false);
- const pageRequest=useRef<AbortController|null>(null);
-
- useEffect(()=>()=>pageRequest.current?.abort(),[]);
-
+export function DocumentMemoryPanel({document,providerId,running,onOpen}:{document:DocumentRecord;providerId:string;running:boolean;onOpen?:(anchor:SourceAnchor)=>void}){
+ const id=useId();
+ const [state,setState]=useState<Status|null>(null),[plan,setPlan]=useState<ReadingPlan|null>(null),[error,setError]=useState(''),[showPageMemory,setShowPageMemory]=useState(false),[page,setPage]=useState(1),[pageText,setPageText]=useState(''),[revision,setRevision]=useState(0),[busy,setBusy]=useState(false);
+ const [query,setQuery]=useState(''),[kind,setKind]=useState<DocumentMemoryEntryKind|''>(''),[results,setResults]=useState<DocumentMemorySearchResult|null>(null),[searching,setSearching]=useState(false),[supplement,setSupplement]=useState(''),[notice,setNotice]=useState('');
+ const pageRequest=useRef<AbortController|null>(null),searchRequest=useRef<AbortController|null>(null),mutationRequest=useRef<AbortController|null>(null);
+ useEffect(()=>{setState(null);setPlan(null);setPageText('');setResults(null);setNotice('');setSupplement('');setQuery('');setBusy(false);setSearching(false);return()=>{pageRequest.current?.abort();searchRequest.current?.abort();mutationRequest.current?.abort();};},[document.workspaceId,document.documentId,document.version,providerId]);
  useEffect(()=>{
-  const controller=new AbortController();
-  let timer:ReturnType<typeof setTimeout>|undefined;
-  setError('');
-  if(!providerId)return;
-
-  const load=async()=>{
-   try{
-    const value=await api.documentMemoryStatus(document,providerId,controller.signal);
-    if(controller.signal.aborted)return;
-    setState(value);
-    if(running||value.localPreparation.status==='preparing')timer=setTimeout(()=>void load(),700);
-   }catch(error){
-    if(!controller.signal.aborted)setError(message(error));
-   }
-  };
-
-  void load();
-  return()=>{controller.abort();clearTimeout(timer);};
+  const controller=new AbortController();let timer:ReturnType<typeof setTimeout>|undefined;setError('');if(!providerId)return;
+  const load=async()=>{try{const [value,readingPlan]=await Promise.all([api.documentMemoryStatus(document,providerId,controller.signal),api.request<ReadingPlan>(path(document)+'/reading-plan',{signal:controller.signal})]);if(controller.signal.aborted)return;setState(value);setPlan(readingPlan);if(running||value.localPreparation.status==='preparing')timer=setTimeout(()=>void load(),700);}catch(error){if(!controller.signal.aborted)setError(message(error));}};
+  void load();return()=>{controller.abort();clearTimeout(timer);};
  },[document.workspaceId,document.documentId,document.version,providerId,revision,running]);
-
- const read=async()=>{
-  pageRequest.current?.abort();
-  const controller=new AbortController();
-  pageRequest.current=controller;
-  setBusy(true);
-  setError('');
-  try{
-   const value=await api.documentMemoryPage(document,providerId,page,controller.signal);
-   if(controller.signal.aborted)return;
-   setPageText(['第 '+value.page+' 页',value.summary,value.transcription,...value.figures,...value.formulas,...value.terms.map(text=>'术语：'+text),...value.uncertainties.map(text=>'不确定：'+text),...value.crossPageRelations.map(item=>'关联页 '+item.pages.join('、')+'：'+item.text)].filter(Boolean).join('\n\n'));
-  }catch(error){
-   if(!controller.signal.aborted)setError(message(error));
-  }finally{
-   if(!controller.signal.aborted)setBusy(false);
-  }
- };
-
- const rebuild=async()=>{
-  setBusy(true);
-  setError('');
-  try{
-   await api.rebuildDocumentMemory(document,providerId);
-   setRevision(value=>value+1);
-   setPageText('');
-  }catch(error){
-   setError(message(error));
-  }finally{
-   setBusy(false);
-  }
- };
-
- const status=error||state?.localPreparation.error?'阅读记忆操作未完成':!providerId?'选择模型后可建立阅读记忆':state?.status==='disabled'?'文档阅读记忆已停用':state?.status==='ready'?'已建立全部 '+state.pageCount+' 页的阅读记忆':state?.status==='partial'?'已处理 '+state.completedPages.length+' / '+state.pageCount+' 页；再次提问将继续阅读':state?.localPreparation.status==='preparing'?'正在本地准备全部页面图像…':'首次提问时阅读全部 '+document.pageCount+' 页';
-
+ const read=async()=>{pageRequest.current?.abort();const controller=new AbortController();pageRequest.current=controller;setBusy(true);setError('');try{const value=await api.documentMemoryPage(document,providerId,page,controller.signal);if(controller.signal.aborted)return;setPageText(['第 '+value.page+' 页',value.summary,value.transcription,...value.figures,...value.formulas,...value.terms.map(text=>'术语：'+text),...value.uncertainties.map(text=>'不确定：'+text),...value.crossPageRelations.map(item=>'关联页 '+item.pages.join('、')+'：'+item.text)].filter(Boolean).join('\n\n'));}catch(error){if(!controller.signal.aborted)setError(message(error));}finally{if(!controller.signal.aborted)setBusy(false);}};
+ const rebuild=async()=>{mutationRequest.current?.abort();const controller=new AbortController();mutationRequest.current=controller;setBusy(true);setError('');try{await api.request(path(document)+'/memory/rebuild',{method:'POST',body:{providerId},signal:controller.signal});if(controller.signal.aborted)return;setRevision(value=>value+1);setPageText('');setResults(null);}catch(error){if(!controller.signal.aborted)setError(message(error));}finally{if(!controller.signal.aborted)setBusy(false);}};
+ const search=async()=>{searchRequest.current?.abort();const controller=new AbortController();searchRequest.current=controller;setSearching(true);setError('');setResults(null);try{const value=await api.request<DocumentMemorySearchResult>(path(document)+'/memory/search?providerId='+encodeURIComponent(providerId)+'&query='+encodeURIComponent(query)+(kind?'&kind='+kind:''),{signal:controller.signal});if(!controller.signal.aborted)setResults(value);}catch(error){if(!controller.signal.aborted)setError(message(error));}finally{if(!controller.signal.aborted)setSearching(false);}};
+ const saveSupplement=async()=>{mutationRequest.current?.abort();const controller=new AbortController();mutationRequest.current=controller;setBusy(true);setError('');setNotice('');try{const requested=parsePageRanges(supplement,document.pageCount),pages=[...new Set([...(plan?.pages??[]),...requested])].sort((a,b)=>a-b),value=await api.request<ReadingPlan>(path(document)+'/reading-plan',{method:'PUT',body:{pages},signal:controller.signal});if(controller.signal.aborted)return;setPlan(value);setSupplement('');setNotice('已保存补读范围；下次常规提问时只补读尚未建立记忆的页。');setRevision(value=>value+1);}catch(error){if(!controller.signal.aborted)setError(message(error));}finally{if(!controller.signal.aborted)setBusy(false);}};
+ const selected=state?.selectedPages??plan?.pages??Array.from({length:document.pageCount},(_,index)=>index+1),completed=state?.selectedCompletedPages??selected.filter(page=>state?.completedPages.includes(page)),rangeComplete=state?.rangeComplete??state?.status==='ready';
+ const status=error||state?.localPreparation.error?'阅读记忆操作未完成':!providerId?'选择模型后可建立阅读记忆':state?.status==='disabled'?'文档阅读记忆已停用':state?.fullDocumentComplete||state?.status==='ready'?'已建立全部 '+document.pageCount+' 页的阅读记忆':rangeComplete?'已完成选定 '+selected.length+' 页（全文 '+document.pageCount+' 页）':state?.status==='partial'?'选定范围已读 '+completed.length+' / '+selected.length+' 页；常规提问时继续阅读':state?.localPreparation.status==='preparing'?'正在本地准备选定页面…':'首次提问时阅读'+(selected.length===document.pageCount?'全部 '+document.pageCount:'选定 '+selected.length+' / '+document.pageCount)+' 页';
  return<details className="document-memory" aria-label="文档阅读记忆">
   <summary className="memory-summary"><span role="status" title={status}>{status}</span><ChevronDown size={14} aria-hidden="true"/></summary>
   <div className="document-memory-content">
-   <p>原文、页图像和阅读记忆保存在此工作区。首次提问逐页阅读，后续问题携带记忆；需要核实时只重看指定页。记忆是模型整理的内容，细节可结合原文确认。</p>
-   <div className="memory-actions">
-    <button disabled={!state?.completedPages.length} onClick={()=>setShowPageMemory(value=>!value)}>{showPageMemory?'收起页记忆':'查看页记忆'}</button>
-    <button disabled={busy||!state||state.status==='disabled'} onClick={()=>void rebuild()}>重建阅读记忆</button>
-    <button disabled={busy||!providerId} onClick={()=>{setError('');setRevision(value=>value+1);}}>刷新阅读状态</button>
-   </div>
+   <p>常规提问按设定范围建立记忆，后续复用已读内容。{plan?.mode==='text'?'此文档使用原文文字预读。':'此文档使用选定页图像预读。'}选区提问只发送相关文字。记忆由模型整理，可跳回原文核对。</p>
+   <div className="memory-actions"><button disabled={!state?.completedPages.length} onClick={()=>setShowPageMemory(value=>!value)}>{showPageMemory?'收起页记忆':'查看页记忆'}</button><button disabled={busy||running||!state||state.status==='disabled'} onClick={()=>void rebuild()}>重建阅读记忆</button><button disabled={busy||!providerId} onClick={()=>{setError('');setRevision(value=>value+1);}}>刷新阅读状态</button></div>
+   <form className="memory-search" onSubmit={event=>{event.preventDefault();void search();}}>
+    <label htmlFor={id+'-query'}>检索已读记忆</label><div className="memory-search-row"><input id={id+'-query'} className="memory-query" value={query} maxLength={1000} placeholder="公式编号、中文描述或术语" onChange={event=>setQuery(event.target.value)}/><button disabled={searching||!state?.completedPages.length}>{searching?'检索中…':'检索'}</button></div>
+    <div className="memory-kinds" role="group" aria-label="记忆类型">{kinds.map(([value,label])=><button key={value} type="button" aria-pressed={kind===value} onClick={()=>{setKind(value);setResults(null);}}>{label}</button>)}</div>
+   </form>
+   {results&&<div className="memory-search-results" role="region" aria-label="记忆检索结果"><p>{results.entries.length?'找到 '+results.entries.length+' 条已读记忆。':'未找到匹配的已读记忆；未读页面不会出现在结果中。'}</p><ol>{results.entries.map(entry=><li key={entry.id}><div><span>{entry.kind==='formula'?'公式':entry.kind==='figure'?'图表':'术语'}</span><button type="button" disabled={!onOpen} onClick={()=>onOpen?.(entry.anchor)} aria-label={'打开原文 '+entry.id}>{entry.anchor.location.kind==='page'?'第 '+entry.anchor.location.page+' 页（页级定位）':'原文段落（文字定位）'}<ArrowUpRight size={12} aria-hidden="true"/></button></div><pre>{entry.text}</pre></li>)}</ol></div>}
+   <form className="memory-supplement" onSubmit={event=>{event.preventDefault();void saveSupplement();}}><label htmlFor={id+'-supplement'}>补读页码</label><div className="memory-search-row"><input id={id+'-supplement'} value={supplement} placeholder="例如 8-12,20" onChange={event=>setSupplement(event.target.value)}/><button disabled={busy||running||!plan||!supplement.trim()}>保存补读范围</button></div></form>
+   {notice&&<p role="status">{notice}</p>}
    {showPageMemory&&<div className="page-memory-controls"><label>记忆页码<input aria-label="记忆页码" type="number" min={1} max={document.pageCount} value={page} onChange={event=>setPage(Number(event.target.value))}/></label><button disabled={busy||!Number.isSafeInteger(page)||page<1||page>document.pageCount} onClick={()=>void read()}>读取页记忆</button>{pageText&&<pre role="region" aria-label="页阅读记忆">{pageText}</pre>}</div>}
-   {state?.localPreparation.error&&<p className="error" role="alert">{state.localPreparation.error}</p>}
-   {error&&<p className="error" role="alert">{error}</p>}
+   {state?.localPreparation.error&&<p className="error" role="alert">{state.localPreparation.error}</p>}{error&&<p className="error" role="alert">{error}</p>}
   </div>
  </details>;
 }

@@ -22,7 +22,16 @@ export class SessionService{
   const before=cursor?Number(cursor):snapshot.session.revision+1;
   if(!Number.isSafeInteger(before)||before<0)throw new ReaderError('INVALID_CURSOR','历史游标无效');
   const available=snapshot.turns.filter(turn=>turn.revision<before),turns=available.slice(-50);
-  return {session:snapshot.session,turns,nextCursor:available.length>turns.length?String(turns[0]!.revision):undefined};
+  return {session:await this.get(workspaceId,sessionId),turns,nextCursor:available.length>turns.length?String(turns[0]!.revision):undefined};
  }
- async list(workspaceId:WorkspaceId):Promise<SessionRecord[]>{return(await this.repository.workspaces.storeFor(workspaceId)).sessions.listSessions();}
+ async get(workspaceId:WorkspaceId,sessionId:SessionId):Promise<SessionRecord>{const store=await this.repository.workspaces.storeFor(workspaceId),session=await store.sessions.getSession(sessionId),archive=store.getRecord<{archivedAt:string}>('session-archive',sessionId);return archive?{...session,...archive}:session;}
+ async setArchived(workspaceId:WorkspaceId,sessionId:SessionId,archived:boolean,actor:Actor):Promise<SessionRecord>{
+  const session=await this.get(workspaceId,sessionId);
+  if(session.kind!=='main')throw new ReaderError('INVALID_SESSION_KIND','只能归档主对话');
+  if(session.callerId!==actor.callerId)throw new ReaderError('SESSION_DENIED','会话调用者不匹配',403);
+  const store=await this.repository.workspaces.storeFor(workspaceId);
+  if(archived)store.putRecord('session-archive',sessionId,{archivedAt:session.archivedAt??new Date().toISOString()});else store.deleteRecord('session-archive',sessionId);
+  return this.get(workspaceId,sessionId);
+ }
+ async list(workspaceId:WorkspaceId):Promise<SessionRecord[]>{const store=await this.repository.workspaces.storeFor(workspaceId);return(await store.sessions.listSessions()).map(session=>({...session,...store.getRecord<{archivedAt:string}>('session-archive',session.id)}));}
 }

@@ -66,30 +66,34 @@ describe('agent settings and conversation statistics',()=>{
   const main=await s.host.sessions.createMain(s.workspace.id,'usage'),temporary=await s.host.sessions.createTemporary(s.workspace.id,main.id);
   await s.ask(main.id,'first');await s.ask(main.id,'second');await s.ask(temporary.id,'third');
   const stats=await s.request('/sessions/'+main.id+'/usage?providerId=agent');expect(stats.status).toBe(200);
-  expect(stats.data).toMatchObject({requests:2,totalTokens:330,cachedInputTokens:160,cacheEligibleInputTokens:300,cacheReportedRequests:2,context:{usedTokens:220,limit:1000000,estimated:false,capacitySource:'manual'}});
+  expect(stats.data).toMatchObject({requests:2,totalTokens:330,cachedInputTokens:160,cacheEligibleInputTokens:300,cacheReportedRequests:2,context:{usedTokens:200,limit:1000000,estimated:false,capacitySource:'application'}});
   expect(stats.data.cacheHitRate).toBeCloseTo(160/300);
   const branch=await s.request('/sessions/'+temporary.id+'/usage?providerId=agent');
-  expect(branch.data).toMatchObject({requests:1,totalTokens:55,cacheReportedRequests:0,cacheHitRate:null,context:{usedTokens:55}});
+  expect(branch.data).toMatchObject({requests:1,totalTokens:55,cacheReportedRequests:0,cacheHitRate:null,context:{usedTokens:50}});
   await s.host.sessions.clearTemporary(s.workspace.id,temporary.id,actor);
   expect((await s.request('/sessions/'+temporary.id+'/usage?providerId=agent')).data).toMatchObject({requests:0,context:null});
   expect((await s.request('/sessions/'+main.id+'/usage?providerId=agent')).data.requests).toBe(2);
   await s.restart();expect((await s.request('/sessions/'+main.id+'/usage?providerId=agent')).data).toEqual(stats.data);
  },serverIntegrationTimeout);
 
- it('reads context metadata even without an output limit and keeps the entered capacity as fallback',async()=>{
+ it('uses the fixed million-token input limit without replacing it with model metadata',async()=>{
   const s=await setup(64000),main=await s.host.sessions.createMain(s.workspace.id,'metadata');
   const run=await s.ask(main.id,'capacity');
-  expect(run.kind==='agent'&&run.context?.budget.limit).toBe(64000);
-  expect(s.catalogReads).toBe(1);
+  expect(run.kind==='agent'&&run.context?.budget.limit).toBe(1000000);
+  expect(s.catalogReads).toBe(0);
   const stats=await s.request('/sessions/'+main.id+'/usage?providerId=agent');
-  expect(stats.data.context).toMatchObject({limit:64000,capacitySource:'service'});
+  expect(stats.data.context).toMatchObject({limit:1000000,capacitySource:'application',reservedOutputTokens:0});
   expect((await s.host.models.listModelSettings(s.workspace.id))[0].capabilities.contextWindow).toBe(1000000);
  },serverIntegrationTimeout);
 
- it('honors arbitrary saved input and output limits when automatic discovery is disabled',async()=>{
+ it('ignores legacy input/output overrides and accepts settings without an output limit',async()=>{
   const s=await setup(64000);await s.host.models.saveModelSettings(s.workspace.id,{...s.settings,autoDiscoverContext:false,capabilities:{...s.settings.capabilities,contextWindow:1234567,maxOutputTokens:89000}});
   const main=await s.host.sessions.createMain(s.workspace.id,'manual');const run=await s.ask(main.id,'manual');
-  expect(run.kind==='agent'&&run.context?.budget.limit).toBe(1234567);expect(s.requests[0].max_tokens).toBe(89000);expect(s.catalogReads).toBe(0);
+  expect(run.kind==='agent'&&run.context?.budget.limit).toBe(1000000);expect(s.requests[0]).not.toHaveProperty('max_tokens');expect(s.catalogReads).toBe(0);
+  const {maxOutputTokens,...capabilities}=s.settings.capabilities;
+  const saved=await s.request('/settings/models',{settings:{...s.settings,capabilities}});
+  expect(saved.status).toBe(200);expect(saved.data.capabilities).not.toHaveProperty('maxOutputTokens');
+  expect(saved.data.capabilities.contextWindow).toBe(1000000);
  },serverIntegrationTimeout);
 
  it('treats invalid cache counts as unreported rather than clamping or guessing a hit rate',async()=>{

@@ -23,7 +23,7 @@ export async function toolLoop(model:ModelProvider,envelope:ContextEnvelope,tool
   const hasImage=(message:ModelMessage)=>Array.isArray(message.content)&&message.content.some(block=>block.type==='image_url');
   const images=prefix.filter(hasImage),region=prefix.filter(message=>!hasImage(message));
   if(!region.length)throw new ReaderError('CONTEXT_LIMIT','没有可压缩的历史，请缩短当前问题或工具结果');
-  const available=model.capabilities.contextWindow-messageTokens([system,currentQuestion,...tail,...images],model.imageLimits?.imageTokens??1024)-estimateTokens(JSON.stringify(tools))-envelope.budget.reservedOutputTokens-512;
+  const available=model.capabilities.contextWindow-messageTokens([system,currentQuestion,...tail,...images],model.imageLimits?.imageTokens??1024)-estimateTokens(JSON.stringify(tools))-512;
   if(available<64)throw new ReaderError('CONTEXT_LIMIT','当前问题或待解读图像超过模型容量，请减少页数或提高容量');
   const budget=Math.min(Math.floor(model.capabilities.contextWindow*0.2),available);
   const summary=await new ModelMemoryProvider(()=>model).summarizeMessages(region,budget,signal,system,tools);
@@ -32,14 +32,14 @@ export async function toolLoop(model:ModelProvider,envelope:ContextEnvelope,tool
   messages.splice(0,messages.length,...replacement);compactions++;
  };
  for(let round=0;round<8;round++){
-  if(inputCost()+envelope.budget.reservedOutputTokens>model.capabilities.contextWindow*0.8&&compactions<2&&round>0)await compact();
-  validateImageRequest(messages,model.imageLimits??DEFAULT_IMAGE_LIMITS,{messages,tools,max_tokens:envelope.budget.reservedOutputTokens});
+  if(inputCost()>model.capabilities.contextWindow*0.8&&compactions<2&&round>0)await compact();
+  validateImageRequest(messages,model.imageLimits??DEFAULT_IMAGE_LIMITS,{messages,tools});
   signal.throwIfAborted();const inputTokens=inputCost();
-  if(inputTokens+envelope.budget.reservedOutputTokens>model.capabilities.contextWindow)throw new ReaderError('CONTEXT_LIMIT','工具结果使本次上下文超限，请减少读取内容');
+  if(inputTokens>model.capabilities.contextWindow)throw new ReaderError('CONTEXT_LIMIT','工具结果使本次上下文超限，请减少读取内容');
   const calls:ModelToolCall[]=[];let text='',reasoning='',done=false;
-  let contextUsage={usedTokens:inputTokens,limit:model.capabilities.contextWindow,estimated:true,capacitySource:model.contextWindowSource??'manual',reservedOutputTokens:envelope.budget.reservedOutputTokens};
+  let contextUsage={usedTokens:inputTokens,limit:model.capabilities.contextWindow,estimated:true,capacitySource:model.contextWindowSource??'manual',reservedOutputTokens:0};
   await emit('context',{mainRevision:envelope.mainRevision,ownRevision:envelope.ownRevision,budget:{...envelope.budget,inputTokens},summaryCoverage:envelope.summaryCoverage,contextUsage});
-  try{for await(const event of model.generate({messages:structuredClone(messages),tools,maxOutputTokens:envelope.budget.reservedOutputTokens,reasoningEffort,usagePurpose:'conversation',contextUsage},signal)){
+  try{for await(const event of model.generate({messages:structuredClone(messages),tools,reasoningEffort,usagePurpose:'conversation',contextUsage},signal)){
    signal.throwIfAborted();
    if(event.kind==='delta'){text+=event.text;answer+=event.text;await emit('delta',{text:event.text});}
    else if(event.kind==='reasoning'){if(!reasoning)await emit('progress',{label:'正在思考'});reasoning+=event.text;}
@@ -49,7 +49,7 @@ export async function toolLoop(model:ModelProvider,envelope:ContextEnvelope,tool
     if(calls.some(call=>call.id===event.id))throw new ReaderError('TOOL_CALL_DUPLICATE','同轮工具调用标识重复');
     calls.push({id:event.id,type:'function',function:{name:event.name,arguments:JSON.stringify(event.input)}});
    }else if(event.kind==='usage'){
-    contextUsage={...contextUsage,usedTokens:event.inputTokens+event.outputTokens,estimated:false};
+    contextUsage={...contextUsage,usedTokens:event.inputTokens,estimated:false};
     await emit('context',{mainRevision:envelope.mainRevision,ownRevision:envelope.ownRevision,budget:{...envelope.budget,inputTokens:event.inputTokens,estimated:false},summaryCoverage:envelope.summaryCoverage,contextUsage});
    }else if(event.kind==='done')done=true;
   }}catch(error){

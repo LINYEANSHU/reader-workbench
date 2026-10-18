@@ -1,0 +1,51 @@
+.dialog.workspace-dialog { width: 860px; max-width: 100%; }
+.workspace-dialog > header { margin-bottom: 10px; }
+.workspace-dialog .workspace-intro { margin: 0 0 16px; }
+.workspace-navigation { display: flex; align-items: center; gap: 10px; }
+.directory-history { display: flex; gap: 2px; flex-shrink: 0; }
+.directory-history .icon-button { width: 32px; min-height: 36px; }
+.workspace-navigation .path-entry { flex: 1; min-width: 0; }
+.directory-breadcrumbs { display: flex; align-items: center; overflow-x: auto; gap: 2px; padding: 8px 0; min-height: 40px; scrollbar-width: thin; }
+.directory-breadcrumbs > span { display: flex; align-items: center; flex-shrink: 0; gap: 2px; color: var(--muted); }
+.directory-breadcrumbs button { border: 0; background: transparent; padding: 5px 7px; font-size: 12px; border-radius: 7px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.directory-breadcrumbs button:hover { background: var(--surface-hover); }
+.directory-breadcrumbs button[aria-current] { font-weight: 600; color: var(--text); }
+.directory-explorer { display: grid; grid-template-columns: 220px minmax(0,1fr); min-height: 290px; height: min(390px,46dvh); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.directory-locations { padding: 12px 7px; background: var(--surface-hover); overflow: auto; min-width: 0; }
+.directory-locations h3 { margin: 5px 9px 9px; font-size: 12px; color: var(--muted); font-weight: 500; }
+.directory-locations h3:not(:first-child) { margin-top: 20px; }
+.directory-recents button,.directory-tree-open { width: 100%; min-width: 0; justify-content: flex-start; background: transparent; border: 0; text-align: left; padding: 7px 9px; font-size: 12px; gap: 7px; }
+.directory-recents button > span,.directory-tree-open > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.directory-recents button > svg,.directory-tree-open > svg { flex-shrink: 0; }
+.directory-recents button:hover,.directory-tree-row:hover { background: var(--sidebar-selected); }
+.directory-tree,.directory-tree ul { padding: 0; margin: 0; list-style: none; }
+.directory-tree-row { display: flex; align-items: center; border-radius: 7px; }
+.directory-tree-row.selected { background: var(--sidebar-selected); }
+.directory-tree-open { padding-left: 2px; flex: 1; }
+.directory-expand { flex: 0 0 24px; width: 24px; padding: 5px; min-height: 30px; border: 0; background: transparent; }
+.directory-tree-children { margin-left: 13px; }
+.directory-tree-children p { font-size: 11px; margin: 5px; color: var(--muted); }
+.directory-contents { min-width: 0; display: flex; flex-direction: column; }
+.directory-filter { margin: 10px 12px 2px; display: flex; align-items: center; gap: 8px; color: var(--muted); }
+.directory-filter input { min-width: 0; width: 100%; border: 0; background: transparent; font-size: 13px; padding: 7px 0; caret-color: var(--accent); }
+.directory-contents .directory-list { flex: 1; height: auto; min-height: 0; margin: 0; padding: 5px 8px; border: 0; border-radius: 0; overscroll-behavior: contain; }
+.directory-contents .directory-list button { gap: 9px; border-radius: 8px; text-align: left; font-size: 13px; }
+.directory-list button > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.directory-list button > svg { flex-shrink: 0; color: var(--muted); }
+.workspace-dialog .directory-empty,.directory-loading { margin: 25px 12px; color: var(--muted); font-size: 13px; line-height: 1.7; }
+.workspace-selection { display: flex; flex-direction: column; gap: 5px; padding-top: 16px; font-size: 12px; }
+.workspace-selection > span,.workspace-selection small { color: var(--muted); }
+.workspace-selection output { overflow-wrap: anywhere; line-height: 1.7; }
+.workspace-dialog > footer { margin-top: 16px; }
+.directory-explorer * { scrollbar-color: var(--border) transparent; scrollbar-width: thin; }
+@media (max-width: 620px) {
+ .workspace-navigation { flex-wrap: wrap; gap: 6px; }
+ .workspace-navigation .path-entry { flex-basis: 100%; flex-wrap: nowrap; }
+ .workspace-navigation .path-entry input { flex-basis: auto; }
+ .workspace-navigation .path-entry button { flex-shrink: 0; padding-inline: 10px; }
+ .directory-explorer { grid-template-columns: minmax(100px,32%) minmax(0,1fr); height: min(350px,42dvh); min-height: 210px; }
+ .directory-locations { padding-inline: 3px; }
+ .directory-recents button { padding-inline: 5px; }
+ .directory-tree-children { margin-left: 7px; }
+ .workspace-dialog .workspace-intro { font-size: 12px; }
+}

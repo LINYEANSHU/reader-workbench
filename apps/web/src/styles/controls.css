@@ -1,0 +1,61 @@
+:root { --control-radius: 12px; }
+
+/* Personal settings use the same quiet, rounded surface in all three themes. */
+.model-select,.appearance-switch { position: relative; border-radius: var(--control-radius); background: var(--surface-hover); color: var(--text); }
+.model-select { max-width: min(64%,260px); flex: 0 1 auto; }
+.composer .model-select select { width: 100%; min-height: 36px; padding: 8px 30px 8px 12px; border-radius: inherit; background: transparent; font-size: 12px; text-overflow: ellipsis; }
+.model-select > svg { position: absolute; right: 10px; pointer-events: none; color: var(--muted); }
+.appearance-switch { gap: 0; }
+.appearance-switch > svg:first-child { position: absolute; left: 11px; pointer-events: none; }
+.appearance-switch select { appearance: none; min-height: 36px; max-width: 130px; width: 122px; padding: 8px 29px 8px 34px; background: transparent; color: inherit; border: 0; border-radius: inherit; font-size: 12px; }
+.appearance-switch .select-chevron { position: absolute; right: 10px; pointer-events: none; color: var(--muted); }
+.model-select:hover,.appearance-switch:hover { background: var(--sidebar-selected); }
+.model-select select:focus-visible,.appearance-switch select:focus-visible { outline-offset: 2px; }
+.settings-body select,.pane-popup select,.temporary-branches { border-radius: var(--control-radius); }
+select option { color: var(--text); background: var(--surface); }
+
+.sidebar-section-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 16px 10px 8px; color: var(--muted); font-size: 12px; }
+.sidebar-section-title > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.session-row { display: flex; align-items: center; gap: 2px; border-radius: 8px; min-width: 0; padding-right: 4px; }
+.session-row:hover { background: var(--sidebar-hover); }
+.session-row.selected { background: var(--sidebar-selected); font-weight: 600; }
+.session-list .session-open { flex: 1; min-width: 0; width: auto; display: block; text-align: left; background: transparent; }
+.session-list .session-archive { flex: 0 0 30px; width: 30px; min-height: 30px; padding: 6px; justify-content: center; color: var(--muted); border-radius: 7px; opacity: .65; }
+.session-row:hover .session-archive,.session-row:focus-within .session-archive,.session-row.selected .session-archive { opacity: 1; }
+.session-list .session-archive:hover { background: var(--sidebar-selected); color: var(--text); }
+.archived-sessions { margin-top: 10px; }
+.archived-sessions > summary { display: flex; align-items: center; gap: 7px; padding: 8px 10px; min-height: 36px; list-style: none; cursor: pointer; color: var(--muted); font-size: 12px; border-radius: 8px; }
+.archived-sessions > summary::-webkit-details-marker { display: none; }
+.archived-sessions > summary:hover { background: var(--sidebar-hover); color: var(--text); }
+.archived-sessions > summary > span:last-child { margin-left: auto; font-variant-numeric: tabular-nums; }
+.archived-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 9px 12px; font-size: 13px; color: var(--muted); }
+
+.control-tooltip { position: fixed; z-index: 3000; top: 0; left: 0; width: max-content; max-width: min(300px,calc(100vw - 16px)); padding: 9px 12px; border-radius: 10px; background: var(--text); color: var(--surface); font-size: 12px; font-weight: 400; line-height: 1.65; overflow-wrap: anywhere; pointer-events: none; box-shadow: var(--popup-shadow); animation: tooltip-enter 120ms ease-out; } /* taste-skill-ignore: this tooltip is a floating overlay. */
+@keyframes tooltip-enter { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .control-tooltip { animation: none; } }
+@media (max-width: 760px) { .appearance-switch select { max-width: 122px; } }
+
+/* Portalled menus share the same surface and focus vocabulary as the workbench. */
+.select-trigger { display: inline-flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 0; min-height: 36px; padding: 8px 12px; border: 0; border-radius: var(--control-radius); background: var(--surface-hover); color: var(--text); font: inherit; font-size: 12px; text-align: left; cursor: pointer; }
+.select-trigger > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.select-trigger > svg { flex-shrink: 0; color: var(--muted); }
+.select-trigger:hover:not(:disabled),.select-trigger[aria-expanded="true"] { background: var(--sidebar-selected); }
+.select-trigger:disabled { opacity: .5; cursor: not-allowed; }
+.select-trigger:focus-visible,.select-options:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.select-popover { position: fixed; z-index: 2400; display: flex; flex-direction: column; overflow: hidden; padding: 5px; border-radius: var(--control-radius); background: var(--surface); color: var(--text); box-shadow: var(--popup-shadow); font-size: 13px; } /* taste-skill-ignore: floating menu uses the workbench overlay elevation. */
+.select-options { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-color: var(--border) var(--surface); outline-offset: -2px; }
+.select-option { width: 100%; min-height: 36px; display: flex; justify-content: space-between; gap: 12px; border: 0; border-radius: 8px; background: transparent; padding: 8px 10px; color: inherit; text-align: left; font: inherit; cursor: pointer; }
+.select-option > span { min-width: 0; overflow-wrap: anywhere; }
+.select-option > span > span { display: block; }
+.select-option > svg { flex-shrink: 0; align-self: center; }
+.select-option small { display: block; margin-top: 3px; color: var(--muted); line-height: 1.5; }
+.select-option.active { background: var(--surface-hover); }
+.select-option[aria-selected="true"] { font-weight: 600; }
+.select-option[aria-selected="true"] > svg { color: var(--blue); }
+.select-option:disabled { opacity: .5; cursor: not-allowed; }
+.select-search { display: flex; align-items: center; gap: 8px; padding: 5px 8px 9px; color: var(--muted); }
+.select-search input { width: 100%; min-width: 0; border: 0; outline: 0; padding: 5px 0; border-radius: 0; background: transparent; color: var(--text); font: inherit; caret-color: var(--blue); }
+.select-empty { padding: 8px 10px; color: var(--muted); }
+.model-select .select-trigger { width: 100%; }
+.appearance-switch .select-trigger { width: 122px; padding-left: 34px; }
+.settings-body .select-trigger { width: 100%; font-size: 14px; }

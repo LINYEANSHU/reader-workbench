@@ -1,3 +1,4 @@
+import {selectControlValue} from './controls.js';
 import {test,expect,openWorkspace,model} from './fixtures.js';
 
 test('opens effort on demand, closes accessibly and sends the selected raw level',async({page,host,root,modelUrl,modelCalls})=>{
@@ -35,7 +36,7 @@ test('keeps the effort popup within a shrinking viewport and follows the current
  const popup=page.getByRole('dialog',{name:'思考强度',exact:true});
  for(const theme of ['light','graphite','ink']){
   await page.setViewportSize({width:1000,height:600});
-  await page.getByRole('combobox',{name:'界面外观'}).selectOption(theme);
+  await selectControlValue(page.getByRole('combobox',{name:'界面外观'}),theme);
   await main.getByRole('button',{name:'选择思考强度'}).click();
   await page.setViewportSize({width:320,height:400});
   await expect(async()=>{

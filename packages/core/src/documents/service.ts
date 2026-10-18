@@ -1,6 +1,7 @@
 import {readFile,writeFile,realpath,lstat} from 'node:fs/promises';
 import {join,basename,dirname,extname,resolve} from 'node:path';
 import {randomUUID,createHash} from 'node:crypto';
+import {memorySearchScore} from '../../../contracts/src/document-memory.js';
 import {setTimeout as delay} from 'node:timers/promises';
 import type {WorkspaceService} from '../workspaces/service.js';
 import {CapabilityRegistry} from '../plugins/registry.js';
@@ -111,7 +112,7 @@ export class DocumentService {
   return result;
  });}
  async readBlock(ref:DocumentRef,id:string):Promise<DocumentBlock>{const block=(await this.parsed(ref)).blocks.find(item=>item.id===id);if(!block)throw new ReaderError('BLOCK_UNAVAILABLE','文档块不存在',404);return block;}
- async search(ref:DocumentRef,query:string,limit:number):Promise<SearchHit[]>{await this.parsed(ref);if(!query.trim())return [];return new DocumentIndex(await this.workspaces.storeFor(ref.workspaceId)).search(ref,query,Math.max(1,Math.min(limit||20,100)));}
+ async search(ref:DocumentRef,query:string,limit:number,pages?:readonly number[]):Promise<SearchHit[]>{const parsed=await this.parsed(ref);if(!query.trim()||query.length>1000)return [];const maximum=Math.max(1,Math.min(limit||20,100));if(pages){const allowed=new Set(pages),blocks=new Set(parsed.pages.filter(page=>allowed.has(page.page)).flatMap(page=>page.anchors.flatMap(anchor=>anchor.location.kind==='block'?[anchor.location.blockId]:[])));return parsed.blocks.filter(block=>block.anchor.location.kind==='page'?allowed.has(block.anchor.location.page):blocks.has(block.id)).map(block=>({text:block.text,anchor:block.anchor,score:memorySearchScore(block.text,query)})).filter(hit=>hit.score>0).sort((a,b)=>b.score-a.score).slice(0,maximum);}return new DocumentIndex(await this.workspaces.storeFor(ref.workspaceId)).search(ref,query,maximum);}
  async list(workspaceId:WorkspaceId):Promise<DocumentRecord[]>{return(await(await this.workspaces.storeFor(workspaceId)).documents.list()).map(saved=>saved.record);}
  async authorizedFile(ref:DocumentRef,path:string):Promise<string>{
   await this.saved(ref);const directory=await safeCacheDirectory(this.workspaces,ref.workspaceId,['cache',ref.documentId,ref.version]);

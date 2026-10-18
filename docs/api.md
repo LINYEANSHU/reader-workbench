@@ -37,10 +37,47 @@ Run `node scripts/http-client.mjs CONFIG_DIR` against the active daemon for a re
 
 缓存采用 DeepSeek 的 `prompt_cache_hit_tokens` / `prompt_cache_miss_tokens`，兼容 `prompt_tokens_details.cached_tokens`。只回传命中数时，未命中数由输入减命中计算。缺失或非法缓存字段不按零命中处理；命中率为有效请求累计命中输入除以累计输入，未报告缓存的请求不进入分母。旧统计不补造缓存数。
 
-`context` 为最近一次回答请求的 `{ usedTokens, limit, estimated, capacitySource, reservedOutputTokens }`；`usedTokens` 优先采用服务报告的输入加输出。发送前及未回传用量时采用明确标注的保守本地估算。它与跨请求累加的 `totalTokens` 不同，文档预读及压缩调用不会覆盖回答上下文。流式运行的 `context` 事件也包含 `contextUsage`。
+`context` 为最近一次回答请求的 `{ usedTokens, limit, estimated, capacitySource, reservedOutputTokens }`；`usedTokens` 优先采用服务报告的输入 token，未回传时采用明确标注的保守本地估算。`limit` 固定为 `1000000`，`capacitySource` 为 `application`，兼容字段 `reservedOutputTokens` 为 `0`。累计 `totalTokens` 仍包括输入与输出；文档预读及压缩调用不会覆盖回答上下文。流式运行的 `context` 事件也包含 `contextUsage`。旧记录保留当时的统计值。
 
-模型连接可设置 `autoDiscoverContext`（缺省开启）。首次运行尝试读取 `/models` 中对应模型明确给出的容量，失败、超时、无容量字段时回退至用户保存的 `capabilities.contextWindow` 与 `maxOutputTokens`。读取不改写手填值，也不采用模型回答中的自述容量；设置为 `false` 可始终使用手填容量。
+本地输入上限统一为 `1000000` token，包含提示词、历史、工具定义、工具结果与图像估算。主回答、工具续答、文档预读、概览和 AI 压缩均不发送 `max_tokens`、`max_completion_tokens` 或 `max_output_tokens`，输出长度由供应商默认决定。旧配置及插件的 `maxOutputTokens`、`autoDiscoverContext` 仍可读取，但不再控制请求；设置接口返回规范化后的固定输入容量，并移除旧输出限制。读取模型列表只用于选择模型及其图像/思考能力。
 
-`GET` / `PUT /api/v1/workspaces/:id/settings/agent` 读取和保存工作区提示词偏好。字段：`preset`（`professional`、`friendly`、`candid`、`efficient`），`systemPrompt`、`personalPrompt`，`friendliness` 和 `enthusiasm`（`enhanced`、`default`、`reduced`），`visualLayout`（`default`、`concise`），`headingsLists`（`enhanced`、`default`、`concise`）。提示词各最多 16,000 字符，系统提示词不能为空；非法字段返回 `AGENT_SETTINGS_INVALID`。下一次构建请求时读取设置，来源和权限规则仍由应用附加。
+文档预读遇到供应商输出截断或逐页记忆格式错误时，将多页批次对半拆分后重试；成功批次立即保存。单页仍失败时明确报错，不保存无效或缺页的记忆。历史安装中未经修改的内置阅读插件自动使用当前随包实现，自定义插件文件保持原样。
+
+`GET` / `PUT /api/v1/workspaces/:id/settings/agent` 读取和保存本机全局提示词偏好，工作区参数保留用于认证与兼容。字段：`preset`（`professional`、`friendly`、`candid`、`efficient`），`systemPrompt`、`personalPrompt`，`friendliness` 和 `enthusiasm`（`enhanced`、`default`、`reduced`），`visualLayout`（`default`、`concise`），`headingsLists`（`enhanced`、`default`、`concise`）。提示词各最多 16,000 字符，系统提示词不能为空；非法字段返回 `AGENT_SETTINGS_INVALID`。下一次构建请求时读取设置，来源和权限规则仍由应用附加。
 
 上下文约达到容量的 80% 时，用所选 AI 生成检查点，并按约 16% 容量保留近期完整轮次；复用已保存检查点，不删除原始轮次。工具续答压力也会触发压缩。确认模型端上下文超限时，只有尚未输出文本、思考或工具调用的请求才压缩重试一次；已执行的工具不会重复执行。正在解读的图像保留；单次问题或必要图像本身超限、摘要无有效缩减、压缩失败或取消时明确失败，不伪造成功。
+
+# 本机全局设置与主对话归档
+
+`GET` / `PUT /api/v1/workspaces/:id/settings/models` 读取和保存本机共享模型连接。路径中的工作区用于权限检查和注册能力，模型配置本身存放在用户配置目录 `agent/models.json`，密钥存放在同目录 `credentials.json`，响应只包含凭据引用和 `hasKey`。旧工作区配置首次加载时迁移；重名连接会生成稳定的新名称，`migratedFrom` 用于首次恢复旧选择，用量记录仍留在所属工作区。
+
+`GET /api/v1/settings/preferences` 返回 `{providers, efforts, captureBinding}`，首次未保存时为 `null`。`PUT` 接受这些字段的部分更新，分别合并 `main`、`temporary` 的模型和思考档位。数据保存在用户配置目录 `agent/ui-preferences.json`；工作区 UI 状态不再保存这些个人选项。
+
+`PUT /api/v1/workspaces/:id/sessions/:sessionId/archive` 接受 `{ "archived": true }` 或 `{ "archived": false }`，返回带可选 `archivedAt` 的会话记录。只允许会话所属调用者操作主对话；归档不删除历史、记忆、运行、生成文件或临时分支，也不取消正在执行的请求。会话列表与历史接口保留归档信息，便于恢复。
+
+# 阅读与翻译接口（2026-10-18 本地开发）
+
+`GET /api/v1/directories/browser?path=...&workspaceId=...` 返回 `{path,parent,entries,roots}`，本机路径规范化后供目录树、地址栏和面包屑使用；原 `/directories` 数组接口保留。
+
+文档前缀为 `/api/v1/workspaces/:id/documents/:documentId/:version`：
+
+| 方法与后缀 | 行为 |
+| --- | --- |
+| `GET /reading-plan` | 返回 `{pages,pageCount,mode,configured}`，缺省全部页且 `configured=false` |
+| `PUT /reading-plan`，`{pages:[2,3,10,11]}` 或 `{pages:null}` | 保存指定页集或全部页，不调用模型 |
+| `GET /memory/search?providerId=...&query=...&kind=formula` | 检索已完成页的公式/图表/术语，返回真实 `anchor` 与 `granularity` |
+
+记忆状态增加 `selectedPages`、`selectedCompletedPages`、`rangeComplete`、`fullDocumentComplete` 与 `mode`。页码用一基整数数组，非法页码拒绝；用户界面的范围表达式先规范化为数组。运行上下文保存 `documentReadScopes`，将页面权限固定到本次运行，普通源工具与记忆工具均遵守该页集。Markdown/Word 使用文本预读，选区提问不触发文档预读。
+
+翻译任务前缀为 `/api/v1/workspaces/:id/document-processing`：
+
+| 方法与后缀 | 行为 |
+| --- | --- |
+| `GET` | 列出已启用处理器 |
+| `POST` | 接受 `{document,providerId,sessionId,processorId,targetLanguage?,pages?,selection?}`，返回任务 |
+| `GET /:taskId?sessionId=...` | 读取状态、进度、警告、错误与预览元数据 |
+| `POST /:taskId/cancel`，`{sessionId}` | 取消任务，完成回调不能将取消状态覆盖为可用预览 |
+| `GET /:taskId/preview?sessionId=...` | 返回实际文件字节，`Cache-Control: no-store` |
+| `POST /:taskId/save`，`{sessionId,name?}` | 显式另存工件，不覆盖原文，返回工件记录 |
+
+任务绑定文档版本、会话所有者与清空代次；跨会话访问拒绝。预览和下载不写入工作区，任务与预览在服务重启后不恢复。内置处理器 ID 为 `document-translation.translate`，扫描页不自动 OCR；PDF/PPT 为原页和译文伴随页的对照 PDF，Word 预览页子集不能映射到 DOCX 时明确拒绝。

@@ -3,3 +3,4 @@ export * from './capabilities.js';
 export * from './plugin-context.js';
 export * from './document-memory.js';
 export * from '../../contracts/src/index.js';
+export * from './document-processing.js';
