@@ -1,0 +1,31 @@
+import {test,expect,openWorkspace} from './fixtures.js';
+import {mkdir,readFile,writeFile} from 'node:fs/promises';
+import {join,resolve} from 'node:path';
+test('shows unavailable workspace memory honestly and preserves the global switch after reload',async({page,host,root})=>{
+ await openWorkspace(page,host,root);
+ const memory=page.getByRole('group',{name:'工作区记忆'});
+ await expect(memory).toBeVisible();await memory.locator('summary').click();
+ await expect(memory).toContainText('尚未准备本地记忆组件');
+ const enabled=memory.getByRole('checkbox',{name:'自动关联工作区资料'});await expect(enabled).toBeChecked();await enabled.uncheck();
+ await expect(memory).toContainText('已关闭');await page.reload();await memory.locator('summary').click();await expect(enabled).not.toBeChecked();
+ await enabled.check();await expect(memory).toContainText('尚未准备本地记忆组件');
+ await expect(memory.getByRole('button',{name:'处理中…'})).toHaveCount(0);
+ await page.screenshot({path:'.superpowers/sdd/2026-10-19-workspace-memory/workspace-memory-1600.png'});
+});
+test('uses real local Cognee evidence and opens its exact original source from the sidebar',async({page,host,directory})=>{
+ test.skip(!process.env.READER_TEST_COGNEE,'Requires explicitly prepared local Cognee runtime');test.setTimeout(180000);
+ const root=join(directory,'关联资料 中文');await mkdir(root);await mkdir(join(host.workspaces.configDir,'agent'),{recursive:true});
+ await writeFile(join(host.workspaces.configDir,'agent','workspace-memory.json'),await readFile(join(resolve(process.env.READER_TEST_COGNEE!),'agent','workspace-memory.json')));
+ await writeFile(join(root,'circuits.md'),'Capacitor impedance is Z_C = 1/(j*omega*C). 电容的阻抗随角频率变化。');
+ await writeFile(join(root,'signals.md'),'Fourier transform represents signals in the frequency domain. Capacitor impedance is used in frequency-domain circuit analysis. 傅里叶变换与电容阻抗都用于频域分析。');
+ await openWorkspace(page,host,root,{handleReadingPlan:false});
+ const memory=page.getByRole('group',{name:'工作区记忆'});await memory.locator('summary').click();
+ await expect(memory.getByRole('status')).toContainText('已关联 2 份资料',{timeout:120000});
+ await memory.getByRole('textbox',{name:'查找关联知识'}).fill('电容阻抗与频域分析有什么联系？');await memory.getByRole('button',{name:'检索',exact:true}).click();
+ const result=memory.getByRole('region',{name:'工作区知识检索结果'});await expect(result).toContainText('circuits.md');await expect(result).toContainText('signals.md');
+ await result.getByRole('button',{name:/circuits.md/}).click();await expect(page.getByRole('region',{name:'文件',exact:true})).toContainText('Capacitor impedance');
+ await page.screenshot({path:'.superpowers/sdd/2026-10-19-workspace-memory/workspace-memory-ready-1600.png'});
+ await page.setViewportSize({width:768,height:1024});await expect(memory).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+ await page.screenshot({path:'.superpowers/sdd/2026-10-19-workspace-memory/workspace-memory-ready-768.png'});
+});

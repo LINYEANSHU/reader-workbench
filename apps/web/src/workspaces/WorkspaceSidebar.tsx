@@ -1,10 +1,12 @@
 import {useEffect,useState} from 'react';import {BookOpen,Folder,FolderOpen,FileText,ChevronRight,ChevronDown,Plus,Upload,Settings2,Archive,ArchiveRestore} from 'lucide-react';
 import type {Workspace,FileEntry} from '../../../../packages/contracts/src/workspaces.js';import type {SessionRecord} from '../../../../packages/contracts/src/sessions.js';import type {SessionId} from '../../../../packages/contracts/src/ids.js';import {api,message} from '../api/client.js';
+import type {SourceAnchor} from '../../../../packages/contracts/src/documents.js';
+import {WorkspaceMemoryPanel} from '../workbench/WorkspaceMemoryPanel.js';
 function FileTree({workspace,path='',onOpen,revision}:{workspace:Workspace;path?:string;onOpen:(path:string)=>void;revision:number}){
  const [files,setFiles]=useState<FileEntry[]>([]),[expanded,setExpanded]=useState<Record<string,boolean>>({}),[error,setError]=useState('');useEffect(()=>{let active=true;api.files(workspace.id,path).then(files=>{if(active)setFiles(files);}).catch(error=>{if(active)setError(message(error));});return()=>{active=false;};},[workspace.id,path,revision]);
  return<div className="file-tree">{error&&<span className="error">{error}</span>}{files.map(file=><div key={file.relativePath}><button title={file.relativePath} aria-label={file.name} onClick={()=>file.kind==='directory'?setExpanded(value=>({...value,[file.relativePath]:!value[file.relativePath]})):onOpen(file.relativePath)}>{file.kind==='directory'?<>{expanded[file.relativePath]?<ChevronDown size={12}/>:<ChevronRight size={12}/>}<Folder size={15}/></>:<><span className="tree-indent"/><FileText size={15}/></>}<span>{file.name}</span></button>{file.kind==='directory'&&expanded[file.relativePath]&&<div className="tree-children"><FileTree workspace={workspace} path={file.relativePath} onOpen={onOpen} revision={revision}/></div>}</div>)}</div>;
 }
-export function WorkspaceSidebar({workspace,sessions,selected,archiving,onArchive,onSession,onNew,onOpen,onWorkspace,onSettings,onImport,revision}:{workspace:Workspace;sessions:SessionRecord[];selected:string|null;archiving:string|null;onArchive:(id:SessionId,archived:boolean)=>void;onSession:(id:SessionId)=>void;onNew:()=>void;onOpen:(path:string)=>void;onWorkspace:()=>void;onSettings:()=>void;onImport:(file:File)=>void;revision:number}){
+export function WorkspaceSidebar({workspace,sessions,selected,archiving,onArchive,onSession,onNew,onOpen,onWorkspace,onSettings,onImport,revision,onReference}:{workspace:Workspace;sessions:SessionRecord[];selected:string|null;archiving:string|null;onArchive:(id:SessionId,archived:boolean)=>void;onSession:(id:SessionId)=>void;onNew:()=>void;onOpen:(path:string)=>void;onWorkspace:()=>void;onSettings:()=>void;onImport:(file:File)=>void;revision:number;onReference?:(anchor:SourceAnchor)=>void}){
  const main=sessions.filter(session=>session.kind==='main'),active=main.filter(session=>!session.archivedAt),archived=main.filter(session=>session.archivedAt);
  return<aside className="workspace-sidebar" aria-label="工作区侧栏" data-ui>
   <div className="brand"><BookOpen size={21}/><strong>Reader Workbench</strong></div>
@@ -22,6 +24,7 @@ export function WorkspaceSidebar({workspace,sessions,selected,archiving,onArchiv
    </div>)}</div></details>}
    <div className="sidebar-section-title" title={workspace.root}><span>{workspace.name}</span><label className="icon-button" data-tooltip="导入文件到当前工作区并打开"><Upload size={14}/><input type="file" className="sr-only" aria-label="导入文件" onChange={event=>{if(event.target.files?.[0])onImport(event.target.files[0]);event.target.value='';}}/></label></div>
    <FileTree workspace={workspace} onOpen={onOpen} revision={revision}/>
+   <WorkspaceMemoryPanel key={workspace.id} workspaceId={workspace.id} onOpen={onReference}/>
   </div>
   <button className="sidebar-action settings-button" data-tooltip="管理全局模型连接、提示词和工作台设置" onClick={onSettings}><Settings2 size={16}/>设置</button>
   <div className="workspace-path" title={workspace.root}>{workspace.root}</div>

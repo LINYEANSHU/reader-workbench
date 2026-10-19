@@ -29,6 +29,7 @@
     "CHANGELOG.md",
     "docs/installation.md",
     "docs/plugins.md",
+    "docs/workspace-memory.md",
     "docs/api.md",
     "docs/mcp.md",
     "docs/current-delivery.md",
@@ -47,7 +48,8 @@
     "scripts/mcp-client.mjs",
     "scripts/live-model.mjs",
     "scripts/setup-local-translation.ps1",
-    "scripts/setup-local-translation.py"
+    "scripts/setup-local-translation.py",
+    "scripts/setup-workspace-memory.mjs"
   ],
   "scripts": {
     "test": "vitest run",
@@ -72,6 +74,7 @@
     "fastify": "5.12.5",
     "fflate": "0.8.3",
     "html-to-image": "1.11.13",
+    "ignore": "7.0.12",
     "katex": "0.19.0",
     "lucide-react": "1.55.0",
     "markdown-it": "15.0.2",

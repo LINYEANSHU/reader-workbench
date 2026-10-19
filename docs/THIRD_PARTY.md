@@ -1,5 +1,7 @@
 # 第三方组件说明
 
+- 工作区记忆试验的外置运行库使用 [Cognee 1.6.5](https://github.com/topoteretes/cognee)（Apache-2.0）、[GLiNER 2.5 base](https://huggingface.co/fastino/gliner2.5-base-v1) 和 [paraphrase-multilingual-MiniLM-L12-v2](https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2) 的 FastEmbed ONNX 版本。依赖和模型由安装器另行下载，各自许可和模型元数据保留于私有运行目录；源码/npm 包不包含解释器或权重。真实验收及限制见[工作区记忆说明](workspace-memory.md)。
+
 - SenseVoiceSmall 模型由 FunAudioLLM/FunASR 提供，ONNX INT8 转换由 csukuangfj/sherpa-onnx 提供。应用保持模型名称、作者和原始来源，按固定版本自动下载：[固定 ONNX 版本](https://huggingface.co/csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/tree/2365baeacb507f821a0c8120fcee3d484dba7a07)、[FunASR 模型协议](https://github.com/modelscope/FunASR/blob/main/MODEL_LICENSE)。模型权重的协议独立于 SenseVoice 项目代码的 MIT 许可。
 - sherpa-onnx-node 1.13.8 及对应平台包来自 k2-fsa，使用 [Apache-2.0 许可](https://github.com/k2-fsa/sherpa-onnx/blob/master/LICENSE)。npm 安装的包保留其许可文本。
 - PDF.js、React、Fastify、MCP SDK、docx、PptxGenJS、pdf-lib、MathJax 等依赖随 npm 保留各自许可。PDF.js 字体、字符映射及 Web worker 来自锁定的 pdfjs-dist 版本。

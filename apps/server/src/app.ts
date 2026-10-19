@@ -20,6 +20,9 @@ import {documentMemoryTools} from '../../../packages/core/src/tools/document-mem
 import {ensureBundledPlugins,bundledPluginPath} from '../../../packages/core/src/plugins/bundled.js';
 import {createLocalTranslationProvider,getLocalTranslationStatus,LOCAL_TRANSLATION_PROVIDER_ID} from '../../../packages/core/src/translation/local-provider.js';
 import {documentMemoryRoutes} from './routes/document-memory.js';
+import {WorkspaceMemoryService} from '../../../packages/core/src/knowledge/service.js';
+import {CogneeEngine} from '../../../packages/core/src/knowledge/cognee.js';
+import {workspaceMemoryRoutes} from './routes/workspace-memory.js';
 import {DocumentProcessingService} from '../../../packages/core/src/documents/processing.js';
 import {documentProcessingRoutes} from './routes/document-processing.js';
 import {documentRoutes} from './routes/documents.js';
@@ -65,6 +68,7 @@ export async function startServer(config:RuntimeConfig){
   const plugins=new PluginManager(capabilities,workspaces);
   const sessionRepository=new SessionRepository(workspaces);
   const documentMemory=new DocumentMemoryConsumer(documents,sessionRepository,capabilities,new DocumentMemoryStore(workspaces));
+  const workspaceMemory=new WorkspaceMemoryService(workspaces,documents,new CogneeEngine(workspaces));
   const sessions=new SessionService(sessionRepository);
   const nativeSpeech=new NativeSpeechProvider(new SpeechAssets(process.env.READER_SPEECH_ASSET_DIR??join(config.configDir,'speech','sensevoice-small-int8')));capabilities.register('*','speech','core.sensevoice',nativeSpeech);const speech=new SpeechService(capabilities,sessionRepository);speechRoutes(app,speech,auth);
   const selections=new SelectionService(capabilities,sessionRepository,documents);
@@ -74,16 +78,18 @@ export async function startServer(config:RuntimeConfig){
   const context=new ContextBuilder(sessionRepository,documents,capabilities);
   context.attachAttachments(attachments);
   context.attachDocumentMemory(documentMemory);
+  context.attachWorkspaceMemory(workspaceMemory);
   const tools=new ToolRegistry(capabilities,scope=>sessionRepository.authorizeScope(scope));
   const runs=new RunService({workspaces,repository:sessionRepository,context,tools,documents,capabilities,artifacts});
   capabilities.register('*','tool','core.document-memory',documentMemoryTools(documentMemory,runs.records));
   const externalMcp=new ExternalMcpManager(capabilities,workspaces),ui=new UiBridge(capabilities,sessionRepository,selections);
   const native=new NativeInteractions(capabilities,sessionRepository,attachments);plugins.onBeforeDisable=(id,owner)=>native.releaseOwner(id,owner);
-  workspaces.onSelected=async id=>{await ensureBundledPlugins(plugins,id);await externalMcp.loadWorkspace(id);await models.listModelSettings(id);};
+  workspaces.onSelected=async id=>{await ensureBundledPlugins(plugins,id);await externalMcp.loadWorkspace(id);await models.listModelSettings(id);workspaceMemory.schedule(id);};
   pluginRoutes(app,{plugins,externalMcp,ui,native,runs,repository:sessionRepository,workspaces},auth);
   workspaceRoutes(app,workspaces,auth);uiStateRoutes(app,workspaces);
   documentRoutes(app,documents);
   documentMemoryRoutes(app,documentMemory,workspaces,auth);
+  workspaceMemoryRoutes(app,workspaceMemory,workspaces,auth);
   documentProcessingRoutes(app,documentProcessing,auth);
   sessionRoutes(app,sessions,auth);
   runRoutes(app,runs,auth);
@@ -92,7 +98,7 @@ export async function startServer(config:RuntimeConfig){
   layoutRoutes(app,workspaces,capabilities);
   selectionRoutes(app,selections,auth);attachmentRoutes(app,attachments,auth);
   const services={workspaces,documents,sessions,runs,artifacts,plugins};await attachMcpHttp(app,services,auth);attachReaderOpenApi(app,services,auth);
-  app.addHook('preClose',async()=>{native.close();await speech.close();await nativeSpeech.dispose();await runs.close();await documentMemory.close();await documentProcessing.close();await artifacts.close();await documents.close();await lifecycle.close();await externalMcp.close();await plugins.close();});
+  app.addHook('preClose',async()=>{native.close();await speech.close();await nativeSpeech.dispose();await runs.close();await workspaceMemory.close();await documentMemory.close();await documentProcessing.close();await artifacts.close();await documents.close();await lifecycle.close();await externalMcp.close();await plugins.close();});
   app.addHook('onClose',async()=>{await workspaces.close();});
   app.setErrorHandler((error,_request,reply)=>{
     const status=error instanceof ReaderError?error.status:(error as {statusCode?:number}).statusCode??500;
@@ -113,7 +119,7 @@ export async function startServer(config:RuntimeConfig){
     if(config.workspace)await workspaces.select(config.workspace,{callerId:'local-owner',transport:'internal'});
     await plugins.loadRecent();await externalMcp.loadRecent();await models.loadRecent();
     for(const workspace of await workspaces.listRecent({callerId:'local-owner',transport:'internal'}))lifecycle.emit({workspaceId:workspace.id,kind:'server.started',data:{version:'0.4.0'}});
-    return {url,bootstrapUrl:url+'/#bootstrap='+auth.code,app,auth,workspaces,documents,documentMemory,documentProcessing,capabilities,plugins,externalMcp,ui,speech,sessionRepository,sessions,context,runs,tools,models,artifacts,attachments,selections,close:async()=>{await app.close();}};
+    return {url,bootstrapUrl:url+'/#bootstrap='+auth.code,app,auth,workspaces,documents,documentMemory,workspaceMemory,documentProcessing,capabilities,plugins,externalMcp,ui,speech,sessionRepository,sessions,context,runs,tools,models,artifacts,attachments,selections,close:async()=>{await app.close();}};
   }catch(error){await app.close();if((error as NodeJS.ErrnoException).code==='EADDRINUSE')throw new ReaderError('PORT_IN_USE','端口 '+config.port+' 已被占用，请使用 --port 指定其他端口');throw error;}
 }
 
