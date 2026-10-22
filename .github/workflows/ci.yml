@@ -46,6 +46,8 @@ jobs:
           $readerInstall = Start-Process msiexec.exe -ArgumentList @('/i', $readerInstaller, '/qn', '/norestart') -WindowStyle Hidden -Wait -PassThru
           if ($readerInstall.ExitCode -notin @(0, 3010)) { throw 'Converter installation failed' }
       - run: npm ci
+      - name: Dependency security audit
+        run: npm audit --audit-level=low --registry=https://registry.npmjs.org
       - run: node scripts/fixture-manifest.mjs
       - run: npm run typecheck
       - run: npm run build

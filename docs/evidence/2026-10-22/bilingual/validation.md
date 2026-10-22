@@ -30,3 +30,24 @@ A local build artifact was found to contain NUL bytes during follow-up verificat
 Historical screenshot writes from the regression suite were restored to the initial snapshot. Only the new English interface proof is part of this change. Local verification logs, model assets and private test configuration stay ignored.
 
 This local record does not establish macOS/Linux success. Use the **same pushed commit SHA** in [GitHub Actions](https://github.com/LINYEANSHU/reader-workbench/actions/workflows/ci.yml) to verify all Windows, macOS and Linux jobs, including their build, core and browser steps.
+
+## Dependency security verification — 2026-10-22
+
+Local Windows verification of the dependency repair: Vitest 4.1.12, markdown-it 15.0.3, root `overrides` for KaTeX 0.19.0 and pptxgenjs' image-size 2.0.4, the audited tree published as `npm-shrinkwrap.json` in place of `package-lock.json`, and the patched runtime dependency subtrees bundled into the tarball.
+
+| Check | Actual result |
+| --- | --- |
+| Official npm audit | `npm audit --audit-level=low --registry=https://registry.npmjs.org` reported 0 vulnerabilities (`github-security-audit-final.log`). |
+| TypeScript | `npm run typecheck` passed for the server/core and browser projects (`github-security-typecheck-final.log`). |
+| Focused distribution test | `npm test -- tests/integration/cli-distribution.test.ts --reporter=verbose` passed in 72.25 s with `npm_config_registry=https://registry.npmjs.org` and the real speech assets (`github-security-distribution-final.log`). The test installs the packed tarball into an empty prefix, parses the consumer's `install/package-lock.json`, and asserts that **every** nested katex, image-size and markdown-it entry satisfies katex ≥ 0.18.2, image-size ≥ 2.0.3 and markdown-it ≥ 15.0.3. It also asserts the tarball ships `npm-shrinkwrap.json` and the bundled runtime subtrees. Installed CLI startup without source links, `doctor` speech availability, packaged web assets, MCP stdio, plugin install, history restart, port conflict and actual SenseVoice transcription all pass. |
+| Consumer install tree | A fresh `npm install` of the tarball produced 367 lock entries: one katex 0.19.0 and one image-size 2.0.4 under `node_modules/reader-workbench/node_modules`, markdown-it 15.0.3 at the consumer root, and no vulnerable copy anywhere in the tree (`consumer-install-evidence.json`). |
+| Tarball | About 8.12 MB / 2,109 files. 89 bundled runtime packages ship with their required transitive files and licenses, and `npm-shrinkwrap.json` is retained. |
+| Package privacy | The actual packed tarball contains no credentials, private instructions, logs, runtime or user data. |
+
+### Consumer-install boundary
+
+npm 11.19.0 ignores a dependency's packaged `npm-shrinkwrap.json` and the root `overrides` it declares when it installs a local `file:` tarball or runs `npm install --global /path/to/reader-workbench-0.4.0.tgz`. The package therefore no longer relies on either mechanism: the audited KaTeX and image-size subtrees (katex 0.19.0, image-size 2.0.4, rehype-katex 7.0.1, remark-math 6.0.0, pptxgenjs 4.0.1 and their runtime closure) are bundled inside the tarball through `bundleDependencies`, so local-tarball, global and future registry installs all receive the patched tree. The regression asserts that real consumer tree; the earlier version that inspected only the packaged lock was not counted as acceptance.
+
+The packaged `npm-shrinkwrap.json` still records `registry.npmmirror.com` tarball URLs for 433 of its 460 resolved entries because it was generated against the local mirror. Bundled packages do not use those URLs, but a registry install that applies the shrinkwrap would fetch the remaining packages from that mirror; regenerate the lock against `registry.npmjs.org` before publishing if that is not intended.
+
+These dependency checks are local Windows results. They do not establish macOS/Linux success; use the same pushed commit SHA in GitHub Actions to verify all three platforms.
