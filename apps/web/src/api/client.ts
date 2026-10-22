@@ -7,6 +7,7 @@ import type {AgentSettings} from '../../../../packages/contracts/src/agent-setti
 import type {RunRecord,DocumentJobRecord} from '../../../../packages/contracts/src/runs.js';
 import type {ArtifactRecord} from '../../../../packages/contracts/src/artifacts.js';
 import type {UiState,AgentUiPreferences} from '../../../../packages/contracts/src/ui-state.js';
+import {localizeMessage} from '../i18n/index.js';
 import type {LayoutPreset} from '../../../../packages/contracts/src/layout.js';
 import type {SelectionContext} from '../../../../packages/contracts/src/documents.js';import type {SelectionActionResult} from '../../../../packages/contracts/src/tools.js';
 export class ApiError extends Error{constructor(readonly code:string,message:string,readonly status:number){super(message);}}
@@ -61,7 +62,8 @@ export class ApiClient{
 export const api=new ApiClient();
 export function documentPath(ref:DocumentRef,suffix=''){return'/documents/'+ref.documentId+'/versions/'+ref.version+suffix+(suffix.includes('?')?'&':'?')+'workspaceId='+ref.workspaceId;}
 export function documentUrl(ref:DocumentRef,suffix=''){return'/api/v1'+documentPath(ref,suffix);}
-export function message(error:unknown){return error instanceof Error?error.message:'操作失败，请重试';}
+export function errorText(error:unknown){return typeof error==='string'?error:error instanceof Error?error.message:'操作失败，请重试';}
+export function message(error:unknown){return localizeMessage(errorText(error));}
 
 export function attachmentUrl(attachment:Attachment){return '/api/v1/attachments/'+encodeURIComponent(attachment.id)+'?workspaceId='+attachment.workspaceId+'&sessionId='+attachment.sessionId;}
 

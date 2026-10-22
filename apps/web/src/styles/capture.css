@@ -1,5 +1,5 @@
 .capture-overlay { position: fixed; z-index: 180; cursor: crosshair; background: #07142818; touch-action: none; overflow: hidden; user-select: none; }
-.capture-help { pointer-events: none; position: absolute; top: 8px; left: 50%; transform: translateX(-50%); padding: 8px 12px; color: var(--text); background: var(--surface); border: 1px solid var(--border-strong); border-radius: 6px; font-size: 13px; white-space: nowrap; max-width: calc(100% - 16px); overflow: hidden; text-overflow: ellipsis; }
+.capture-help { pointer-events: none; position: absolute; top: 8px; left: 50%; transform: translateX(-50%); padding: 8px 12px; color: var(--text); background: var(--surface); border: 1px solid var(--border-strong); border-radius: 6px; font-size: 13px; white-space: normal; text-align: center; max-width: calc(100% - 16px); overflow-wrap: anywhere; }
 .capture-rectangle { pointer-events: none; position: absolute; border: 2px solid #d1e7ff; box-shadow: 0 0 0 10000px #08152550; background: #70aaf510; }
 .capture-preview { width: min(760px,90vw); max-height: 90dvh; overflow: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; display: flex; flex-direction: column; gap: 16px; color: var(--text); }
 .capture-preview h3 { font-size: 18px; margin: 0; }

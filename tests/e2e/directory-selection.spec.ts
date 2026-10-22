@@ -2,6 +2,20 @@ import {mkdir,realpath} from 'node:fs/promises';
 import {join} from 'node:path';
 import {test,expect,model,openWorkspace} from './fixtures.js';
 
+test('starts from the current workspace and waits for the initial directory before replacing its path',async({page,host,root,directory})=>{
+ await openWorkspace(page,host,root);
+ const current=await realpath(root),next=join(await realpath(directory),'another workspace');await mkdir(next);
+ let release!:()=>void,entered!:()=>void;
+ const gate=new Promise<void>(resolve=>release=resolve),started=new Promise<void>(resolve=>entered=resolve);
+ await page.route('**/api/v1/directories/browser?*',async route=>{entered();await gate;await route.continue();});
+ await page.getByRole('button',{name:'切换工作区',exact:true}).click();await started;
+ const input=page.getByRole('textbox',{name:'工作区目录',exact:true});
+ try{await expect(input).toHaveValue(current);await expect(input).toBeDisabled();}finally{release();}
+ await expect(input).toBeEnabled();await input.fill(next);await page.getByRole('button',{name:'打开此工作区',exact:true}).click();
+ await expect(page.getByRole('dialog',{name:'选择工作区',exact:true})).toHaveCount(0);
+ await expect(page.locator('.workspace-path')).toHaveAttribute('title',next);
+});
+
 test('navigates folders lazily, filters only this directory, and restores back/forward history',async({page,host,root})=>{
  const actualRoot=await realpath(root),child=join(actualRoot,'中文目录');await mkdir(child);await mkdir(join(child,'内层'));
  await page.goto(host.bootstrapUrl);await page.getByRole('button',{name:'选择工作区',exact:true}).click();

@@ -1,0 +1,4 @@
+.language-switch { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); flex-shrink: 0; }
+.welcome-appearance { display: flex; align-items: center; gap: 12px; }
+.language-switch .select-trigger { min-width: 92px; }
+@media (max-width: 900px) { .language-switch > svg { display: none; } .language-switch .select-trigger { min-width: 86px; } }

@@ -1,7 +1,8 @@
+import {t} from '../i18n/index.js';
 import type {CaptureResult,ViewportRect} from '../../../../packages/contracts/src/documents.js';
 import {captureCanvas,png,waitFor} from './coordinates.js';
 
-class ScreenFrameTimeout extends Error{constructor(){super('屏幕视频未提供新画面，请重试');}}
+class ScreenFrameTimeout extends Error{constructor(){super(t("屏幕视频未提供新画面，请重试", "The screen stream did not provide a new frame. Try again."));}}
 async function freshFrame(video:HTMLVideoElement,signal:AbortSignal,timeout=15000):Promise<void>{
  if(!video.requestVideoFrameCallback){await video.play();await new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve())));signal.throwIfAborted();return;}
  await new Promise<void>((resolve,reject)=>{
@@ -23,7 +24,7 @@ async function recoverFrame(video:HTMLVideoElement,stream:MediaStream,signal:Abo
  }
 }
 export async function captureScreen(signal:AbortSignal):Promise<CaptureResult>{
- if(!window.isSecureContext||!navigator.mediaDevices?.getDisplayMedia)throw new Error('浏览器不支持屏幕捕获，请在 localhost 或 HTTPS 使用此功能');
+ if(!window.isSecureContext||!navigator.mediaDevices?.getDisplayMedia)throw new Error(t("浏览器不支持屏幕捕获，请在 localhost 或 HTTPS 使用此功能", "Screen capture is unavailable. Open the app on localhost or HTTPS."));
  let stream:MediaStream|undefined;const video=document.createElement('video');video.muted=true;
  const hidden:Array<{node:HTMLElement;visibility:string}>=[];
  const stop=()=>stream?.getTracks().forEach(track=>track.stop());signal.addEventListener('abort',stop,{once:true});

@@ -1,8 +1,10 @@
 import {useEffect,useId,useLayoutEffect,useRef,useState,type CSSProperties} from 'react';
 import {createPortal} from 'react-dom';
 import {Brain,ChevronDown} from 'lucide-react';
+import {t,useLocale} from '../i18n/index.js';
 
 export function ReasoningEffortPicker({levels,value,onChange,kind}:{levels:string[];value:string;onChange:(value:string)=>void;kind:'main'|'temporary'}){
+ useLocale();
  const [open,setOpen]=useState(false);
  const id=useId(),button=useRef<HTMLButtonElement>(null),popup=useRef<HTMLDivElement>(null),input=useRef<HTMLInputElement>(null);
  const index=Math.max(0,levels.indexOf(value)),progress=index/(levels.length-1);
@@ -33,15 +35,15 @@ export function ReasoningEffortPicker({levels,value,onChange,kind}:{levels:strin
  },[open]);
 
  return<>
-  <button ref={button} type="button" className="effort-trigger" aria-label="选择思考强度" aria-haspopup="dialog" aria-expanded={open} aria-controls={open?id:undefined} title={'思考强度：'+value} onClick={()=>setOpen(current=>!current)}><Brain size={13} aria-hidden="true"/><span>{value}</span><ChevronDown size={12} aria-hidden="true"/></button>
-  {open&&createPortal(<div ref={popup} id={id} role="dialog" aria-label="思考强度" className={'effort-popover '+kind} style={{top:8,left:8}} onKeyDown={event=>{
+  <button ref={button} type="button" className="effort-trigger" aria-label={t('选择思考强度','Choose reasoning effort')} aria-haspopup="dialog" aria-expanded={open} aria-controls={open?id:undefined} title={t('思考强度：{value}','Reasoning effort: {value}',{value})} onClick={()=>setOpen(current=>!current)}><Brain size={13} aria-hidden="true"/><span>{value}</span><ChevronDown size={12} aria-hidden="true"/></button>
+  {open&&createPortal(<div ref={popup} id={id} role="dialog" aria-label={t('思考强度','Reasoning effort')} className={'effort-popover '+kind} style={{top:8,left:8}} onKeyDown={event=>{
    if(event.key==='Escape'){event.preventDefault();event.stopPropagation();setOpen(false);button.current?.focus();}
    if(event.key==='Tab'){setOpen(false);button.current?.focus();}
   }} onBlur={event=>{if(!popup.current?.contains(event.relatedTarget as Node)&&!button.current?.contains(event.relatedTarget as Node))setOpen(false);}}>
    <span className="effort-slider" style={style}>
     <span className="effort-slider-control">
      <span className="effort-track" aria-hidden="true"><span className="effort-fill"/></span>
-     <input ref={input} className="effort-range" type="range" aria-label="思考强度" aria-valuetext={value} min={0} max={levels.length-1} step={1} value={index} onChange={event=>{const level=levels[Number(event.target.value)];if(level)onChange(level);}}/>
+     <input ref={input} className="effort-range" type="range" aria-label={t('思考强度','Reasoning effort')} aria-valuetext={value} min={0} max={levels.length-1} step={1} value={index} onChange={event=>{const level=levels[Number(event.target.value)];if(level)onChange(level);}}/>
      <span className="effort-knob" aria-hidden="true"/>
     </span>
     <span className="effort-slider-labels" aria-hidden="true">{levels.map(level=><span className={value===level?'selected':''} key={level}>{level}</span>)}</span>

@@ -1,6 +1,7 @@
 import {useEffect,useId,useLayoutEffect,useRef,useState,type KeyboardEvent} from 'react';
 import {createPortal} from 'react-dom';
 import {Check,ChevronDown,Search} from 'lucide-react';
+import {t,useLocale} from '../i18n/index.js';
 
 export interface SelectOption {value:string;label:string;disabled?:boolean;description?:string}
 export interface SelectControlProps {
@@ -10,6 +11,7 @@ export interface SelectControlProps {
 
 /** A controlled single selection. The list lives outside scrolling panels. */
 export function SelectControl({value,options,onChange,'aria-label':label,disabled=false,searchable=false,className='',id:providedId}:SelectControlProps){
+ useLocale();
  const generatedId=useId(),id=providedId??generatedId,listId=id+'-list';
  const [open,setOpen]=useState(false),[query,setQuery]=useState(''),[active,setActive]=useState(value);
  const trigger=useRef<HTMLButtonElement>(null),popup=useRef<HTMLDivElement>(null),list=useRef<HTMLDivElement>(null),search=useRef<HTMLInputElement>(null),typeahead=useRef({text:'',time:0});
@@ -58,13 +60,13 @@ export function SelectControl({value,options,onChange,'aria-label':label,disable
  const activeId=activeIndex>=0?listId+'-'+activeIndex:undefined;
  return<>
   <button ref={trigger} id={id} type="button" role="combobox" aria-label={label} aria-haspopup="listbox" aria-expanded={open} aria-controls={open?listId:undefined} data-value={value} disabled={disabled} className={'select-trigger '+className} onClick={()=>open?close():show()} onKeyDown={event=>{if(['ArrowDown','ArrowUp','Enter',' '].includes(event.key)){event.preventDefault();show();}}}>
-   <span>{selected?.label??'请选择'}</span><ChevronDown size={13} aria-hidden="true"/>
+   <span>{selected?.label??t('请选择','Choose an option')}</span><ChevronDown size={13} aria-hidden="true"/>
   </button>
   {open&&createPortal(<div ref={popup} className="select-popover" style={{top:8,left:8}} onKeyDown={keydown} onBlur={event=>{if(!popup.current?.contains(event.relatedTarget as Node)&&!trigger.current?.contains(event.relatedTarget as Node))close();}}>
-   {searchable&&<div className="select-search"><Search size={14} aria-hidden="true"/><input ref={search} type="text" aria-label={'搜索'+label} aria-controls={listId} aria-activedescendant={activeId} placeholder="输入名称筛选" value={query} onChange={event=>{const next=event.target.value;setQuery(next);setActive(options.find(option=>!option.disabled&&[option.label,option.description??''].join(' ').toLocaleLowerCase().includes(next.toLocaleLowerCase()))?.value??'');}}/></div>}
+   {searchable&&<div className="select-search"><Search size={14} aria-hidden="true"/><input ref={search} type="text" aria-label={t('搜索{label}','Search {label}',{label})} aria-controls={listId} aria-activedescendant={activeId} placeholder={t('输入名称筛选','Filter by name')} value={query} onChange={event=>{const next=event.target.value;setQuery(next);setActive(options.find(option=>!option.disabled&&[option.label,option.description??''].join(' ').toLocaleLowerCase().includes(next.toLocaleLowerCase()))?.value??'');}}/></div>}
    <div ref={list} id={listId} role="listbox" aria-label={label} tabIndex={searchable?undefined:-1} aria-activedescendant={activeId} className="select-options">
     {visible.map((option,index)=><button type="button" role="option" id={listId+'-'+index} key={option.value} data-value={option.value} aria-selected={option.value===value} aria-disabled={option.disabled||undefined} disabled={option.disabled} tabIndex={-1} className={'select-option '+(option.value===active?'active':'')} onPointerMove={()=>{if(!option.disabled)setActive(option.value);}} onMouseDown={event=>event.preventDefault()} onClick={()=>commit(option)}><span><span>{option.label}</span>{option.description&&<small>{option.description}</small>}</span>{option.value===value&&<Check size={14} aria-hidden="true"/>}</button>)}
-   </div>{!visible.length&&<p className="select-empty" role="status">没有匹配的选项</p>}
+   </div>{!visible.length&&<p className="select-empty" role="status">{t('没有匹配的选项','No matching options')}</p>}
   </div>,document.body)}
  </>;
 }

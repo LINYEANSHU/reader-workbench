@@ -22,6 +22,9 @@
     }
   },
   "files": [
+    "README.en.md",
+    "docs/evidence/2026-10-22/bilingual/english-workbench.png",
+    "docs/evidence/2026-10-22/bilingual/validation.md",
     "dist",
     "bin",
     "apps/web/dist",

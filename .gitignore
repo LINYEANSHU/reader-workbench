@@ -11,6 +11,7 @@ apps/web/public/pdfjs/
 .reader-workbench/
 .reader-runtime/
 .superpowers/
+/.taste-skill/
 /.edithere/
 **/user-config/
 **/credentials.json
@@ -28,6 +29,8 @@ apps/web/public/pdfjs/
 *.db
 *.db-shm
 *.db-wal
+*.db-journal
+*.sqlite-journal
 /outputs/
 
 # Test reports and release packages
@@ -55,6 +58,10 @@ pnpm-debug.log*
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
 .DS_Store
 Thumbs.db
 Desktop.ini

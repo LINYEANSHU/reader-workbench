@@ -2,7 +2,7 @@
 .voice-button { display: grid; place-items: center; width: 34px; height: 34px; min-height: 34px; padding: 7px; color: var(--muted); background: transparent; border: 0; border-radius: 6px; cursor: pointer; }
 .voice-button:hover { background: var(--surface-hover); color: var(--text); }
 .voice-active { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; font-size: 12px; min-width: 0; }
-.voice-active > span:not(.voice-wave):not(.voice-dot) { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.voice-active > span:not(.voice-wave):not(.voice-dot) { max-width: 200px; white-space: normal; overflow-wrap: anywhere; }
 .voice-active button, .voice-error button { display: grid; place-items: center; min-height: 30px; min-width: 30px; border: 0; background: transparent; color: inherit; cursor: pointer; padding: 6px; }
 .voice-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--danger); }
 .voice-wave { display: flex; align-items: center; gap: 2px; width: 56px; height: 22px; overflow: hidden; }
