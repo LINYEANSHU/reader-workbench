@@ -33,7 +33,7 @@ This local record does not establish macOS/Linux success. Use the **same pushed 
 
 ## Dependency security verification — 2026-10-22
 
-Local Windows verification of the dependency repair: Vitest 4.1.12, markdown-it 15.0.3, root `overrides` for KaTeX 0.19.0 and pptxgenjs' image-size 2.0.4, the audited tree published as `npm-shrinkwrap.json` in place of `package-lock.json`, and the patched runtime dependency subtrees bundled into the tarball.
+Local Windows verification of the dependency repair: Vitest 4.1.12, markdown-it 15.0.3, root `overrides` for KaTeX 0.19.0 and pptxgenjs' image-size 2.0.4, the audited tree published as `npm-shrinkwrap.json` in place of `package-lock.json`, and the patched runtime dependency subtrees injected into the packed manifest at `npm pack` time.
 
 | Check | Actual result |
 | --- | --- |
@@ -41,13 +41,28 @@ Local Windows verification of the dependency repair: Vitest 4.1.12, markdown-it 
 | TypeScript | `npm run typecheck` passed for the server/core and browser projects (`github-security-typecheck-final.log`). |
 | Focused distribution test | `npm test -- tests/integration/cli-distribution.test.ts --reporter=verbose` passed in 72.25 s with `npm_config_registry=https://registry.npmjs.org` and the real speech assets (`github-security-distribution-final.log`). The test installs the packed tarball into an empty prefix, parses the consumer's `install/package-lock.json`, and asserts that **every** nested katex, image-size and markdown-it entry satisfies katex ≥ 0.18.2, image-size ≥ 2.0.3 and markdown-it ≥ 15.0.3. It also asserts the tarball ships `npm-shrinkwrap.json` and the bundled runtime subtrees. Installed CLI startup without source links, `doctor` speech availability, packaged web assets, MCP stdio, plugin install, history restart, port conflict and actual SenseVoice transcription all pass. |
 | Consumer install tree | A fresh `npm install` of the tarball produced 367 lock entries: one katex 0.19.0 and one image-size 2.0.4 under `node_modules/reader-workbench/node_modules`, markdown-it 15.0.3 at the consumer root, and no vulnerable copy anywhere in the tree (`consumer-install-evidence.json`). |
-| Tarball | About 8.12 MB / 2,109 files. 89 bundled runtime packages ship with their required transitive files and licenses, and `npm-shrinkwrap.json` is retained. |
+| Tarball | About 8.04 MB / 2,107 files in the clean-build verification (the preceding warm-tree pack was 8.12 MB / 2,109 files). 89 bundled runtime packages ship with their required transitive files and licenses, and `npm-shrinkwrap.json` is retained. |
 | Package privacy | The actual packed tarball contains no credentials, private instructions, logs, runtime or user data. |
 
 ### Consumer-install boundary
 
-npm 11.19.0 ignores a dependency's packaged `npm-shrinkwrap.json` and the root `overrides` it declares when it installs a local `file:` tarball or runs `npm install --global /path/to/reader-workbench-0.4.0.tgz`. The package therefore no longer relies on either mechanism: the audited KaTeX and image-size subtrees (katex 0.19.0, image-size 2.0.4, rehype-katex 7.0.1, remark-math 6.0.0, pptxgenjs 4.0.1 and their runtime closure) are bundled inside the tarball through `bundleDependencies`, so local-tarball, global and future registry installs all receive the patched tree. The regression asserts that real consumer tree; the earlier version that inspected only the packaged lock was not counted as acceptance.
+npm 11.19.0 ignores a dependency's packaged `npm-shrinkwrap.json` and the root `overrides` it declares when it installs a local `file:` tarball or runs `npm install --global /path/to/reader-workbench-0.4.0.tgz`. The package therefore does not rely on either mechanism for consumers: the audited KaTeX and image-size subtrees (katex 0.19.0, image-size 2.0.4, rehype-katex 7.0.1, remark-math 6.0.0, pptxgenjs 4.0.1 and their runtime closure) are injected into the **packed** manifest by the `prepack` hook and restored by `postpack`, so local-tarball, global and future registry installs receive the patched tree. The bundle list is deliberately absent from the source `package.json`: npm treats a root `bundleDependencies` entry as a bundled node, validates it against each dependent's raw version range and ignores overrides, which made a cold `npm ci` loop on katex 0.19.0 versus `^0.16.0`. The regression asserts the real consumer tree and that the source manifest stays unbundled.
 
-The packaged `npm-shrinkwrap.json` still records `registry.npmmirror.com` tarball URLs for 433 of its 460 resolved entries because it was generated against the local mirror. Bundled packages do not use those URLs, but a registry install that applies the shrinkwrap would fetch the remaining packages from that mirror; regenerate the lock against `registry.npmjs.org` before publishing if that is not intended.
+The previous packaged lock used `registry.npmmirror.com` for 433 resolved tarballs. All 454 resolved tarball URLs in the current `npm-shrinkwrap.json` now point to `registry.npmjs.org`; the clean cold install below downloaded from that registry and verified every integrity hash.
 
-These dependency checks are local Windows results. They do not establish macOS/Linux success; use the same pushed commit SHA in GitHub Actions to verify all three platforms.
+## Cold source-install regression — CI run 39744908034
+
+The pushed commit `34a0219285590aeb0c38aff29e35138c14a6281a` was not green. macOS job `119710842611` failed in `npm ci` after about 513 s (Node 24.21.0, npm 11.19.0, default ≈2048 MB heap) with `FATAL ERROR: Ineffective mark-compacts near heap limit`, exit 134; no test suite started. Windows was still running and Linux Office provisioning was pending when this was recorded.
+
+| Check | Actual result |
+| --- | --- |
+| Local reproduction | A fresh `git archive` checkout with the failing manifest, run with `node --max-old-space-size=2048 npm ci --dry-run --ignore-scripts --no-audit`, reproduced the failure: exit 134 after 320.5 s. The npm debug log showed the same `placeDep ROOT katex@0.19.0 REPLACE` pair repeating without bound. |
+| Isolated cause | Removing only the root `bundleDependencies` array made the same dry-run succeed in 0.9 s. Bundle-listed katex ignores the override, so rehype-katex/remark-math's `^0.16.0` edge stays invalid and Arborist re-places/replaces katex forever. |
+| Clean source install | Final source with a fresh npm cache: `node --max-old-space-size=2048 npm ci` (default scripts, full dev dependencies, audit enabled) passed in 49.9 s, `added 395 packages`, `found 0 vulnerabilities` (`cold-ci-repair-final-ci.log`). |
+| Build | `npm run build` passed in 6.7 s (`cold-ci-repair-build.log`). |
+| TypeScript | `npm run typecheck` passed for the server/core and browser projects in 5.3 s (`cold-ci-repair-typecheck.log`). |
+| Official npm audit | `npm audit --audit-level=low --registry=https://registry.npmjs.org` reported 0 vulnerabilities (`cold-ci-repair-audit.log`). |
+| Distribution test | `npm test -- tests/integration/cli-distribution.test.ts --reporter=verbose` passed in 61.8 s with the real speech assets. The packed tarball (89 injected bundles, `npm-shrinkwrap.json` retained) installed into an empty prefix; source links absent, consumer lock asserted every katex ≥0.18.2, image-size ≥2.0.3 and markdown-it ≥15.0.3, and CLI/doctor, web assets, MCP stdio, real SenseVoice transcription, restart and port conflict all passed (`cold-ci-repair-distribution.log`). |
+| Pack hooks | `npm pack --json` injected 89 bundles into the packed `package.json` (8,039,268 bytes, 2,107 files) and restored the source manifest with no backup left behind (`cold-ci-repair-pack.log`). |
+
+These are local Windows results at a 2048 MB heap. They do not show macOS/Linux success for this change; the failed `34a0219` run is not counted as a pass. Use the **same pushed commit SHA** in [GitHub Actions](https://github.com/LINYEANSHU/reader-workbench/actions/workflows/ci.yml) to verify all three platforms.

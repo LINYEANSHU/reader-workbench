@@ -1,14 +1,11 @@
-name: Reader Workbench
+name: Reader Workbench Windows
 on: [push, pull_request, workflow_dispatch]
 permissions:
   contents: read
 jobs:
   verify:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest, macos-latest, ubuntu-latest]
-    runs-on: ${{ matrix.os }}
+    name: Windows build, tests and security audit
+    runs-on: windows-latest
     env:
       READER_TEST_SPEECH_ASSETS: ${{ github.workspace }}/.reader-runtime/sensevoice-small-int8
       READER_SPEECH_ASSET_DIR: ${{ github.workspace }}/.reader-runtime/sensevoice-small-int8
@@ -19,25 +16,12 @@ jobs:
           node-version: '24'
           cache: npm
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
-        if: runner.os == 'Windows'
         with:
           python-version: '3.13'
-      - name: Office on Linux
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libreoffice fonts-noto-cjk xvfb
-      - name: Office on macOS
-        if: runner.os == 'macOS'
-        run: |
-          brew install --cask font-noto-sans-cjk-sc
-          bash .github/scripts/install-libreoffice-macos.sh
       - name: Chinese font on Windows
-        if: runner.os == 'Windows'
         shell: pwsh
         run: ./.github/scripts/install-noto-windows.ps1
       - name: Office on Windows
-        if: runner.os == 'Windows'
         shell: pwsh
         run: |
           $readerInstaller = Join-Path $env:RUNNER_TEMP 'reader-libreoffice.msi'
@@ -53,21 +37,16 @@ jobs:
       - run: npm run build
       - run: npx playwright install --with-deps chromium chrome
       - name: Native capture stability on Windows
-        if: runner.os == 'Windows'
         run: npx playwright test tests/e2e/capture.spec.ts --grep "actual getDisplayMedia" --repeat-each=10 --output=test-results/native-capture-repeat
       - run: node scripts/prepare-speech.mjs --cache .reader-runtime/sensevoice-small-int8
       - run: npm test
-      - name: Browser tests on Linux
-        if: runner.os == 'Linux'
-        run: xvfb-run -a npm run test:e2e
-      - name: Browser tests on macOS and Windows
-        if: runner.os != 'Linux'
+      - name: Browser tests on Windows
         run: npm run test:e2e
       - name: Save failed browser diagnostics
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: browser-failure-${{ matrix.os }}
+          name: browser-failure-windows
           if-no-files-found: ignore
           include-hidden-files: true
           retention-days: 7

@@ -1,6 +1,6 @@
 # 安装与运行
 
-需要 Node.js 24 或更新版本。Windows、macOS 和 Linux 使用相同的本地 Web 服务；默认仅监听 `127.0.0.1:4317`。
+当前维护平台为 Windows，主要验证环境为 Windows x64；macOS/Linux 已停止维护、构建和发布。需要 Node.js 24 或更新版本，默认仅监听 `127.0.0.1:4317`。
 
 发行包安装后，日常使用一条命令：
 
@@ -23,7 +23,7 @@ Windows 完成依赖安装和构建后，可直接双击根目录的 `Start-Read
 
 应用打开后先选择实际工作区，然后在设置中配置兼容 OpenAI Chat Completions 的 Base URL、模型和 API Key。主对话与临时对话分别选择思考深度；临时对话不会写入主对话。生成文件保存在所选工作区的 `outputs` 目录，配置与凭据存放于本机用户配置目录。
 
-模型连接、API Key、提示词、模型选择、思考档位与截图快捷键统一保存在用户配置目录的 `agent/` 中，切换工作区继续共用。默认路径：Windows 为 `%APPDATA%\reader-workbench\Config\agent`，macOS 为 `~/Library/Preferences/reader-workbench/agent`，Linux 为 `${XDG_CONFIG_HOME:-~/.config}/reader-workbench/agent`。`--config-dir`（Windows 启动器的 `-ConfigDir`）可显式指定其他私有目录。
+模型连接、API Key、提示词、模型选择、思考档位与截图快捷键统一保存在用户配置目录的 `agent/` 中，切换工作区继续共用。Windows 默认路径为 `%APPDATA%\reader-workbench\Config\agent`。`--config-dir`（Windows 启动器的 `-ConfigDir`）可显式指定其他私有目录。
 
 默认启动时会迁移旧项目 `.reader-runtime/user-config` 或旧工作树同名目录中的配置，在新目录 `agent/legacy/` 保存受保护备份，再移除原位置的凭据和工作区列表。若旧服务仍在运行，会提示先关闭，避免迁移期间两套服务同时改写配置。旧工作区数据库中的模型连接首次加载时迁出；同名但独立的连接保留为不同名称。工作区文件、历史、用量与输出路径仍按工作区隔离。
 
@@ -33,7 +33,7 @@ Windows 完成依赖安装和构建后，可直接双击根目录的 `Start-Read
 
 允许浏览器访问麦克风后，录音栏显示计时与波形。点击停止会在本机识别，文字进入可编辑输入框，按发送才调用 LLM。录音期间修改过输入框时，转写保存在独立恢复框，可复制或追加。Esc、取消、隐藏页面、折叠录音栏或切换工作区会停止录音。单次最多 120 秒；原始录音不落盘。
 
-运行库固定为 sherpa-onnx-node 1.13.8，应用自动配置受管理识别进程所需的动态库路径。提供 Windows x64、macOS arm64/x64、Linux arm64/x64 原生依赖；本轮实际验收在 Windows x64，其余平台仍需真实机器或 CI 验证。浏览器必须支持安全上下文中的 getUserMedia 和 AudioWorklet。
+运行库固定为 sherpa-onnx-node 1.13.8，应用自动配置受管理识别进程所需的动态库路径，当前维护和验收覆盖 Windows x64。浏览器必须支持安全上下文中的 getUserMedia 和 AudioWorklet。
 
 模型来源：FunAudioLLM SenseVoiceSmall；ONNX 转换：csukuangfj/sherpa-onnx。固定版本与两个资源的哈希见 `packages/core/src/speech/assets.ts`。模型权重遵循 [FunASR 模型协议](https://github.com/modelscope/FunASR/blob/main/MODEL_LICENSE)，代码的 MIT 许可与模型协议分别处理；[原始模型声明](https://huggingface.co/FunAudioLLM/SenseVoiceSmall)及 [sherpa-onnx Apache-2.0 许可](https://github.com/k2-fsa/sherpa-onnx/blob/master/LICENSE)见第三方说明。
 
@@ -45,9 +45,9 @@ Windows 完成依赖安装和构建后，可直接双击根目录的 `Start-Read
 
 ## Office 页面
 
-Markdown 和 PDF 可直接读取。DOC/DOCX/PPT/PPTX 原版页面预览需要本机 LibreOffice；应用自动发现 PATH、Windows 标准安装路径或 macOS Applications。也可设置 `READER_LIBREOFFICE` 指向 `soffice` 可执行文件。原文件保留；转换可能受本机字体影响。
+Markdown 和 PDF 可直接读取。DOC/DOCX/PPT/PPTX 原版页面预览需要本机 LibreOffice；应用自动发现 PATH 或 Windows 标准安装路径。也可设置 `READER_LIBREOFFICE` 指向 `soffice` 可执行文件。原文件保留；转换可能受本机字体影响。
 
-Windows 安装 LibreOffice 后，默认发现 `C:\Program Files\LibreOffice\program\soffice.com`；macOS 将 LibreOffice.app 放入 `/Applications`；Linux 安装包含 `soffice` 或 `libreoffice` 命令的 LibreOffice 软件包并使其出现在 PATH。中文文档需要相应中文字体。安装后运行 `reader-workbench doctor` 检查可用性，检查本身不会下载语音模型。
+Windows 安装 LibreOffice 后，默认发现 `C:\Program Files\LibreOffice\program\soffice.com`。中文文档需要相应中文字体。安装后运行 `reader-workbench doctor` 检查可用性，检查本身不会下载语音模型。
 
 转换使用自动清理的系统临时目录作为私有 staging 与 LibreOffice profile，避免深工作区路径导致其内部配置失败；持久预览和文档缓存仍在原工作区中，生成文件仍在 `outputs/<session>/`。
 
