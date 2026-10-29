@@ -1,0 +1,10 @@
+Reader Workbench
+Copyright 2026 LINYEANSHU and contributors.
+
+Project source is licensed under the Apache License, Version 2.0.
+See LICENSE for the full license text.
+
+Third-party components retain their own copyright notices, licenses and terms.
+See docs/THIRD_PARTY.md and the notices included with each dependency.
+Speech and translation model weights are downloaded separately and are not
+covered by this project's Apache-2.0 license.

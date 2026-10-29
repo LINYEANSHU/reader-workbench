@@ -13,6 +13,18 @@ apps/web/public/pdfjs/
 .superpowers/
 /.taste-skill/
 /.edithere/
+/.codex/
+/.agents/
+/.aws/
+/.vscode/
+/.idea/
+/private/
+/local-data/
+/user-data/
+/backups/
+/models/
+/docs/reviews/
+/.npmrc
 **/user-config/
 **/credentials.json
 **/connection.json
@@ -69,3 +81,4 @@ Desktop.ini
 # Local agent instructions
 /Agents.md
 /AGENTS.md
+/Agent.md
