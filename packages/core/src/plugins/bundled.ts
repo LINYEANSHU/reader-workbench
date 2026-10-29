@@ -12,6 +12,13 @@ const legacyReadingFiles:Record<string,string>={
  'plugin.json':'de2926f651240de1a21ef441166967c6eae7510db65ce0547898b31318a0b87b',
  'reading.mjs':'1bb9af55bfccffb872e8ab656bff0e1be2a38f09e54d5076d48567c0f74f8e2f'
 };
+// document-translation 1.0.0 as shipped in 0.4.0; exact copies keep using the current bundle after app updates.
+const shippedTranslationFiles:Record<string,string>={
+ 'index.mjs':'abf7698e62b7ac1490f8e4df1ec5b5a14ec5ad995d171e467062fd56db65b7b3',
+ 'local-worker.py':'8171dc8b820f2d352a08ca15fe3f5000e5903aca49d0e8e0247595c32dd19c94',
+ 'plugin.json':'82b98b953a67ead5c72c5a429119b89989d0310f9469221ec4c9798c14340735',
+ 'translation.mjs':'91e57fb0df54ff2f8d146ac464eb40ef199f763b82024582293be77c625aa05f'
+};
 export async function currentBundledPluginRoot(root:string,manifest:PluginManifest):Promise<string>{
  if(manifest.id==='document-translation'&&manifest.version==='1.0.0'&&manifest.entry==='index.mjs'){
   // An exact shipped copy resolves dependencies from the app, wherever the workspace lives.
@@ -19,7 +26,7 @@ export async function currentBundledPluginRoot(root:string,manifest:PluginManife
   try{
    const shipped=bundledPluginPath(manifest.id),names=['index.mjs','local-worker.py','plugin.json','translation.mjs'];
    const files=(await readdir(root)).filter(name=>name!=='__pycache__').sort();if(JSON.stringify(files)!==JSON.stringify(names))return root;
-   for(const name of names){const [installed,current]=await Promise.all([readFile(join(root,name),'utf8'),readFile(join(shipped,name),'utf8')]);if(installed.replace(/\r\n/g,'\n')!==current.replace(/\r\n/g,'\n'))return root;}
+   for(const name of names){const [installed,current]=await Promise.all([readFile(join(root,name),'utf8'),readFile(join(shipped,name),'utf8')]);const normalized=installed.replace(/\r\n/g,'\n');if(normalized!==current.replace(/\r\n/g,'\n')&&createHash('sha256').update(normalized).digest('hex')!==shippedTranslationFiles[name])return root;}
    return shipped;
   }catch{return root;}
  }

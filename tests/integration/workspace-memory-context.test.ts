@@ -4,6 +4,8 @@ import {startServer} from '../../apps/server/src/app.js';
 import {WorkspaceMemoryService} from '../../packages/core/src/knowledge/service.js';
 import type {WorkspaceMemoryItem} from '../../packages/contracts/src/workspace-memory.js';
 import type {ModelRequest} from '../../packages/contracts/src/models.js';
+import type {RunId} from '../../packages/contracts/src/ids.js';
+import {builtinTools} from '../../packages/core/src/tools/builtins.js';
 const cleanup:Array<()=>Promise<unknown>>=[];afterEach(async()=>{for(const fn of cleanup.splice(0).reverse())await fn();});
 it('automatically supplies other-file evidence with source grants while keeping selection-only questions restricted',async()=>{
  const root=await mkdtemp(join(tmpdir(),'reader context memory '));cleanup.push(()=>rm(root,{recursive:true,force:true}));const directory=join(root,'workspace');await mkdir(directory);
@@ -21,7 +23,16 @@ it('automatically supplies other-file evidence with source grants while keeping 
  };
  const first=await ask();expect(first.status).toBe('completed');expect(JSON.stringify(requests.at(-1))).toContain('REFERENCE_EVIDENCE');
  if(first.kind!=='agent')throw Error('expected agent run');expect(first.context?.documents).toHaveLength(2);expect(first.context?.sourceRanges.some(anchor=>anchor.documentId!==document.documentId)).toBe(true);
+ // The related source granted by the host stays verifiable through the reading tools, without widening to other pages or files.
+ const tools=builtinTools(host.documents,host.sessionRepository,host.runs.records).tools,tool=(name:string)=>tools.find(item=>item.name===name)!,scope=(runId:string)=>({workspaceId:workspace.id,sessionId:main.id,runId:runId as RunId,actor,allowArtifactWrites:false});
+ const related=first.context!.documentReadScopes!.find(item=>item.document.documentId!==document.documentId)!;
+ expect((await tool('read_document_page').execute({...related.document,page:related.pages[0]},scope(first.id),new AbortController().signal)).content).toContain('REFERENCE_EVIDENCE');
+ expect((await tool('search_document').execute({...related.document,query:'impedance'},scope(first.id),new AbortController().signal)).content).toContain('REFERENCE_EVIDENCE');
+ await expect(tool('read_document_page').execute({...related.document,page:2},scope(first.id),new AbortController().signal)).rejects.toMatchObject({code:'TOOL_SCOPE_DENIED'});
+ await writeFile(join(directory,'unrelated.md'),'UNRELATED_EVIDENCE');const unrelated=await host.documents.open(workspace.id,'unrelated.md',new AbortController().signal);await host.documents.waitReady(unrelated,new AbortController().signal);
+ await expect(tool('read_document_page').execute({documentId:unrelated.documentId,version:unrelated.version,page:1},scope(first.id),new AbortController().signal)).rejects.toMatchObject({code:'TOOL_SCOPE_DENIED'});
  const block=(await host.documents.parsed(document)).blocks[0];const second=await ask({text:block.text,anchors:[block.anchor]});
+ await expect(tool('read_document_page').execute({...related.document,page:related.pages[0]},scope(second.id),new AbortController().signal)).rejects.toMatchObject({code:'TOOL_SCOPE_DENIED'});
  if(second.kind!=='agent')throw Error('expected agent run');expect(second.context?.documents).toHaveLength(1);expect(second.context?.sourceRanges.every(anchor=>anchor.documentId===document.documentId)).toBe(true);
  expect(JSON.stringify(requests.at(-1)?.messages.filter(message=>typeof message.content==='string'&&message.content.startsWith('工作区关联资料')))).not.toContain('REFERENCE_EVIDENCE');
 });

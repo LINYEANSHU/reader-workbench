@@ -10,7 +10,7 @@ import {SqliteWorkspaceStore} from '../storage/workspace-store.js';
 import {databaseWorkspaceId} from '../storage/identity.js';
 import {isWithin,resolveScopedPath} from './path-guard.js';
 import {browseDirectories,browseDirectoryBrowser,directoryParent,directoryRoot} from './directory-browser.js';
-import type {CapabilityRegistry} from '../plugins/registry.js';import {StorageConsumer} from '../plugins/storage-consumer.js';import type {LifecycleEvent} from '../../../contracts/src/runs.js';
+import type {CapabilityRegistry} from '../plugins/registry.js';import {StorageConsumer} from '../plugins/storage-consumer.js';import {ExecutionTrustStore} from '../plugins/trust.js';import type {LifecycleEvent} from '../../../contracts/src/runs.js';
 interface SavedWorkspace extends Workspace {callerId:string}
 export class WorkspaceService {
   onSelected?: (id:WorkspaceId)=>Promise<void>;
@@ -23,7 +23,9 @@ export class WorkspaceService {
   private closing?:Promise<void>;
   private selecting:Promise<unknown>=Promise.resolve();
   private configRoot:string;
-  constructor(readonly configDir:string){this.configRoot=resolve(configDir);this.ready=this.load();}
+  /** Local execution grants for workspace plugins and MCP commands; kept outside every workspace. */
+  readonly executionTrust:ExecutionTrustStore;
+  constructor(readonly configDir:string){this.configRoot=resolve(configDir);this.executionTrust=new ExecutionTrustStore(configDir);this.ready=this.load();}
   private async load(){await mkdir(this.configDir,{recursive:true,mode:0o700});this.configRoot=await realpath(this.configDir);
     try{const records=JSON.parse(await readFile(join(this.configDir,'workspaces.json'),'utf8')) as SavedWorkspace[];
     for(const record of records)this.workspaces.set(record.id,record);}catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;}}

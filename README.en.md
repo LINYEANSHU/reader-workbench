@@ -102,9 +102,9 @@ Choose an initial range when opening a PDF/Office document. Saving only stores t
 
 Expand reading memory in Documents to adjust the range, read missing pages and search formulas, figures or terms. Click a result to open its source. Page citations navigate to a page; text sources locate content where supported. Completion of the selected range and the full document are shown separately. The panel also displays individual page memories and offers rebuilding; disable it in Settings → Plugins.
 
-### Translate a document or selection
+### Translate a document
 
-1. Choose Translate document, or Translate selected text from a text selection's context menu.
+1. Choose Translate document. To understand or translate selected text, choose Ask AI from the selection menu instead; the answer appears in follow-up chat and no file is saved.
 2. Select a provider, target language and range. Local offline Chinese/English translation is the default; a configured AI model is also available.
 3. Start translation and inspect or download the preview. Processing can be cancelled.
 4. Save a new translation, then open it to continue reading. Only explicit saving writes a workspace file.
@@ -116,7 +116,7 @@ Expand reading memory in Documents to adjust the range, read missing pages and s
 | Source | Translation output and limits |
 | --- | --- |
 | Markdown | New Markdown retaining code, formulas, links and local images. |
-| Word | New editable DOCX for full-document or text-selection translation. Preview-page slicing of the original DOCX is unsupported; styles and pagination may change. |
+| Word | New editable DOCX for full-document translation. Preview-page slicing of the original DOCX is unsupported; styles and pagination may change. |
 | PDF / PowerPoint | Extracted text translated into a paired PDF with original and translated companion pages. Formulas and text inside figures remain in the originals. |
 
 Scans without text layers are not automatically OCRed. Preview tasks do not survive a service restart; download or save before stopping the service.

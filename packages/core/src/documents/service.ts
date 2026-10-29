@@ -108,7 +108,10 @@ export class DocumentService {
   signal.throwIfAborted();
   const saved=await this.saved(ref),parsed=await this.parsed(ref);const result=parsed.pages.find(item=>item.page===page);
   if(!result)throw new ReaderError('PAGE_UNAVAILABLE','页码不存在',404);
-  if(parsed.pdfPath&&!result.imagePath){result.imagePath=await renderPdfPage(parsed.pdfPath,page,saved.cacheDir,signal);signal.throwIfAborted();saved.parsed=parsed;await(await this.workspaces.storeFor(ref.workspaceId)).documents.save(saved);}
+  // Stored paths are untrusted state: verify them against this document version before any file I/O,
+  // and derive the render cache from the workspace instead of the saved cacheDir.
+  if(result.imagePath){const image=await this.authorizedFile(ref,result.imagePath).catch(error=>{if((error as NodeJS.ErrnoException).code==='ENOENT'&&parsed.pdfPath)return undefined;throw error;});if(image)return {...result,imagePath:image};delete result.imagePath;}
+  if(parsed.pdfPath){const source=await this.authorizedFile(ref,parsed.pdfPath),cacheDir=await safeCacheDirectory(this.workspaces,ref.workspaceId,['cache',ref.documentId,ref.version]);result.imagePath=await renderPdfPage(source,page,cacheDir,signal);signal.throwIfAborted();saved.parsed=parsed;await(await this.workspaces.storeFor(ref.workspaceId)).documents.save(saved);}
   return result;
  });}
  async readBlock(ref:DocumentRef,id:string):Promise<DocumentBlock>{const block=(await this.parsed(ref)).blocks.find(item=>item.id===id);if(!block)throw new ReaderError('BLOCK_UNAVAILABLE','文档块不存在',404);return block;}
@@ -116,6 +119,7 @@ export class DocumentService {
  async list(workspaceId:WorkspaceId):Promise<DocumentRecord[]>{return(await(await this.workspaces.storeFor(workspaceId)).documents.list()).map(saved=>saved.record);}
  async authorizedFile(ref:DocumentRef,path:string):Promise<string>{
   await this.saved(ref);const directory=await safeCacheDirectory(this.workspaces,ref.workspaceId,['cache',ref.documentId,ref.version]);
+  if(typeof path!=='string'||!isWithin(directory,resolve(path)))throw new ReaderError('PATH_OUTSIDE_WORKSPACE','缓存文件不能越过该文档版本',403);
   const actual=await realpath(path);if(!isWithin(directory,actual)||actual!==resolve(path))throw new ReaderError('PATH_OUTSIDE_WORKSPACE','缓存文件不能越过该文档版本',403);
   return actual;
  }

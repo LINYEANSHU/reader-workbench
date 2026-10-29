@@ -5,7 +5,8 @@ import type {WorkspaceId} from '../../../contracts/src/ids.js';
 import type {ToolProvider} from '../../../sdk/src/capabilities.js';
 import {ReaderError} from '../../../contracts/src/errors.js';
 import {AsyncLocalStorage} from 'node:async_hooks';import {createHash} from 'node:crypto';
-import type {CapabilityRegistry} from './registry.js';import type {WorkspaceService} from '../workspaces/service.js';import {CredentialStore} from '../runtime/credentials.js';
+import type {CapabilityRegistry} from './registry.js';import type {WorkspaceService} from '../workspaces/service.js';import {CredentialStore} from '../runtime/credentials.js';import {trustIdentity} from './trust.js';
+const UNTRUSTED='外部 MCP 配置来自工作区内部状态，尚未在本机授权；确认信任后才会启动或连接';
 export interface ExternalToolConnection{client:Client;provider:ToolProvider;refresh():Promise<void>;close():Promise<void>;onChanged?:(provider:ToolProvider)=>void}
 export async function connectExternalMcp(config:ExternalMcpConfig,_workspaceId:WorkspaceId,credential?:string):Promise<ExternalToolConnection>{
  if(!/^[a-zA-Z][a-zA-Z0-9_-]{0,63}$/.test(config.id))throw new ReaderError('MCP_CONFIG_INVALID','MCP 名称无效');
@@ -26,15 +27,19 @@ export async function connectExternalMcp(config:ExternalMcpConfig,_workspaceId:W
   await client.connect(transport,{timeout:10000});client.setNotificationHandler('notifications/tools/list_changed',()=>{void connection.refresh().catch(()=>{});});await connection.refresh();return connection;
  }catch(error){await connection.close();throw error instanceof ReaderError?error:new ReaderError('MCP_CONNECTION_FAILED','无法连接外部 MCP，请检查服务和运行环境');}
 }
-interface ManagedConnection{config:ExternalMcpConfig;enabled:boolean;connection?:ExternalToolConnection;release?:()=>void;error?:string}
+interface ManagedConnection{config:ExternalMcpConfig;enabled:boolean;trusted:boolean;connection?:ExternalToolConnection;release?:()=>void;error?:string}
+// The credential reference is derived by the host, so it is excluded from the granted identity and checked separately.
+const mcpIdentity=(config:ExternalMcpConfig)=>trustIdentity({...config,credentialRef:undefined});
 export class ExternalMcpManager{
  private entries=new Map<string,ManagedConnection>();private transitions=new Map<string,Promise<unknown>>();private credentials:CredentialStore;
  constructor(private registry:CapabilityRegistry,private workspaces:WorkspaceService){this.credentials=new CredentialStore(workspaces.configDir);}
  private key(workspaceId:WorkspaceId,id:string){return workspaceId+'\0'+id;}
  private serial<T>(key:string,action:()=>Promise<T>):Promise<T>{const previous=this.transitions.get(key),task=previous?previous.catch(()=>{}).then(action):action();this.transitions.set(key,task);void task.finally(()=>{if(this.transitions.get(key)===task)this.transitions.delete(key);}).catch(()=>{});return task;}
  private async save(workspaceId:WorkspaceId,entry:ManagedConnection){(await this.workspaces.storeFor(workspaceId)).putRecord('external-mcp',entry.config.id,{config:entry.config,enabled:entry.enabled});}
+ private credentialRef(workspaceId:WorkspaceId,id:string){return 'external-mcp.'+workspaceId+'.'+id;}
  private async activate(workspaceId:WorkspaceId,entry:ManagedConnection){
-  if(entry.config.credentialRef&&!await this.credentials.hasSecret(entry.config.credentialRef))delete entry.config.credentialRef;
+  if(!entry.trusted||!await this.workspaces.executionTrust.trusted('external-mcp',workspaceId,entry.config.id,mcpIdentity(entry.config))){entry.trusted=false;throw new ReaderError('MCP_UNTRUSTED',UNTRUSTED,403);}
+  if(entry.config.credentialRef&&(entry.config.credentialRef!==this.credentialRef(workspaceId,entry.config.id)||!await this.credentials.hasSecret(entry.config.credentialRef)))delete entry.config.credentialRef;
   const secret=entry.config.credentialRef?await this.credentials.getSecret(entry.config.credentialRef):undefined,connection=await connectExternalMcp(entry.config,workspaceId,secret);
   const publish=()=>{if(!entry.enabled)return;entry.release?.();entry.release=this.registry.register(workspaceId,'tool','mcp.'+entry.config.id,connection.provider,'mcp:'+entry.config.id);};
   entry.connection=connection;entry.enabled=true;connection.onChanged=publish;publish();delete entry.error;await this.save(workspaceId,entry);
@@ -43,13 +48,15 @@ export class ExternalMcpManager{
  async configure(workspaceId:WorkspaceId,raw:ExternalMcpConfig,secret?:string){
   if(!/^[a-zA-Z][a-zA-Z0-9_-]{0,63}$/.test(raw.id)||!['stdio','http'].includes(raw.transport)||raw.transport==='stdio'&&(!raw.command||!Array.isArray(raw.args))||raw.transport==='http'&&!raw.url)throw new ReaderError('MCP_CONFIG_INVALID','MCP 配置无效');
   if(raw.url){const url=new URL(raw.url);if(!['http:','https:'].includes(url.protocol)||url.username||url.password)throw new ReaderError('MCP_CONFIG_INVALID','MCP 地址必须为 HTTP 或 HTTPS，凭据请单独保存');}
-  return this.serial(this.key(workspaceId,raw.id),async()=>{const previous=this.entries.get(this.key(workspaceId,raw.id));if(previous)await this.disconnect(workspaceId,previous,false);const config=structuredClone(raw),credentialRef='external-mcp.'+workspaceId+'.'+raw.id;delete config.credentialRef;if(secret!==undefined)await this.credentials.setSecret(credentialRef,secret);if(await this.credentials.hasSecret(credentialRef))config.credentialRef=credentialRef;const entry:ManagedConnection={config,enabled:false};this.entries.set(this.key(workspaceId,raw.id),entry);await this.save(workspaceId,entry);try{await this.activate(workspaceId,entry);}catch(error){entry.error=error instanceof ReaderError?error.message:'MCP 连接失败';throw error;}});
+  return this.serial(this.key(workspaceId,raw.id),async()=>{const previous=this.entries.get(this.key(workspaceId,raw.id));if(previous)await this.disconnect(workspaceId,previous,false);const config=structuredClone(raw),credentialRef=this.credentialRef(workspaceId,raw.id);delete config.credentialRef;if(secret!==undefined)await this.credentials.setSecret(credentialRef,secret);if(await this.credentials.hasSecret(credentialRef))config.credentialRef=credentialRef;await this.workspaces.executionTrust.grant('external-mcp',workspaceId,raw.id,mcpIdentity(config));const entry:ManagedConnection={config,enabled:false,trusted:true};this.entries.set(this.key(workspaceId,raw.id),entry);await this.save(workspaceId,entry);try{await this.activate(workspaceId,entry);}catch(error){entry.error=error instanceof ReaderError?error.message:'MCP 连接失败';throw error;}});
  }
  async disable(id:string,workspaceId:WorkspaceId){return this.serial(this.key(workspaceId,id),async()=>{const entry=this.entries.get(this.key(workspaceId,id));if(entry)await this.disconnect(workspaceId,entry);});}
- async enable(id:string,workspaceId:WorkspaceId){return this.serial(this.key(workspaceId,id),async()=>{const entry=this.entries.get(this.key(workspaceId,id));if(!entry)throw new ReaderError('MCP_CONFIG_UNAVAILABLE','请先配置外部 MCP');if(!entry.enabled)await this.activate(workspaceId,entry);});}
+ async enable(id:string,workspaceId:WorkspaceId){return this.serial(this.key(workspaceId,id),async()=>{const entry=this.entries.get(this.key(workspaceId,id));if(!entry)throw new ReaderError('MCP_CONFIG_UNAVAILABLE','请先配置外部 MCP');if(!entry.trusted)throw new ReaderError('MCP_UNTRUSTED',UNTRUSTED,403);if(!entry.enabled)await this.activate(workspaceId,entry);});}
+ /** Explicit local authorization for a command or address that was stored in workspace state. */
+ async trust(id:string,workspaceId:WorkspaceId){return this.serial(this.key(workspaceId,id),async()=>{const entry=this.entries.get(this.key(workspaceId,id));if(!entry)throw new ReaderError('MCP_CONFIG_UNAVAILABLE','请先配置外部 MCP');await this.workspaces.executionTrust.grant('external-mcp',workspaceId,id,mcpIdentity(entry.config));entry.trusted=true;delete entry.error;});}
  async refresh(id:string,workspaceId:WorkspaceId){const entry=this.entries.get(this.key(workspaceId,id));if(!entry?.connection)throw new ReaderError('MCP_DISCONNECTED','外部 MCP 尚未连接');await entry.connection.refresh();}
- list(workspaceId:WorkspaceId){return[...this.entries.entries()].filter(([key])=>key.startsWith(workspaceId+'\0')).map(([,entry])=>({config:structuredClone(entry.config),enabled:entry.enabled,toolCount:entry.connection?.provider.tools.length??0,...(entry.error?{error:entry.error}:{})}));}
- async loadWorkspace(workspaceId:WorkspaceId){const store=await this.workspaces.storeFor(workspaceId);for(const record of store.listRecords<{config:ExternalMcpConfig;enabled:boolean}>('external-mcp')){if(this.entries.has(this.key(workspaceId,record.config.id)))continue;const entry:ManagedConnection={config:record.config,enabled:false};this.entries.set(this.key(workspaceId,record.config.id),entry);if(record.enabled)try{await this.activate(workspaceId,entry);}catch{entry.error='MCP 服务暂不可用';}}}
+ list(workspaceId:WorkspaceId){return[...this.entries.entries()].filter(([key])=>key.startsWith(workspaceId+'\0')).map(([,entry])=>({config:structuredClone(entry.config),enabled:entry.enabled,trusted:entry.trusted,toolCount:entry.connection?.provider.tools.length??0,...(entry.error?{error:entry.error}:{})}));}
+ async loadWorkspace(workspaceId:WorkspaceId){const store=await this.workspaces.storeFor(workspaceId);for(const record of store.listRecords<{config:ExternalMcpConfig;enabled:boolean}>('external-mcp')){if(!record?.config||typeof record.config.id!=='string'||this.entries.has(this.key(workspaceId,record.config.id)))continue;const trusted=await this.workspaces.executionTrust.trusted('external-mcp',workspaceId,record.config.id,mcpIdentity(record.config)),entry:ManagedConnection={config:record.config,enabled:false,trusted};this.entries.set(this.key(workspaceId,record.config.id),entry);if(!trusted){entry.error=UNTRUSTED;continue;}if(record.enabled)try{await this.activate(workspaceId,entry);}catch{entry.error='MCP 服务暂不可用';}}}
  async loadRecent(){for(const workspace of await this.workspaces.listRecent({callerId:'local-owner',transport:'internal'}))try{await this.loadWorkspace(workspace.id);}catch(error){if(!(error instanceof ReaderError)||error.code!=='WORKSPACE_UNAVAILABLE')throw error;}}
  async close(){await Promise.allSettled([...this.transitions.values()]);for(const[key,entry]of this.entries)await this.disconnect(key.split('\0')[0] as WorkspaceId,entry,false);}
 }

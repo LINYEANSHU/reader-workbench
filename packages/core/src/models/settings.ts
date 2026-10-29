@@ -73,11 +73,16 @@ export class ModelSettingsService{
   if(!settings)throw new ReaderError('MODEL_UNAVAILABLE','此工作区未保存该模型连接',404);
   const store=await this.workspaces.storeFor(workspaceId);return store.getRecord<ModelUsageSummary>('model-usage',this.usageKey(settings))??this.emptyUsage(settings);
  }
- async saveModelSettings(workspaceId:WorkspaceId,input:ModelSettings,key?:string):Promise<MaskedModelSettings>{
+ /** create=true never replaces an existing connection; a saved key is only reused for the same service origin. */
+ async saveModelSettings(workspaceId:WorkspaceId,input:ModelSettings,key?:string,options:{create?:boolean}={}):Promise<MaskedModelSettings>{
   await this.listModelSettings(workspaceId);
   return this.queue.enqueue('settings',async()=>{
    const settings=this.validate(input),credentialRef='model.'+settings.id;
    if(key!==undefined&&(typeof key!=='string'||!key.trim()||key.length>16000))throw new ReaderError('INVALID_CREDENTIAL','API Key 无效');
+   const existing=(await this.settings.get()).find(model=>model.id===settings.id);
+   if(options.create&&existing)throw new ReaderError('MODEL_ID_CONFLICT','已存在同名模型连接，请使用其他配置名称',409);
+   const origin=(url:string)=>{try{return new URL(url).origin;}catch{return url;}};
+   if(key===undefined&&existing&&origin(existing.baseUrl)!==origin(settings.baseUrl)&&await this.credentials.hasSecret(credentialRef))throw new ReaderError('CREDENTIAL_REQUIRED','服务地址已变更，请重新输入 API Key',409);
    if(settings.credentialRef&&settings.credentialRef!==credentialRef)throw new ReaderError('INVALID_CREDENTIAL','凭据引用不属于此模型连接');
    settings.credentialRef=credentialRef;if(key!==undefined)await this.credentials.setSecret(credentialRef,key.trim());
    await this.settings.update(current=>current.some(model=>model.id===settings.id)?current.map(model=>model.id===settings.id?settings:model):[...current,settings]);

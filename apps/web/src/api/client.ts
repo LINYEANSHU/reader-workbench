@@ -47,7 +47,7 @@ export class ApiClient{
  sessionUsage(id:WorkspaceId,session:SessionId,provider:string,signal?:AbortSignal){return this.request<SessionUsageSummary>('/workspaces/'+id+'/sessions/'+session+'/usage?providerId='+encodeURIComponent(provider),{signal});}
  modelUsage(id:WorkspaceId,model:string,signal?:AbortSignal){return this.request<ModelUsageSummary>('/workspaces/'+id+'/settings/models/'+encodeURIComponent(model)+'/usage',{signal});}
  workspaceUsage(id:WorkspaceId,signal?:AbortSignal){return this.request<WorkspaceUsageSummary>('/workspaces/'+id+'/usage',{signal});}
- saveModel(id:WorkspaceId,settings:ModelSettings,key?:string){return this.request<MaskedModelSettings>('/workspaces/'+id+'/settings/models',{method:'PUT',body:{settings,...(key?{key}:{})}});}
+ saveModel(id:WorkspaceId,settings:ModelSettings,key?:string,create=false){return this.request<MaskedModelSettings>('/workspaces/'+id+'/settings/models',{method:'PUT',body:{settings,...(key?{key}:{}),...(create?{create}:{})}});}
  catalog(id:WorkspaceId,model:string){return this.request<Array<{id:string;capabilities?:ModelCapabilities}>>('/workspaces/'+id+'/settings/models/'+encodeURIComponent(model)+'/catalog');}
  output(id:WorkspaceId){return this.request<{directory:string}>('/workspaces/'+id+'/settings/output');}
  saveOutput(id:WorkspaceId,directory:string){return this.request('/workspaces/'+id+'/settings/output',{method:'PUT',body:{directory}});}

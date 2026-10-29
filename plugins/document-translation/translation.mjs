@@ -84,7 +84,7 @@ function docxSpans(xml){
  flush();return spans;
 }
 async function docx(host,signal){
- if(host.pages.length!==host.document.pageCount)fail('PAGE_MAPPING','Word 可编辑翻译暂不支持按预览页映射正文；请选择全部页面或选区翻译');
+ if(host.pages.length!==host.document.pageCount)fail('PAGE_MAPPING','Word 可编辑翻译暂不支持按预览页映射正文；请选择全部页面');
  const input=/\.doc$/i.test(host.document.relativePath)?await host.convertSource('docx'):await host.readSource(),files=host.zip.decode(input),blocks=[],documents=[];let number=0;
  for(const [name,data]of Object.entries(files)){
   if(!/^word\/(?:document|header\d+|footer\d+|footnotes|endnotes)\.xml$/.test(name))continue;
@@ -100,4 +100,4 @@ async function docx(host,signal){
 }
 function formulaLike(text){return /(?:[=∑∫√≠≤≥±∞]|\\(?:frac|sum|int|begin)|[α-ωΑ-Ω])/.test(text)&&!/[A-Za-z]{4,}/.test(text);}
 async function paged(host,signal){const pages=await host.readPdfPages(),blocks=[];for(const page of pages){if(!page.blocks.some(block=>block.text.trim()))fail('NO_TEXT','第 '+page.page+' 页没有可用文本层，未执行 OCR');for(const block of page.blocks)if(!formulaLike(block.text))blocks.push({id:block.id,text:block.text});}const values=await translateBlocks(host,blocks,signal),parts=[],warnings=['输出采用原页与译文页对照：原页保留全部公式和图像；译文按真实文本层块顺序排版，不承诺原位替换。'],preview=[];for(const page of pages){signal.throwIfAborted();const translated=page.blocks.map(block=>({id:block.id,text:values.get(block.id)??block.text,rect:block.rect})),renderBlocks=[{kind:'heading',level:1,text:'第 '+page.page+' 页 · '+host.targetLanguage+'译文（前页为原文）'},...translated.map(block=>({kind:'paragraph',text:block.text}))];const translation=await host.renderPdf(renderBlocks);parts.push({page:page.page,translation});preview.push('第 '+page.page+' 页\n'+translated.map(block=>block.text).join('\n'));if(translated.reduce((sum,block)=>sum+block.text.length,0)>2200)warnings.push('第 '+page.page+' 页译文较长，已允许续页并完整保留文字，请检查对照分页。');}return{name:baseName(host)+'.pdf',mime:'application/pdf',extension:'.pdf',bytes:await host.combinePdf(parts),previewText:preview.join('\n\n'),warnings};}
-export async function translateDocument(host,signal){signal.throwIfAborted();if(host.selection)return markdown(host,signal,host.selection.text);if(/\.(md|markdown|txt)$/i.test(host.document.relativePath))return markdown(host,signal,decoder.decode(await host.readSource()));if(/\.docx?$/i.test(host.document.relativePath))return docx(host,signal);if(/\.(pdf|pptx?)$/i.test(host.document.relativePath))return paged(host,signal);fail('FORMAT','此翻译插件不支持该文档格式');}
+export async function translateDocument(host,signal){signal.throwIfAborted();if(/\.(md|markdown|txt)$/i.test(host.document.relativePath))return markdown(host,signal,decoder.decode(await host.readSource()));if(/\.docx?$/i.test(host.document.relativePath))return docx(host,signal);if(/\.(pdf|pptx?)$/i.test(host.document.relativePath))return paged(host,signal);fail('FORMAT','此翻译插件不支持该文档格式');}

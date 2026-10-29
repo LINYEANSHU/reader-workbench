@@ -99,3 +99,15 @@ it('archives and restores a main conversation without removing its history or te
  expect((await request(main.id,{archived:false})).status).toBe(200);
  expect((await s.host.sessions.list(s.first.id)).find(item=>item.id===main.id)?.archivedAt).toBeUndefined();
 },serverIntegrationTimeout);
+
+it('creates new model connections without replacing an existing one or reusing its key for another service',async()=>{
+ const s=await setup();await s.host.models.saveModelSettings(s.first.id,model,'fixture-original-key');
+ await expect(s.host.models.saveModelSettings(s.first.id,{...model,model:'replacement'},undefined,{create:true})).rejects.toMatchObject({code:'MODEL_ID_CONFLICT'});
+ expect(await s.host.models.listModelSettings(s.first.id)).toMatchObject([{id:'shared',model:'shared-model',hasKey:true}]);
+ await s.host.models.saveModelSettings(s.first.id,{...model,id:'shared-2',model:'second'},undefined,{create:true});
+ expect(await s.host.models.listModelSettings(s.first.id)).toMatchObject([{id:'shared',model:'shared-model',hasKey:true},{id:'shared-2',model:'second',hasKey:false}]);
+ await expect(s.host.models.saveModelSettings(s.first.id,{...model,baseUrl:'https://other.example/v1'})).rejects.toMatchObject({code:'CREDENTIAL_REQUIRED'});
+ await s.host.models.saveModelSettings(s.first.id,{...model,baseUrl:'https://example.com/v2',model:'edited'});
+ await s.host.models.saveModelSettings(s.first.id,{...model,baseUrl:'https://other.example/v1'},'fixture-other-key');
+ expect((await s.host.models.listModelSettings(s.first.id)).find(item=>item.id==='shared')).toMatchObject({baseUrl:'https://other.example/v1',hasKey:true});
+},serverIntegrationTimeout);

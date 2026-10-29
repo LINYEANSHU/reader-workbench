@@ -1,6 +1,6 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {Languages,X,Download,FileText} from 'lucide-react';
-import type {DocumentRecord,SelectionContext} from '../../../../packages/contracts/src/documents.js';
+import type {DocumentRecord} from '../../../../packages/contracts/src/documents.js';
 import type {DocumentProcessingTask} from '../../../../packages/contracts/src/document-processing.js';
 import type {SessionId} from '../../../../packages/contracts/src/ids.js';
 import type {MaskedModelSettings} from '../../../../packages/contracts/src/models.js';
@@ -14,10 +14,10 @@ import {useDialogFocus} from './useDialogFocus.js';
 import {localizeMessage,t,useLocale} from '../i18n/index.js';
 import '../styles/document-processing.css';
 
-export function TranslationDialog({document,sessionId,models,providerId,plan,selection,onClose,onSaved}:{document:DocumentRecord;sessionId:SessionId;models:MaskedModelSettings[];providerId:string;plan:DocumentReadingPlan|null;selection?:SelectionContext;onClose:()=>void;onSaved:(document:DocumentRecord)=>void}){
+export function TranslationDialog({document,sessionId,models,providerId,plan,onClose,onSaved}:{document:DocumentRecord;sessionId:SessionId;models:MaskedModelSettings[];providerId:string;plan:DocumentReadingPlan|null;onClose:()=>void;onSaved:(document:DocumentRecord)=>void}){
  useLocale();
  const [engine,setEngine]=useState('local'),[localStatus,setLocalStatus]=useState<{ready:boolean;error?:unknown}|null>(null);
- const [provider,setProvider]=useState(providerId),[language,setLanguage]=useState('简体中文'),[scope,setScope]=useState<'all'|'custom'|'selection'>(selection?'selection':plan&&plan.pages.length<document.pageCount?'custom':'all'),[range,setRange]=useState(plan?.pages.join(',')??''),[task,setTask]=useState<DocumentProcessingTask|null>(null),[error,setError]=useState<unknown>(''),[submitting,setSubmitting]=useState(false),[saving,setSaving]=useState(false),[opening,setOpening]=useState(false);
+ const [provider,setProvider]=useState(providerId),[language,setLanguage]=useState('简体中文'),[scope,setScope]=useState<'all'|'custom'>(plan&&plan.pages.length<document.pageCount?'custom':'all'),[range,setRange]=useState(plan?.pages.join(',')??''),[task,setTask]=useState<DocumentProcessingTask|null>(null),[error,setError]=useState<unknown>(''),[submitting,setSubmitting]=useState(false),[saving,setSaving]=useState(false),[opening,setOpening]=useState(false);
  useEffect(()=>{let active=true;void api.request<{ready:boolean;error?:string}>('/translation/local').then(value=>{if(active)setLocalStatus(value);}).catch(cause=>{if(active)setLocalStatus({ready:false,error:cause});});return()=>{active=false;};},[]);
  const root=useRef<HTMLElement>(null),current=useRef(task),starting=useRef(false),mounted=useRef(true);current.current=task;
  const busy=submitting||Boolean(task&&['queued','running'].includes(task.status));
@@ -30,12 +30,12 @@ export function TranslationDialog({document,sessionId,models,providerId,plan,sel
   timer=setTimeout(()=>void poll(),200);return()=>{controller.abort();clearTimeout(timer);};
  },[task?.id,task?.status]);
  let pages:number[]|undefined,validation='';
- try{if(scope==='custom')pages=parsePageRanges(range,document.pageCount);else if(scope==='selection'&&selection){const values=selection.anchors.flatMap(anchor=>anchor.location.kind==='page'?[anchor.location.page]:[]);if(values.length)pages=[...new Set(values)];}}catch(cause){validation=message(cause);}
+ try{if(scope==='custom')pages=parsePageRanges(range,document.pageCount);}catch(cause){validation=message(cause);}
  const local=engine==='local',selectedModel=models.find(model=>model.id===provider),configured=local?Boolean(localStatus?.ready):Boolean(selectedModel&&(selectedModel.hasKey||selectedModel.id==='demo'));
  const start=async()=>{
   if(starting.current||busy||validation||!configured)return;
   starting.current=true;setSubmitting(true);setError('');
-  try{const value=await documentProcessing.start({document:{workspaceId:document.workspaceId,documentId:document.documentId,version:document.version},sessionId,providerId:local?'core.local-translation':provider,processorId:'document-translation.translate',targetLanguage:language,...(pages?{pages}:{}),...(scope==='selection'&&selection?{selection}:{})});if(mounted.current)setTask(value);else void documentProcessing.cancel(value).catch(()=>{});}
+  try{const value=await documentProcessing.start({document:{workspaceId:document.workspaceId,documentId:document.documentId,version:document.version},sessionId,providerId:local?'core.local-translation':provider,processorId:'document-translation.translate',targetLanguage:language,...(pages?{pages}:{})});if(mounted.current)setTask(value);else void documentProcessing.cancel(value).catch(()=>{});}
   catch(cause){if(mounted.current)setError(cause);}finally{starting.current=false;if(mounted.current)setSubmitting(false);}
  };
  const cancel=async()=>{if(!task)return;setError('');try{setTask(await documentProcessing.cancel(task));}catch(cause){setError(cause);}};
@@ -50,9 +50,8 @@ export function TranslationDialog({document,sessionId,models,providerId,plan,sel
     {!task&&<>
      <div className="translation-fields"><label>{t('翻译方式','Translation method')}<SelectControl aria-label={t('翻译方式','Translation method')} value={engine} options={[{value:'local',label:t('本地离线翻译','Local offline translation'),description:t('中英互译 · 无需 API','Chinese ↔ English · No API required')},{value:'model',label:t('已配置的 AI 模型','Configured AI model')}]} onChange={value=>{setEngine(value);if(value==='local'&&!['简体中文','English'].includes(language))setLanguage('简体中文');}} disabled={submitting}/></label><label>{t('目标语言','Target language')}<SelectControl aria-label={t('目标语言','Target language')} value={language} onChange={setLanguage} options={(local?['简体中文','English']:['简体中文','English','日本語','Deutsch']).map(value=>({value,label:value==='简体中文'?t('简体中文','Simplified Chinese'):value==='日本語'?t('日本語','Japanese'):value==='Deutsch'?t('Deutsch','German'):value}))} disabled={submitting}/></label>{!local&&<label>{t('翻译模型','Translation model')}<SelectControl aria-label={t('翻译模型','Translation model')} value={provider} options={models.map(model=>({value:model.id,label:model.model,description:model.id,disabled:!model.hasKey&&model.id!=='demo'}))} onChange={setProvider} searchable disabled={submitting}/></label>}</div>
      {local&&<p className="subtle" role="status">{localStatus===null?t('正在检查本地翻译引擎…','Checking the local translation engine…'):localStatus.ready?t('离线引擎已就绪。正文仅在本机处理，无需配置模型。','The offline engine is ready. Text is processed on this device; no model setup is needed.'):message(localStatus.error)}</p>}
-     <fieldset className="translation-scope" disabled={submitting}><legend className="sr-only">{t('翻译范围','Translation scope')}</legend>{selection&&<label><input type="radio" name="translation-scope" checked={scope==='selection'} onChange={()=>setScope('selection')}/>{t('已选文字','Selected text')}</label>}<label><input type="radio" name="translation-scope" checked={scope==='all'} onChange={()=>setScope('all')}/>{t('全部正文','All text')}</label>{document.pageCount>1&&<label><input type="radio" name="translation-scope" checked={scope==='custom'} onChange={()=>setScope('custom')}/>{t('指定页码','Specific pages')}</label>}</fieldset>
+     <fieldset className="translation-scope" disabled={submitting}><legend className="sr-only">{t('翻译范围','Translation scope')}</legend><label><input type="radio" name="translation-scope" checked={scope==='all'} onChange={()=>setScope('all')}/>{t('全部正文','All text')}</label>{document.pageCount>1&&<label><input type="radio" name="translation-scope" checked={scope==='custom'} onChange={()=>setScope('custom')}/>{t('指定页码','Specific pages')}</label>}</fieldset>
      {scope==='custom'&&<label className="range-field">{t('翻译页码','Pages to translate')}<input aria-label={t('翻译页码','Pages to translate')} value={range} placeholder={t('例如：2-3,10-15','For example: 2-3,10-15')} onChange={event=>setRange(event.target.value)}/></label>}
-     {scope==='selection'&&selection&&<div className="translation-selection">{selection.text}</div>}
      <p className="translation-source-note">{t('提取原文文字后翻译，代码、公式和图内小字保留。PDF / PPT 输出按原文页与译文页配对的对照 PDF。没有文本层的扫描页暂不支持。','Translation uses extracted source text and preserves code, formulas, and small text inside figures. PDF / PPT output pairs each source page with a translated page in a comparison PDF. Scanned pages without a text layer are not supported yet.')}</p>
      {!local&&!configured&&<p className="error">{t('请先在设置中配置一个可用模型，或切换到本地离线翻译。','Configure an available model in settings, or switch to local offline translation.')}</p>}
     </>}
