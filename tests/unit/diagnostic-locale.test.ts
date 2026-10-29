@@ -27,7 +27,7 @@ describe('application diagnostic localization',()=>{
   ['输出扩展名必须与预览格式一致','The output extension must match the preview format.'],
   ['译文未完整覆盖全部编号块，无法保存','The translation does not cover all numbered blocks and cannot be saved.'],
   ['模型没有原样保留代码、公式或资源标记的顺序','The model did not preserve the order of code, formulas or resource markers.'],
-  ['Word 可编辑翻译暂不支持按预览页映射正文；请选择全部页面或选区翻译','Editable Word translation cannot map text to preview pages yet. Select all pages or translate a selection.'],
+  ['Word 可编辑翻译暂不支持按预览页映射正文；请选择全部页面','Editable Word translation cannot map text to preview pages yet. Select all pages.'],
   ['等待处理','Waiting for processing'],
   ['界面仅预览前 120000 字符；保存文件包含完整译文。','Only the first 120,000 characters are previewed. The saved file contains the complete translation.'],
   ['保留 DOCX 图片、表格、字段和原生公式 XML；文字长度变化可能改变分页，请检查保存副本的排版。','DOCX images, tables, fields and native equation XML are preserved. Text length changes may alter pagination; check the saved copy’s layout.'],

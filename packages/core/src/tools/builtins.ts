@@ -13,8 +13,10 @@ export function builtinTools(documents:DocumentService,repository:SessionReposit
  const allowedPages=async(ref:DocumentRef,scope:RunScope)=>{
   if(!runs)return undefined;
   const record=await runs.get(scope.workspaceId,scope.runId),matches=(value:DocumentRef)=>value.workspaceId===ref.workspaceId&&value.documentId===ref.documentId&&value.version===ref.version;
-  if(record.sessionId!==scope.sessionId||record.callerId!==scope.actor.callerId||!record.context||record.request.selection||!record.request.documents.some(matches)||!record.context.documents.some(matches))return deny();
+  if(record.sessionId!==scope.sessionId||record.callerId!==scope.actor.callerId||!record.context||record.request.selection||!record.context.documents.some(matches))return deny();
+  // Read scopes pinned by the host for this run are authoritative; they include sources the host added from workspace memory.
   if(record.context.documentReadScopes){const pinned=record.context.documentReadScopes.find(item=>matches(item.document));return pinned?new Set(pinned.pages):deny();}
+  if(!record.request.documents.some(matches))return deny();
   const memory=record.context.documentMemories?.find(item=>matches(item.document));
   return memory?new Set(memory.completedPages):undefined;
  };

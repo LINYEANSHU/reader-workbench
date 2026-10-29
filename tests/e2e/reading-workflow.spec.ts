@@ -69,15 +69,12 @@ test('opens a page-level Markdown memory result at its actual text source',async
  await expect.poll(()=>file.locator('.document-scroll').evaluate(node=>node.scrollTop)).toBeLessThan(10);
 });
 
-test('translates text selected from the actual PDF layer without document pre-reading or images',async({page,host,root,modelUrl,modelCalls})=>{
+test('offers only AI questions for selected PDF text and no selection translation file',async({page,host,root,modelUrl,modelCalls})=>{
  await model(host,root,modelUrl);await openWorkspace(page,host,root);await page.getByRole('button',{name:'reader.pdf',exact:true}).click();
  const file=page.getByRole('region',{name:'文件',exact:true}),layer=file.locator('.textLayer').first();await expect(layer).toContainText('RI');
  const points=await layer.evaluate(root=>{const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let text:Node|null;while(text=walker.nextNode()){const index=text.textContent?.indexOf('RI')??-1;if(index<0)continue;const range=document.createRange();range.setStart(text,index);range.setEnd(text,index+2);const rect=range.getBoundingClientRect();return{x:rect.left+1,y:rect.top+rect.height/2,end:rect.right-1};}throw Error('Selectable PDF source absent');});
  await page.mouse.move(points.x,points.y);await page.mouse.down();await page.mouse.move(points.end,points.y,{steps:10});await page.mouse.up();await page.mouse.click(points.end,points.y,{button:'right'});
- await page.getByRole('menuitem',{name:'翻译所选文字',exact:true}).click();
- const dialog=page.getByRole('dialog',{name:'翻译文档'});await expect(dialog.locator('.translation-selection')).toContainText('RI');
- await selectControlValue(dialog.getByRole('combobox',{name:'翻译方式',exact:true}),'model');
- await dialog.getByRole('button',{name:'开始翻译',exact:true}).click();await expect(dialog.getByRole('heading',{name:'译文预览'})).toBeVisible();await expect(dialog.locator('.translation-preview')).toContainText('RI');
- expect(modelCalls.length).toBeGreaterThan(0);expect(modelCalls.every(call=>String(call.messages[0]?.content).includes('DOCUMENT_TRANSLATION_BLOCKS'))).toBe(true);
- expect(modelCalls.every(call=>call.messages.every((message:any)=>!Array.isArray(message.content)||message.content.every((part:any)=>part.type!=='image_url')))).toBe(true);
+ const menu=page.getByRole('menu');await expect(menu.getByRole('menuitem',{name:'询问 AI',exact:true})).toBeVisible();
+ await expect(menu.getByRole('menuitem')).toHaveCount(2);await expect(menu.getByRole('menuitem',{name:'翻译所选文字',exact:true})).toHaveCount(0);
+ expect(modelCalls).toHaveLength(0);
 });

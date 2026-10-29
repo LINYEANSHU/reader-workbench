@@ -16,6 +16,18 @@ it('loads unchanged translation copies from the application dependency tree and 
  }finally{await rm(root,{recursive:true,force:true});}
 });
 
+it('keeps running the current translation bundle for an unchanged 0.4.0 copy',async()=>{
+ const root=await mkdtemp(join(tmpdir(),'shipped-translation-'));
+ try{
+  await cp(bundledPluginPath('document-translation'),root,{recursive:true,filter:path=>!path.includes('__pycache__')});
+  await cp('tests/fixtures/plugins/document-translation-v1/translation.mjs',join(root,'translation.mjs'));
+  const manifest=JSON.parse(await readFile(join(root,'plugin.json'),'utf8'));
+  expect(await currentBundledPluginRoot(root,manifest)).toBe(bundledPluginPath('document-translation'));
+  await appendFile(join(root,'translation.mjs'),'\n// user customization\n');
+  expect(await currentBundledPluginRoot(root,manifest)).toBe(root);
+ }finally{await rm(root,{recursive:true,force:true});}
+});
+
 it('uses the current bundled reader for an unchanged legacy install and preserves customized plugins',async()=>{
  const root=await mkdtemp(join(tmpdir(),'legacy-reader-'));
  try{

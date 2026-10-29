@@ -4,6 +4,7 @@ import {test,expect,openWorkspace,model} from './fixtures.js';
 import type {Page,Locator} from '@playwright/test';
 import {writeFile} from 'node:fs/promises';import {join} from 'node:path';import {createCanvas,loadImage} from '@napi-rs/canvas';
 import type {ModelProvider} from '../../packages/sdk/src/capabilities.js';
+import type {RunId,RunScope} from '../../packages/contracts/src/ids.js';import {randomUUID} from 'node:crypto';
 const main=(page:Page)=>page.getByRole('region',{name:'主对话',exact:true}),temp=(page:Page)=>page.getByRole('region',{name:'临时对话',exact:true}),file=(page:Page)=>page.getByRole('region',{name:'文件',exact:true});
 const capabilities={vision:true,tools:true,contextWindow:64000,maxOutputTokens:512,reasoningEfforts:['none','low','high','max'],defaultReasoningEffort:'high'};
 const writer:ModelProvider={capabilities,async *generate(request){const protocol=documentProtocolResponse(request);if(protocol!==undefined){yield{kind:'delta',text:protocol};yield{kind:'done'};return;}if(request.messages.at(-1)?.role==='tool')yield{kind:'delta',text:'文件已生成。'};else yield{kind:'tool-call',id:'write',name:'save_artifact',input:{name:'proof.md',format:'md',blocks:[{kind:'paragraph',text:'one authorized output'}],sourceAnchors:[]}};yield{kind:'done'};}};
@@ -66,4 +67,44 @@ test('restores readable branch history atomically with delayed artifact data',as
 test('renders Unicode, spaced and reference images and captures their actual pixels',async({page,host,root,modelUrl})=>{
  const workspace=await model(host,root,modelUrl),png=createCanvas(200,100),ctx=png.getContext('2d');ctx.fillStyle='red';ctx.fillRect(0,0,200,100);for(const name of ['图.png','图 1.png','引用.png'])await writeFile(join(root,'assets',name),png.toBuffer('image/png'));await writeFile(join(root,'images.md'),'# Images\n\n![中文](assets/图.png)\n\n![空格](<assets/图 1.png>)\n\n![引用][figure]\n\n[figure]: assets/引用.png\n');await openWorkspace(page,host,root);await page.getByRole('button',{name:'images.md',exact:true}).click();for(const alt of ['中文','空格','引用']){const image=file(page).getByRole('img',{name:alt,exact:true});await expect(image).toHaveJSProperty('naturalWidth',200);expect(await image.evaluate(node=>{const canvas=document.createElement('canvas');canvas.width=1;canvas.height=1;const ctx=canvas.getContext('2d')!;ctx.drawImage(node as HTMLImageElement,0,0,1,1);return[...ctx.getImageData(0,0,1,1).data];})).toEqual([255,0,0,255]);}
  await capture(page,file(page).getByRole('img',{name:'中文',exact:true}));await page.getByRole('button',{name:'放入临时输入框',exact:true}).click();await expect(page.getByRole('dialog',{name:'截图预览'})).toHaveCount(0);const session=(await host.sessions.list(workspace.id)).find(s=>s.kind==='temporary')!,attachment=(await(await host.workspaces.storeFor(workspace.id)).attachments.list(session.id)).at(-1)!,image=await loadImage(await host.attachments.read({actor:{callerId:'local-owner',transport:'internal'},workspaceId:workspace.id,sessionId:session.id},attachment.id)),canvas=createCanvas(image.width,image.height);canvas.getContext('2d').drawImage(image,0,0);expect([...canvas.getContext('2d').getImageData(Math.floor(image.width/2),Math.floor(image.height/2),1,1).data]).toEqual([255,0,0,255]);await page.screenshot({path:'.superpowers/sdd/2026-10-11-reader-workbench/review-markdown-images.png'});
+});
+
+test('New connection keeps the saved connection and its key unchanged',async({page,host,root,modelUrl})=>{
+ const actor={callerId:'local-owner',transport:'internal' as const},workspace=await host.workspaces.select(root,actor);
+ await host.models.saveModelSettings(workspace.id,{id:'deepseek',baseUrl:modelUrl,model:'saved-original-model',credentialRef:'',capabilities:{vision:false,tools:false,contextWindow:1_000_000}},'synthetic-saved-key');
+ await openWorkspace(page,host,root);
+ await page.getByRole('button',{name:'打开设置',exact:true}).click();
+ await page.getByRole('combobox',{name:'连接配置',exact:true}).click();
+ await page.getByRole('option',{name:'新建连接',exact:true}).click();
+ await expect(page.getByRole('combobox',{name:'连接配置',exact:true})).toHaveAttribute('data-value','new');
+ await page.locator('.model-configuration > summary').click();
+ await expect(page.getByLabel('配置名称',{exact:true})).toHaveValue('deepseek-2');
+ await expect(page.getByLabel('API Key',{exact:true})).toHaveAttribute('placeholder','输入 API Key');
+ await page.getByLabel('模型名称',{exact:true}).fill('new-profile-model');
+ await page.getByRole('button',{name:'保存设置',exact:true}).click();
+ await expect(page.getByRole('status').filter({hasText:'模型设置已保存'})).toBeVisible();
+ expect(await host.models.listModelSettings(workspace.id)).toMatchObject([{id:'deepseek',model:'saved-original-model',hasKey:true},{id:'deepseek-2',model:'new-profile-model',hasKey:false}]);
+ // Typing an existing name for a new connection is rejected rather than overwriting it.
+ await page.getByRole('combobox',{name:'连接配置',exact:true}).click();
+ await page.getByRole('option',{name:'新建连接',exact:true}).click();
+ await page.getByLabel('配置名称',{exact:true}).fill('deepseek');
+ await page.getByRole('button',{name:'保存设置',exact:true}).click();
+ await expect(page.getByText('已存在同名模型连接，请使用其他配置名称')).toBeVisible();
+ expect((await host.models.listModelSettings(workspace.id)).find(model=>model.id==='deepseek')).toMatchObject({model:'saved-original-model',hasKey:true});
+});
+test('loading earlier chat history also shows screenshots from older turns',async({page,host,root})=>{
+ const actor={callerId:'local-owner',transport:'internal' as const};
+ const workspace=await host.workspaces.select(root,actor),mainSession=await host.sessions.createMain(workspace.id,'History'),temporary=await host.sessions.createTemporary(workspace.id,mainSession.id);
+ const canvas=createCanvas(4,4);canvas.getContext('2d').fillRect(0,0,4,4);
+ const attachment=await host.attachments.save({workspaceId:workspace.id,sessionId:temporary.id,actor},canvas.toBuffer('image/png'),{width:4,height:4,anchors:[],captureKind:'screen'});
+ for(let index=0;index<51;index++){
+  const runId=randomUUID() as RunId,scope:RunScope={workspaceId:workspace.id,sessionId:temporary.id,runId,actor,allowArtifactWrites:false},release=await host.sessionRepository.registerScope(scope);
+  try{await host.sessionRepository.completeOwnTurn(scope,{id:randomUUID(),runId,question:'history-turn-'+index,answer:'Answer '+index,messages:[{role:'user',content:'history-turn-'+index},{role:'assistant',content:'Answer '+index}],sourceAnchors:[],attachmentIds:index===0?[attachment.id]:[]});}finally{release();}
+ }
+ await openWorkspace(page,host,root);
+ const pane=temp(page);
+ await expect(pane.getByText('history-turn-50',{exact:true})).toBeVisible();await expect(pane.getByAltText('对话截图',{exact:true})).toHaveCount(0);
+ await pane.getByRole('button',{name:'加载更早消息',exact:true}).click();
+ await expect(pane.getByText('history-turn-0',{exact:true})).toBeVisible();
+ await expect(pane.getByAltText('对话截图',{exact:true})).toHaveCount(1);
 });

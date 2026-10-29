@@ -74,7 +74,7 @@ Run `node scripts/http-client.mjs CONFIG_DIR` against the active daemon for a re
 | 方法与后缀 | 行为 |
 | --- | --- |
 | `GET` | 列出已启用处理器 |
-| `POST` | 接受 `{document,providerId,sessionId,processorId,targetLanguage?,pages?,selection?}`，返回任务 |
+| `POST` | 接受 `{document,providerId,sessionId,processorId,targetLanguage?,pages?}`，返回任务；带 `selection` 的请求被拒绝 |
 | `GET /:taskId?sessionId=...` | 读取状态、进度、警告、错误与预览元数据 |
 | `POST /:taskId/cancel`，`{sessionId}` | 取消任务，完成回调不能将取消状态覆盖为可用预览 |
 | `GET /:taskId/preview?sessionId=...` | 返回实际文件字节，`Cache-Control: no-store` |
