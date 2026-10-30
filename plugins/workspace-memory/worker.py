@@ -68,10 +68,17 @@ async def main():
         if prepare:
             from cognee.tasks.graph.gliner_demo.extractor import load_extractor
             from fastembed import TextEmbedding
+            from cognee.infrastructure.llm.tokenizer.HuggingFace import HuggingFaceTokenizer
             load_extractor()
             model = TextEmbedding("sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2", cache_dir=str(cache / "fastembed"))
             list(model.embed(["Local workspace memory 本地工作区记忆"]))
-            (cache / "ready.json").write_text(json.dumps({"cognee": "1.6.5", "embedding": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2", "extractor": "fastino/gliner2.5-base-v1"}), encoding="utf-8")
+            # Cognee loads its tokenizer from the original Hugging Face repo,
+            # separately from FastEmbed's quantized ONNX cache. Prepare both
+            # before marking readiness: offline workers cannot download it or
+            # rely on a TikToken fallback cached in a previous user's temp dir.
+            tokenizer = HuggingFaceTokenizer(os.environ["EMBEDDING_MODEL"])
+            tokenizer.count_tokens("Local workspace memory 本地工作区记忆")
+            (cache / "ready.json").write_text(json.dumps({"cognee": "1.6.5", "embedding": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2", "tokenizer": os.environ["EMBEDDING_MODEL"], "extractor": "fastino/gliner2.5-base-v1"}), encoding="utf-8")
             emit(0, result={"ready": True})
             return
     manifest_file = root / "current.json"
