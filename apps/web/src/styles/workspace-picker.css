@@ -10,17 +10,17 @@
 .directory-breadcrumbs button { border: 0; background: transparent; padding: 5px 7px; font-size: 12px; border-radius: 7px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .directory-breadcrumbs button:hover { background: var(--surface-hover); }
 .directory-breadcrumbs button[aria-current] { font-weight: 600; color: var(--text); }
-.directory-explorer { display: grid; grid-template-columns: 220px minmax(0,1fr); min-height: 290px; height: min(390px,46dvh); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
-.directory-locations { padding: 12px 7px; background: var(--surface-hover); overflow: auto; min-width: 0; }
+.directory-explorer { display: grid; grid-template-columns: 220px minmax(0,1fr); min-height: 290px; height: min(390px,46dvh); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; background: var(--composer); }
+.directory-locations { padding: 12px 7px; background: var(--surface-soft); overflow: auto; min-width: 0; }
 .directory-locations h3 { margin: 5px 9px 9px; font-size: 12px; color: var(--muted); font-weight: 500; }
 .directory-locations h3:not(:first-child) { margin-top: 20px; }
 .directory-recents button,.directory-tree-open { width: 100%; min-width: 0; justify-content: flex-start; background: transparent; border: 0; text-align: left; padding: 7px 9px; font-size: 12px; gap: 7px; }
 .directory-recents button > span,.directory-tree-open > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .directory-recents button > svg,.directory-tree-open > svg { flex-shrink: 0; }
-.directory-recents button:hover,.directory-tree-row:hover { background: var(--sidebar-selected); }
+.directory-recents button:hover,.directory-tree-row:hover { background: var(--surface-hover); }
 .directory-tree,.directory-tree ul { padding: 0; margin: 0; list-style: none; }
 .directory-tree-row { display: flex; align-items: center; border-radius: 7px; }
-.directory-tree-row.selected { background: var(--sidebar-selected); }
+.directory-tree-row.selected { background: var(--surface-hover); box-shadow: inset 2px 0 0 var(--blue); }
 .directory-tree-open { padding-left: 2px; flex: 1; }
 .directory-expand { flex: 0 0 24px; width: 24px; padding: 5px; min-height: 30px; border: 0; background: transparent; }
 .directory-tree-children { margin-left: 13px; }

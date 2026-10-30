@@ -54,7 +54,7 @@ test('refreshes reported input/output totals and fits settings in desktop and na
   await expect(usage.locator('dd')).toHaveText(['1,234','56','1,290']);
   await expect(usage).toContainText('最近一次：输入 1,234 · 输出 56 · 合计 1,290');
   const evidence=resolve('docs/evidence/2026-10-14/model-usage');await makeDirectory(evidence,{recursive:true});
-  for(const theme of ['light','graphite','ink']){
+  for(const theme of ['light','graphite','lamp']){
    await page.evaluate(value=>document.documentElement.dataset.appearance=value,theme);
    for(const width of [1600,320]){
     await page.setViewportSize({width,height:1000});

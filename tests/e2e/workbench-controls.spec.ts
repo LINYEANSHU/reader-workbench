@@ -57,7 +57,7 @@ test('explains controls on hover and keyboard focus across themes and viewport s
  ] as const){await control.hover();await expect(page.getByRole('tooltip')).toHaveText(tip);await page.mouse.move(0,0);}
  const layout=page.getByRole('button',{name:'布局设置',exact:true});await layout.focus();await expect(page.getByRole('tooltip')).toContainText('调整工作栏布局');
  await page.keyboard.press('Escape');await expect(page.getByRole('tooltip')).toHaveCount(0);
- for(const theme of ['light','graphite','ink'])for(const width of [1600,768,390]){
+ for(const theme of ['light','graphite','lamp'])for(const width of [1600,768,390]){
   await page.setViewportSize({width,height:1000});await selectControlValue(page.getByRole('combobox',{name:'界面外观'}),theme);
   await page.getByRole('button',{name:'布局设置',exact:true}).click();await selectControlValue(page.getByRole('combobox',{name:'布局预设',exact:true}),width<1000?'rows':'columns');await page.keyboard.press('Escape');
   if(width<1000&&await page.getByRole('complementary',{name:'工作区侧栏'}).isVisible())await page.getByRole('button',{name:'切换侧栏',exact:true}).click();

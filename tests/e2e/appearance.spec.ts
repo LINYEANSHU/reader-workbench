@@ -15,7 +15,7 @@ test('changes local appearance without changing documents, sessions or the chose
  const appearance=page.getByRole('combobox',{name:'界面外观'});
  await expect(appearance).toHaveCount(1);
  await expect(appearance).toHaveAttribute('data-value','light');
- for(const value of ['graphite','ink','light']){
+ for(const value of ['graphite','lamp','light']){
   await selectControlValue(appearance,value);
   await expect(page.locator('html')).toHaveAttribute('data-appearance',value);
   await expect(file.locator('.markdown-body')).toContainText('RI');
@@ -23,10 +23,10 @@ test('changes local appearance without changing documents, sessions or the chose
   await expect(page.getByRole('region',{name:'主对话',exact:true})).toHaveAttribute('data-session-id',main!);
   await expect(page.getByRole('region',{name:'临时对话',exact:true})).toHaveAttribute('data-session-id',temporary!);
  }
- await selectControlValue(appearance,'ink');
+ await selectControlValue(appearance,'lamp');
  await page.reload();
- await expect(appearance).toHaveAttribute('data-value','ink');
- await expect(page.locator('html')).toHaveAttribute('data-appearance','ink');
+ await expect(appearance).toHaveAttribute('data-value','lamp');
+ await expect(page.locator('html')).toHaveAttribute('data-appearance','lamp');
  await expect(file.locator('.markdown-body')).toContainText('RI');
  await expect(page.locator('.split-workspace')).toHaveAttribute('data-layout',layout!);
  await expect(page.getByRole('region',{name:'主对话',exact:true})).toHaveAttribute('data-session-id',main!);
@@ -55,7 +55,7 @@ test('captures the displayed document margin background in every appearance',asy
  await page.getByRole('button',{name:'reader.md',exact:true}).click();
  const file=page.getByRole('region',{name:'文件',exact:true});
  await expect(file.locator('.markdown-body')).toContainText('RI');
- for(const value of ['light','graphite','ink']){
+ for(const value of ['light','graphite','lamp']){
   await selectControlValue(page.getByRole('combobox',{name:'界面外观'}),value);
   const scroll=file.locator('.document-scroll');
   const background=await scroll.evaluate(node=>getComputedStyle(node).backgroundColor.match(/[\d.]+/g)!.slice(0,3).map(Number));

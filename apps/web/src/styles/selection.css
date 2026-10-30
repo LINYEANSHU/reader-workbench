@@ -1,12 +1,12 @@
-.selection-menu { position: fixed; z-index: 160; width: min(260px,calc(100vw - 12px)); max-height: calc(100dvh - 16px); overflow: auto; background: var(--surface); border: 1px solid var(--border-strong); padding: 6px; border-radius: 8px; display: flex; flex-direction: column; gap: 3px; }
-.selection-menu button { border: 0; background: transparent; justify-content: flex-start; padding: 10px; font-size: 13px; gap: 10px; }
+.selection-menu { position: fixed; z-index: 160; width: min(260px,calc(100vw - 12px)); max-height: calc(100dvh - 16px); overflow: auto; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--popup-shadow); padding: 4px; border-radius: var(--radius-lg); display: flex; flex-direction: column; gap: 2px; }
+.selection-menu button { border: 0; background: transparent; justify-content: flex-start; padding: 8px 10px; font-size: 13px; gap: 10px; border-radius: var(--radius-sm); }
 .selection-menu button:hover, .selection-menu button:focus-visible { background: var(--selection); }
 .selection-menu small { color: var(--muted); font-size: 12px; line-height: 1.7; padding: 6px 10px; }
-.selection-preview, .selection-quote { border: 1px solid var(--border-strong); border-radius: 6px; background: var(--selection); padding: 12px; margin: 0 0 16px; font-size: 13px; }
+.selection-preview, .selection-quote { border: 0; border-left: 3px solid var(--pane-accent, var(--blue)); border-radius: 0 var(--radius) var(--radius) 0; background: var(--selection); padding: 10px 12px; margin: 0 0 16px; font-size: 13px; }
 .composer .selection-preview { margin: 10px 10px 0; }
-.selection-preview-heading { display: flex; align-items: center; gap: 6px; color: var(--blue); font-size: 12px; font-weight: 600; margin-bottom: 8px; }
+.selection-preview-heading { display: flex; align-items: center; gap: 6px; color: var(--pane-accent, var(--blue)); font-size: 12px; font-weight: 600; margin-bottom: 8px; }
 .selection-preview-heading button { margin-left: auto; }
-.selection-preview blockquote, .selection-quote blockquote { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.8; max-height: 150px; overflow: auto; font-size: 13px; color: var(--text); }
+.selection-preview blockquote, .selection-quote blockquote { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.8; max-height: 150px; overflow: auto; font-family: var(--font-reading); font-size: 13.5px; font-weight: var(--reading-weight); color: var(--text); }
 .selection-location { color: var(--muted); font-size: 12px; }
 .source-highlight { position: absolute; pointer-events: none; background: #e8c04444; outline: 1px solid #c0952a99; z-index: 3; }
 .source-block-highlight { outline: 2px solid #ad8739; outline-offset: 4px; background: #e9db6b22; }

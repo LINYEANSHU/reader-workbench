@@ -34,7 +34,7 @@ test('keeps the effort popup within a shrinking viewport and follows the current
  await page.getByRole('button',{name:'切换侧栏'}).click();
  const main=page.getByRole('region',{name:'主对话',exact:true});
  const popup=page.getByRole('dialog',{name:'思考强度',exact:true});
- for(const theme of ['light','graphite','ink']){
+ for(const theme of ['light','graphite','lamp']){
   await page.setViewportSize({width:1000,height:600});
   await selectControlValue(page.getByRole('combobox',{name:'界面外观'}),theme);
   await main.getByRole('button',{name:'选择思考强度'}).click();

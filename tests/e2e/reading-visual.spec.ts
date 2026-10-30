@@ -17,7 +17,7 @@ test('captures the delivered reading controls and translation states in three th
  await explorer.getByRole('button',{name:'打开此工作区'}).click();await page.setViewportSize({width:1600,height:1000});
  await page.getByRole('button',{name:'reader.md',exact:true}).click();
  const file=page.getByRole('region',{name:'文件',exact:true});await expect(file.locator('.markdown-body')).toContainText('RI');
- for(const theme of ['light','graphite','ink']){
+ for(const theme of ['light','graphite','lamp']){
   await selectControlValue(page.getByRole('combobox',{name:'界面外观'}),theme);
   for(const width of [1600,390]){
    await page.setViewportSize({width,height:1000});
