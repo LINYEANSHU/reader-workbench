@@ -9,6 +9,9 @@ jobs:
     env:
       READER_TEST_SPEECH_ASSETS: ${{ github.workspace }}/.reader-runtime/sensevoice-small-int8
       READER_SPEECH_ASSET_DIR: ${{ github.workspace }}/.reader-runtime/sensevoice-small-int8
+      READER_TEST_LOCAL_TRANSLATION: '1'
+      READER_TRANSLATION_RUNTIME: ${{ github.workspace }}/.reader-runtime/translation
+      READER_TEST_COGNEE: ${{ github.workspace }}/.reader-runtime/ci-config
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
@@ -16,8 +19,13 @@ jobs:
           node-version: '24'
           cache: npm
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        id: memory-python
         with:
-          python-version: '3.13'
+          python-version: '3.11'
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        id: translation-python
+        with:
+          python-version: '3.12'
       - name: Chinese font on Windows
         shell: pwsh
         run: ./.github/scripts/install-noto-windows.ps1
@@ -39,9 +47,24 @@ jobs:
       - name: Native capture stability on Windows
         run: npx playwright test tests/e2e/capture.spec.ts --grep "actual getDisplayMedia" --repeat-each=10 --output=test-results/native-capture-repeat
       - run: node scripts/prepare-speech.mjs --cache .reader-runtime/sensevoice-small-int8
-      - run: npm test
+      - name: Prepare real offline translation runtime
+        shell: pwsh
+        run: |
+          & '${{ steps.translation-python.outputs.python-path }}' scripts/setup-local-translation.py --runtime "$env:READER_TRANSLATION_RUNTIME"
+      - name: Prepare real Cognee workspace memory
+        run: node scripts/setup-workspace-memory.mjs --python '${{ steps.memory-python.outputs.python-path }}' --config-dir "$env:READER_TEST_COGNEE" --runtime-dir .reader-runtime/cognee
+      - name: Full unit and integration tests without skips
+        run: |
+          npm test -- --reporter=default --reporter=json --outputFile=.reader-runtime/ci-unit-results.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node --input-type=module -e 'import {readFileSync} from "node:fs"; const r=JSON.parse(readFileSync(".reader-runtime/ci-unit-results.json","utf8")); if (!(r.numTotalTests>0 && r.numPassedTests===r.numTotalTests && r.numFailedTests===0 && r.numPendingTests===0 && r.numTodoTests===0)) throw new Error("Full Windows suite must pass with zero skipped or pending tests"); console.log(r.numPassedTests+" tests passed; zero skips");'
       - name: Browser tests on Windows
-        run: npm run test:e2e
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_FILE: .reader-runtime/ci-browser-results.json
+        run: |
+          npm run test:e2e -- --reporter=line,json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node --input-type=module -e 'import {readFileSync} from "node:fs"; const r=JSON.parse(readFileSync(".reader-runtime/ci-browser-results.json","utf8")); if (!(r.stats.expected>0 && r.stats.unexpected===0 && r.stats.skipped===0)) throw new Error("Full Windows browser suite must pass with zero skipped tests"); console.log(r.stats.expected+" browser tests passed; zero skips");'
       - name: Save failed browser diagnostics
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -52,6 +75,8 @@ jobs:
           retention-days: 7
           path: |
             test-results/
+            .reader-runtime/ci-unit-results.json
+            .reader-runtime/ci-browser-results.json
             .superpowers/sdd/2026-10-11-reader-workbench/native-source-window.png
             .superpowers/sdd/2026-10-11-reader-workbench/native-raw-frame.png
             .superpowers/sdd/2026-10-11-reader-workbench/native-capture-geometry.json
