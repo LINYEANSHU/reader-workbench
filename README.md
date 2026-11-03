@@ -4,17 +4,17 @@
 
 **把原文、思考与追问放在同一张桌面上。**
 
-面向个人学习与科研的 Windows 文档阅读工具。<br>
-读论文、看课件、核对公式与来源，再把理解整理成自己的阅读件。
+面向个人学习与科研的 Windows 文档阅读 Agent。<br>
+在自己的工作区读论文、看课件，用可回查的来源串起理解，再生成自己的阅读件。
 
 **简体中文 · [English →](README.en.md)**
 
-[![Windows CI](https://github.com/LINYEANSHU/reader-workbench/actions/workflows/ci.yml/badge.svg?branch=codex%2Fworkspace-memory-cognee)](https://github.com/LINYEANSHU/reader-workbench/actions/workflows/ci.yml?query=branch%3Acodex%2Fworkspace-memory-cognee)
+[![Windows CI](https://github.com/LINYEANSHU/reader-workbench/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/LINYEANSHU/reader-workbench/actions/workflows/ci.yml?query=branch%3Amain)
 [![Windows](https://img.shields.io/badge/Windows-x64-2563eb)](#快速开始)
 [![Node.js](https://img.shields.io/badge/Node.js-24%2B-417e38)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-64748b)](LICENSE)
 
-[快速开始](#快速开始) · [阅读方式](#阅读方式) · [翻译与记忆](#翻译与记忆) · [数据与隐私](#数据与隐私) · [文档](#文档)
+[快速开始](#快速开始) · [Agent 架构](#agent-架构) · [运行工作流](#运行工作流) · [翻译与记忆](#翻译与记忆) · [文档](#文档)
 
 </div>
 
@@ -24,9 +24,7 @@
 
 ## 阅读方式
 
-| 阅读原文 | 持续思考 | 随手追问 |
-| --- | --- | --- |
-| 打开 PDF、Markdown、Word、PowerPoint 和图片，核对页码、公式与图表。 | 在主对话中梳理概念，复用已有页记忆，生成阅读笔记。 | 选中文字或截图提问，继承已完成的主记忆，保留独立历史。 |
+**原文 → 主对话 → 独立追问。** 左侧核对 PDF、Markdown、Word、PowerPoint 和图片；主对话积累理解与页记忆；选字或截图开启局部追问，继承已完成的主记忆并保留独立历史。
 
 - **先读需要的页。** 首次打开 PDF/Office 时选择全部、前几页或 `2-3,10-15`，后续补读缺失页面。
 - **沿着来源回原文。** 搜索术语、公式和图表，点击引用回看；扫描件与无文字层图片不自动 OCR。
@@ -40,7 +38,7 @@
 准备 **Windows、Node.js 24+、Git**，在 PowerShell 中运行：
 
 ```powershell
-git clone --branch codex/workspace-memory-cognee https://github.com/LINYEANSHU/reader-workbench.git
+git clone --branch main https://github.com/LINYEANSHU/reader-workbench.git
 cd reader-workbench
 npm ci
 npm run build
@@ -63,6 +61,43 @@ Office 原版页面预览需要另行安装 **LibreOffice**。安装后运行 `n
 已发布的 [v0.4.0](https://github.com/LINYEANSHU/reader-workbench/releases/tag/v0.4.0) 是历史版本，不包含后续的双语界面、工作区记忆及本次修复。要使用当前功能，请按上面的源码步骤安装。应用包版本仍为 `0.4.0`，SDK 协议为 `1.2.0`；本次不创建新发布标签。
 
 安装已有包可执行 `npm install --global .\reader-workbench-0.4.0.tgz`，随后运行 `reader-workbench web`。
+
+</details>
+
+## Agent 架构
+
+**界面负责阅读，Agent 负责组织上下文与工具，文件和会话按工作区保存。** 下面是现有 Agent 架构图的 README 精简版；图中的可选组件只在配置并启用后参与运行。
+
+![Agent 架构：React 阅读工作台通过 Fastify 本地 API 连接运行时；运行时组织文档与会话上下文、调用配置的模型，并在权限检查后执行工具。页记忆、SQLite 会话、可选 Cognee 索引和生成文件存放在本地。](assets/readme/agent-architecture.zh-CN.svg)
+
+| 层次 | 职责与源码入口 |
+| --- | --- |
+| 阅读入口 | [React 工作台](apps/web/src)呈现原文、主对话和追问；[Fastify API](apps/server/src)通过 HTTP / SSE 接收请求、推送进度与回答。另提供 [CLI](apps/cli/src) 和 [MCP](docs/mcp.md) 入口。 |
+| Agent 核心 | [RunService](packages/core/src/runs/service.ts)管理排队与运行；[ContextBuilder](packages/core/src/sessions/context.ts)组织文档、选区、历史和记忆；[toolLoop](packages/core/src/runs/tool-loop.ts)协调模型与工具。 |
+| 记忆与存储 | [SQLite](packages/core/src/storage/workspace-store.ts)保存会话和运行状态；[文档记忆](packages/core/src/documents/memory-store.ts)按文档版本缓存；可选 [Cognee / Python](packages/core/src/knowledge)提供工作区关联检索。 |
+| 工具与扩展 | [工具执行器](packages/core/src/tools/executor.ts)校验权限和参数，再调用文档读取、文件生成或已信任的[插件 / 外部 MCP](docs/plugins.md)；[SDK](packages/sdk/src)与[共享契约](packages/contracts/src)定义扩展接口。 |
+
+模型通过 **OpenAI-compatible API** 接入你配置的服务；文字、视觉和工具调用能力取决于该模型。[数据与隐私](#数据与隐私)说明了哪些内容会离开本机。
+
+## 运行工作流
+
+从一个问题到可继续复用的阅读历史，中间有一次完整的上下文构建和受控工具循环。
+
+![Agent 工作流：问题去重并按会话排队，读取已提交历史，准备来源与记忆并固定读取权限，调用模型；有工具请求时校验执行并回传结果，成功后仅向当前会话提交完整轮次。失败或取消保留运行记录，不提交未完成轮次。](assets/readme/agent-workflow.zh-CN.svg)
+
+1. **接收与排队。** 问题进入主会话或临时分支，同一会话按顺序处理，重复请求去重。
+2. **准备阅读上下文。** 读取已提交历史，按预算组织原文、来源、页记忆与摘要；工作区检索仅在启用且可用的非选区问题中参与，随后固定本次读取的历史版本。
+3. **生成与调用工具。** 模型流式回答；需要工具时先校验权限与参数，再把工具结果、来源和文件事件接回运行。工具循环最多 8 轮。
+4. **提交并继续阅读。** 完整回答成功后，只提交到当前会话并更新界面；失败或取消保留运行记录，但未完成轮次不进入已提交的会话历史。
+
+**主对话与追问保持独立。** 临时追问读取已完成的主历史与自己的历史，答案不回写主对话。临时分支默认只读；生成文件需勾选当次的「本次允许生成文件」，默认输出到 `outputs/<session>/`。
+
+<details>
+<summary><strong>实现索引：从图中的路径进入源码</strong></summary>
+
+[请求与排队](packages/core/src/runs/service.ts) → [上下文与来源范围](packages/core/src/sessions/context.ts) → [模型与工具循环](packages/core/src/runs/tool-loop.ts) → [工具授权](packages/core/src/tools/executor.ts) → [会话提交](packages/core/src/sessions/repository.ts)。
+
+两张图沿用 Agent 图集的结构，并针对 GitHub 阅读宽度重新排版；中英文版本使用相同节点与关系。
 
 </details>
 
@@ -116,7 +151,7 @@ node scripts/setup-workspace-memory.mjs
 
 ## 开发与验证
 
-Windows CI 对同一提交执行依赖安全审计、样例完整性检查、类型检查、构建、原生截图重复测试、单元/集成测试及浏览器端测试。查看[当前分支的实际运行结果](https://github.com/LINYEANSHU/reader-workbench/actions/workflows/ci.yml?query=branch%3Acodex%2Fworkspace-memory-cognee)。
+Windows CI 对同一提交执行依赖安全审计、样例完整性检查、类型检查、构建、原生截图重复测试、单元/集成测试及浏览器端测试。查看[当前分支的实际运行结果](https://github.com/LINYEANSHU/reader-workbench/actions/workflows/ci.yml?query=branch%3Amain)。
 
 ```powershell
 npm audit --audit-level=low --registry=https://registry.npmjs.org

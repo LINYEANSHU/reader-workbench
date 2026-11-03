@@ -24,6 +24,7 @@
   "files": [
     "npm-shrinkwrap.json",
     "README.en.md",
+    "assets/readme",
     "docs/evidence/2026-10-22/bilingual/english-workbench.png",
     "docs/evidence/2026-10-22/bilingual/validation.md",
     "dist",

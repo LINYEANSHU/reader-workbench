@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1000" viewBox="0 0 1200 1000" role="img" aria-labelledby="title desc">
+<title id="title">一个问题，如何成为阅读历史</title>
+<desc id="desc">按会话排队，构建带来源的上下文并固定历史读取版本，调用模型，校验工具并把结果交回模型，成功后仅提交当前会话的完整轮次。失败或取消不提交未完成轮次。</desc>
+<defs><marker id="muted-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 1 1 L 9 5 L 1 9" fill="none" stroke="#586474" stroke-width="1.7"/></marker><marker id="blue-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 1 1 L 9 5 L 1 9" fill="none" stroke="#3e50b4" stroke-width="1.7"/></marker><marker id="green-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 1 1 L 9 5 L 1 9" fill="none" stroke="#076f64" stroke-width="1.7"/></marker></defs>
+<rect x="0" y="0" width="1200" height="1000" rx="16" fill="#f5f3ed"/>
+<text x="48" y="55" font-family="'Cascadia Code', Consolas, monospace" font-size="20" font-weight="400" fill="#586474" text-anchor="start">READER WORKBENCH  /  02</text>
+<text x="48" y="120" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="48" font-weight="650" fill="#243340" text-anchor="start">一个问题，如何成为阅读历史</text>
+<text x="48" y="166" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="24" font-weight="400" fill="#586474" text-anchor="start">先准备来源与权限，再生成回答；工具结果回到同一轮推理。</text>
+<g id="question-to-history">
+<rect x="48" y="228" width="656" height="132" rx="12" fill="#fffdf9" stroke="#bbc4ca" stroke-width="1.5"/>
+<text x="72" y="270" font-family="'Cascadia Code', Consolas, monospace" font-size="24" font-weight="600" fill="#3e50b4" text-anchor="start">01</text>
+<text x="130" y="271" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="30" font-weight="600" fill="#243340" text-anchor="start">接收与排队</text>
+<text x="130" y="307" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="22" font-weight="400" fill="#586474" text-anchor="start">主会话 / 临时分支</text>
+<text x="130" y="338" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="22" font-weight="400" fill="#586474" text-anchor="start">请求去重 · 同一会话顺序执行</text>
+<path d="M 376 360 V 392" fill="none" stroke="#3e50b4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#blue-arrow)"/>
+<rect x="48" y="400" width="656" height="132" rx="12" fill="#fffdf9" stroke="#bbc4ca" stroke-width="1.5"/>
+<text x="72" y="442" font-family="'Cascadia Code', Consolas, monospace" font-size="24" font-weight="600" fill="#3e50b4" text-anchor="start">02</text>
+<text x="130" y="443" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="30" font-weight="600" fill="#243340" text-anchor="start">构建阅读上下文</text>
+<text x="130" y="479" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="22" font-weight="400" fill="#586474" text-anchor="start">已提交历史 + 来源 + 页记忆</text>
+<text x="130" y="510" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="22" font-weight="400" fill="#586474" text-anchor="start">按预算摘要 · 固定历史读取版本</text>
+<path d="M 376 532 V 564" fill="none" stroke="#3e50b4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#blue-arrow)"/>
+<rect x="48" y="572" width="656" height="132" rx="12" fill="#243340"/>
+<text x="72" y="614" font-family="'Cascadia Code', Consolas, monospace" font-size="24" font-weight="600" fill="#c8d6df" text-anchor="start">03</text>
+<text x="130" y="615" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="30" font-weight="600" fill="#fffdf9" text-anchor="start">模型流式生成</text>
+<text x="130" y="651" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="22" font-weight="400" fill="#c8d6df" text-anchor="start">上下文与可用工具 → 模型</text>
+<text x="130" y="682" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="22" font-weight="400" fill="#c8d6df" text-anchor="start">响应完整且无需工具时继续提交</text>
+<path d="M 376 704 V 736" fill="none" stroke="#3e50b4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#blue-arrow)"/>
+<rect x="48" y="744" width="656" height="132" rx="12" fill="#fffdf9" stroke="#bbc4ca" stroke-width="1.5"/>
+<text x="72" y="786" font-family="'Cascadia Code', Consolas, monospace" font-size="24" font-weight="600" fill="#3e50b4" text-anchor="start">04</text>
+<text x="130" y="787" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="30" font-weight="600" fill="#243340" text-anchor="start">提交完整轮次</text>
+<text x="130" y="823" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="22" font-weight="400" fill="#586474" text-anchor="start">只写当前会话 · 历史版本递增</text>
+<text x="130" y="854" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="22" font-weight="400" fill="#586474" text-anchor="start">完成事件 → 界面更新 → 继续阅读</text>
+</g>
+<g id="session-boundary">
+<text x="816" y="265" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="27" font-weight="600" fill="#243340" text-anchor="start">独立的追问分支</text>
+<path d="M 816 284 H 1152" fill="none" stroke="#586474" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="816" y="323" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="22" font-weight="400" fill="#586474" text-anchor="start">读取已完成的主历史</text>
+<text x="816" y="359" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="22" font-weight="400" fill="#586474" text-anchor="start">保留自己的追问链</text>
+<text x="816" y="395" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="22" font-weight="400" fill="#586474" text-anchor="start">答案不回写主对话</text>
+</g>
+<g id="tool-loop">
+<rect x="816" y="535" width="336" height="210" rx="12" fill="#e6ebe8"/>
+<text x="840" y="581" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="28" font-weight="600" fill="#076f64" text-anchor="start">按需执行工具</text>
+<text x="840" y="620" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="21" font-weight="400" fill="#243340" text-anchor="start">权限 + 参数校验</text>
+<text x="840" y="652" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="21" font-weight="400" fill="#243340" text-anchor="start">执行并记录结果</text>
+<text x="840" y="684" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="21" font-weight="400" fill="#243340" text-anchor="start">来源 / 文件事件</text>
+<text x="840" y="716" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="21" font-weight="400" fill="#243340" text-anchor="start">结果交回模型 · 最多 8 轮</text>
+<path d="M 704 600 H 808" fill="none" stroke="#076f64" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#green-arrow)"/>
+<path d="M 816 680 H 712" fill="none" stroke="#076f64" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#green-arrow)"/>
+<text x="760" y="581" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="20" font-weight="400" fill="#076f64" text-anchor="middle">调用</text>
+<text x="760" y="713" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="20" font-weight="400" fill="#076f64" text-anchor="middle">结果</text>
+</g>
+<g id="failure-boundary">
+<path d="M 48 917 H 1152" fill="none" stroke="#586474" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="48" y="956" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="24" font-weight="400" fill="#586474" text-anchor="start">失败或取消：保留运行记录，不提交未完成轮次。</text>
+</g>
+</svg>

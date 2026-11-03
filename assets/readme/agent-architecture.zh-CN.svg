@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="870" viewBox="0 0 1200 870" role="img" aria-labelledby="title desc">
+<title id="title">Agent 架构</title>
+<desc id="desc">阅读工作台经本地 API 连接 Agent。运行时组织阅读上下文、调用配置的模型并校验工具权限；会话、页记忆、可选检索索引和生成文件保存在工作区。</desc>
+<defs><marker id="muted-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 1 1 L 9 5 L 1 9" fill="none" stroke="#586474" stroke-width="1.7"/></marker><marker id="blue-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 1 1 L 9 5 L 1 9" fill="none" stroke="#3e50b4" stroke-width="1.7"/></marker><marker id="green-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 1 1 L 9 5 L 1 9" fill="none" stroke="#076f64" stroke-width="1.7"/></marker></defs>
+<rect x="0" y="0" width="1200" height="870" rx="16" fill="#f5f3ed"/>
+<text x="48" y="55" font-family="'Cascadia Code', Consolas, monospace" font-size="20" font-weight="400" fill="#586474" text-anchor="start">READER WORKBENCH  /  01</text>
+<text x="48" y="120" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="52" font-weight="650" fill="#243340" text-anchor="start">Agent 架构</text>
+<text x="48" y="164" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="26" font-weight="400" fill="#586474" text-anchor="start">一个工作区，连接原文、记忆与工具。</text>
+<g id="request-path">
+<rect x="48" y="226" width="258" height="104" rx="12" fill="#fffdf9" stroke="#bbc4ca" stroke-width="1.5"/>
+<text x="70" y="269" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="30" font-weight="600" fill="#243340" text-anchor="start">阅读工作台</text>
+<text x="70" y="305" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="20" font-weight="400" fill="#586474" text-anchor="start">React · HTTP / SSE</text>
+<path d="M 306 278 H 326" fill="none" stroke="#3e50b4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#blue-arrow)"/>
+<rect x="330" y="226" width="258" height="104" rx="12" fill="#fffdf9" stroke="#bbc4ca" stroke-width="1.5"/>
+<text x="352" y="269" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="30" font-weight="600" fill="#243340" text-anchor="start">本地 API</text>
+<text x="352" y="305" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="20" font-weight="400" fill="#586474" text-anchor="start">Fastify</text>
+<path d="M 588 278 H 608" fill="none" stroke="#3e50b4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#blue-arrow)"/>
+<rect x="612" y="226" width="258" height="104" rx="12" fill="#243340"/>
+<text x="634" y="269" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="30" font-weight="600" fill="#fffdf9" text-anchor="start">Agent 运行时</text>
+<text x="634" y="305" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="20" font-weight="400" fill="#c8d6df" text-anchor="start">RunService · toolLoop</text>
+<path d="M 870 278 H 890" fill="none" stroke="#3e50b4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#blue-arrow)"/>
+<rect x="894" y="226" width="258" height="104" rx="12" fill="#fffdf9" stroke="#bbc4ca" stroke-width="1.5"/>
+<text x="916" y="269" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="30" font-weight="600" fill="#243340" text-anchor="start">配置的模型</text>
+<text x="916" y="305" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="20" font-weight="400" fill="#586474" text-anchor="start">OpenAI-compatible API</text>
+</g>
+<path d="M 741 330 V 368 H 312 V 418" fill="none" stroke="#3e50b4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#blue-arrow)"/>
+<path d="M 741 368 H 888 V 418" fill="none" stroke="#076f64" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#green-arrow)"/>
+<text x="334" y="397" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="22" font-weight="400" fill="#3e50b4" text-anchor="start">组织上下文</text>
+<text x="910" y="397" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="22" font-weight="400" fill="#076f64" text-anchor="start">校验后执行</text>
+<g id="reading-context">
+<rect x="48" y="418" width="528" height="230" rx="12" fill="#fffdf9" stroke="#bbc4ca" stroke-width="1.5"/>
+<text x="76" y="467" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="32" font-weight="600" fill="#243340" text-anchor="start">阅读上下文</text>
+<text x="76" y="502" font-family="'Cascadia Code', Consolas, monospace" font-size="20" font-weight="400" fill="#3e50b4" text-anchor="start">ContextBuilder</text>
+<text x="76" y="548" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="23" font-weight="400" fill="#243340" text-anchor="start">原文与页记忆 · 按文档版本缓存</text>
+<text x="76" y="582" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="23" font-weight="400" fill="#243340" text-anchor="start">已提交历史 · 按预算生成摘要</text>
+<text x="76" y="616" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="23" font-weight="400" fill="#243340" text-anchor="start">Cognee / Python · 可选关联检索</text>
+</g>
+<g id="tool-execution">
+<rect x="624" y="418" width="528" height="230" rx="12" fill="#fffdf9" stroke="#bbc4ca" stroke-width="1.5"/>
+<text x="652" y="467" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="32" font-weight="600" fill="#243340" text-anchor="start">工具与扩展</text>
+<text x="652" y="502" font-family="'Cascadia Code', Consolas, monospace" font-size="20" font-weight="400" fill="#076f64" text-anchor="start">ToolExecutor · ToolRegistry</text>
+<text x="652" y="548" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="23" font-weight="400" fill="#243340" text-anchor="start">文档读取 · 页码与来源范围校验</text>
+<text x="652" y="582" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="23" font-weight="400" fill="#243340" text-anchor="start">阅读件生成 · 仅在写入获准时</text>
+<text x="652" y="616" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="23" font-weight="400" fill="#243340" text-anchor="start">插件 / 外部 MCP · 启用且受信任</text>
+</g>
+<path d="M 312 648 V 710" fill="none" stroke="#3e50b4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#blue-arrow)"/>
+<path d="M 888 648 V 710" fill="none" stroke="#076f64" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#green-arrow)"/>
+<text x="600" y="690" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="22" font-weight="400" fill="#586474" text-anchor="middle">按工作区保存</text>
+<g id="workspace-storage">
+<rect x="48" y="714" width="1104" height="110" rx="12" fill="#e6ebe8"/>
+<text x="76" y="754" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="24" font-weight="600" fill="#243340" text-anchor="start">本地状态与记忆</text>
+<text x="76" y="793" font-family="'Cascadia Code', Consolas, monospace" font-size="22" font-weight="400" fill="#586474" text-anchor="start">.reader-workbench/ · SQLite · cache</text>
+<path d="M 626 738 V 800" fill="none" stroke="#586474" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="660" y="754" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="24" font-weight="600" fill="#243340" text-anchor="start">生成的阅读件</text>
+<text x="660" y="793" font-family="'Cascadia Code', Consolas, monospace" font-size="22" font-weight="400" fill="#586474" text-anchor="start">outputs/&lt;session&gt;/</text>
+</g>
+</svg>

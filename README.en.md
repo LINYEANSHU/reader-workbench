@@ -4,17 +4,17 @@
 
 **Keep the source, your thinking and your questions side by side.**
 
-A Windows document reading tool for personal study and research.<br>
-Read papers and course materials, check formulas and sources, and turn understanding into reading notes.
+A Windows document reading agent for personal study and research.<br>
+Read papers in your own workspace, trace ideas back to their sources, and turn understanding into reading notes.
 
 **[← 简体中文](README.md) · English**
 
-[![Windows CI](https://github.com/LINYEANSHU/reader-workbench/actions/workflows/ci.yml/badge.svg?branch=codex%2Fworkspace-memory-cognee)](https://github.com/LINYEANSHU/reader-workbench/actions/workflows/ci.yml?query=branch%3Acodex%2Fworkspace-memory-cognee)
+[![Windows CI](https://github.com/LINYEANSHU/reader-workbench/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/LINYEANSHU/reader-workbench/actions/workflows/ci.yml?query=branch%3Amain)
 [![Windows](https://img.shields.io/badge/Windows-x64-2563eb)](#quick-start)
 [![Node.js](https://img.shields.io/badge/Node.js-24%2B-417e38)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-64748b)](LICENSE)
 
-[Quick start](#quick-start) · [Reading workflow](#reading-workflow) · [Translation and memory](#translation-and-memory) · [Data and privacy](#data-and-privacy) · [Documentation](#documentation)
+[Quick start](#quick-start) · [Agent architecture](#agent-architecture) · [Agent workflow](#agent-workflow) · [Translation and memory](#translation-and-memory) · [Documentation](#documentation)
 
 </div>
 
@@ -22,11 +22,9 @@ Read papers and course materials, check formulas and sources, and turn understan
 
 <div align="center"><sub>Real application · synthetic sample document · English interface. This demonstrates the reading workflow, not model answer quality; current interface details may differ.</sub></div>
 
-## Reading workflow
+## The reading experience
 
-| Read the source | Develop your thinking | Ask a quick follow-up |
-| --- | --- | --- |
-| Open PDF, Markdown, Word, PowerPoint and images; check pages, formulas and figures. | Build an analysis in main chat, reuse page memory and create reading notes. | Select text or capture a region, inherit completed main memory and keep a separate history. |
+**Source → main chat → independent follow-up.** Read PDF, Markdown, Word, PowerPoint and images alongside the main conversation. Build understanding with reusable page memory, then select text or capture a region to ask a focused question that inherits completed main memory and keeps its own history.
 
 - **Start with the pages you need.** Choose all pages, the first few or ranges such as `2-3,10-15` when opening PDF/Office files; read missing pages later.
 - **Follow evidence back to the source.** Search terms, formulas and figures and click citations. Scans and images without a text layer are not automatically OCRed.
@@ -40,7 +38,7 @@ Read papers and course materials, check formulas and sources, and turn understan
 Install **Windows, Node.js 24+ and Git**, then run in PowerShell:
 
 ```powershell
-git clone --branch codex/workspace-memory-cognee https://github.com/LINYEANSHU/reader-workbench.git
+git clone --branch main https://github.com/LINYEANSHU/reader-workbench.git
 cd reader-workbench
 npm ci
 npm run build
@@ -63,6 +61,43 @@ Original-page Office previews need a separate **LibreOffice** installation. Run 
 The published [v0.4.0 release](https://github.com/LINYEANSHU/reader-workbench/releases/tag/v0.4.0) is historical. It does not include the later bilingual interface, workspace memory or these fixes. Use the source instructions above for current features. The application package version remains `0.4.0`, and the SDK protocol remains `1.2.0`; this update creates no new release tag.
 
 To use an existing package, run `npm install --global .\reader-workbench-0.4.0.tgz`, then `reader-workbench web`.
+
+</details>
+
+## Agent architecture
+
+**The interface supports reading; the agent assembles context and runs tools; each workspace keeps its own files and sessions.** This is a condensed edition of the existing Agent architecture diagram. Optional components participate only when configured and enabled.
+
+![Agent architecture: the React workbench connects to the runtime through a local Fastify API. The runtime assembles document and session context, calls the configured model, and executes tools after permission checks. Page memory, SQLite sessions, optional Cognee indexes and generated files are stored locally.](assets/readme/agent-architecture.en.svg)
+
+| Layer | Responsibility and source |
+| --- | --- |
+| Reading interface | The [React workbench](apps/web/src) shows the source, main chat and follow-ups. The [Fastify API](apps/server/src) accepts requests and streams progress and answers over HTTP / SSE. [CLI](apps/cli/src) and [MCP](docs/mcp.md) entry points are also available. |
+| Agent core | [RunService](packages/core/src/runs/service.ts) manages queues and runs; [ContextBuilder](packages/core/src/sessions/context.ts) assembles documents, selections, history and memory; [toolLoop](packages/core/src/runs/tool-loop.ts) coordinates the model and tools. |
+| Memory and storage | [SQLite](packages/core/src/storage/workspace-store.ts) stores sessions and run state; [document memory](packages/core/src/documents/memory-store.ts) is cached by document version; optional [Cognee / Python](packages/core/src/knowledge) retrieves related workspace sources. |
+| Tools and extensions | The [tool executor](packages/core/src/tools/executor.ts) validates permissions and arguments before reading documents, generating files or invoking trusted [plugins / external MCP](docs/plugins.md). The [SDK](packages/sdk/src) and [shared contracts](packages/contracts/src) define extension interfaces. |
+
+An **OpenAI-compatible API** connects to the service you configure. Text, vision and tool support depend on the model. [Data and privacy](#data-and-privacy) explains what may leave your computer.
+
+## Agent workflow
+
+Each question passes through context preparation and a controlled tool loop before it becomes reusable reading history.
+
+![Agent workflow: deduplicate and queue the question by session, read committed history, prepare sources and memory, pin read permissions, and call the model. Validate and execute any tool calls, then feed their results back. Commit a complete turn only to the current session on success. Failed or cancelled runs retain their records without committing an unfinished turn.](assets/readme/agent-workflow.en.svg)
+
+1. **Accept and queue.** Send the question to a main session or temporary branch. Requests within a session run in order; duplicate requests are deduplicated.
+2. **Prepare reading context.** Read committed history and assemble source content, citations, page memory and summaries within the budget. Workspace retrieval participates only in non-selection questions when enabled and available. Pin the history revisions used for this run.
+3. **Generate and use tools.** Stream the model response. Validate tool permissions and arguments before execution, then feed results, sources and file events back into the run. The tool loop allows up to 8 rounds.
+4. **Commit and continue.** On success, commit the complete turn only to the current session and refresh the interface. Failed or cancelled runs retain their records, but unfinished turns do not enter committed conversation history.
+
+**Main chat and follow-ups stay independent.** A temporary branch reads completed main history plus its own history; its answers never write back into main chat. Temporary branches are read-only by default. Enable “Allow file generation for this request” to create files; the default destination is `outputs/<session>/`.
+
+<details>
+<summary><strong>Implementation index: follow the diagram into the source</strong></summary>
+
+[Requests and queueing](packages/core/src/runs/service.ts) → [Context and source scope](packages/core/src/sessions/context.ts) → [Model and tool loop](packages/core/src/runs/tool-loop.ts) → [Tool authorization](packages/core/src/tools/executor.ts) → [Session commit](packages/core/src/sessions/repository.ts).
+
+Both diagrams preserve the structure of the Agent diagram set and adapt it to GitHub's reading width. The Chinese and English editions share the same nodes and relationships.
 
 </details>
 
@@ -116,7 +151,7 @@ Execution grants for directory plugins and external MCP commands are bound to th
 
 ## Development and verification
 
-Windows CI runs the dependency security audit, fixture integrity checks, type checking, build, repeated native screen-capture checks, unit/integration tests and browser tests for the same commit. See [actual runs for this branch](https://github.com/LINYEANSHU/reader-workbench/actions/workflows/ci.yml?query=branch%3Acodex%2Fworkspace-memory-cognee).
+Windows CI runs the dependency security audit, fixture integrity checks, type checking, build, repeated native screen-capture checks, unit/integration tests and browser tests for the same commit. See [actual runs for this branch](https://github.com/LINYEANSHU/reader-workbench/actions/workflows/ci.yml?query=branch%3Amain).
 
 ```powershell
 npm audit --audit-level=low --registry=https://registry.npmjs.org
