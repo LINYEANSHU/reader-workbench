@@ -47,8 +47,8 @@ it.skipIf(!process.env.READER_TEST_COGNEE)('loads the prepared embedding tokeniz
  expect(execFileSync(settings.pythonPath,['-I','-c',script],{env,encoding:'utf8',windowsHide:true,timeout:60000})).toContain('Prepared tokenizer works offline');
 },65000);
 it.skipIf(!process.env.READER_TEST_COGNEE)('builds a real local Cognee graph and recalls cross-file source evidence in Chinese',async()=>{
- const root=await mkdtemp(join(tmpdir(),'reader real cognee 中文 '));cleanup.push(()=>rm(root,{recursive:true,force:true}));
- const config=join(root,'config'),workspaceRoot=join(root,'资料 中文');await mkdir(join(config,'agent'),{recursive:true});await mkdir(workspaceRoot);
+ const root=await mkdtemp(join(tmpdir(),'reader real cognee 中文 📚 '));cleanup.push(()=>rm(root,{recursive:true,force:true}));
+ const config=join(root,'config'),workspaceRoot=join(root,'资料 中文 📚');await mkdir(join(config,'agent'),{recursive:true});await mkdir(workspaceRoot);
  const settings=await readFile(join(resolve(process.env.READER_TEST_COGNEE!),'agent','workspace-memory.json'),'utf8');await writeFile(join(config,'agent','workspace-memory.json'),settings);
  await writeFile(join(workspaceRoot,'circuits.md'),'Capacitors store electrical energy. The impedance of a capacitor in alternating current is Z_C = 1/(j*omega*C). 电容的阻抗随角频率变化。');
  await writeFile(join(workspaceRoot,'signals.md'),'The Fourier transform represents a signal in terms of frequency. Frequency-domain circuit analysis uses the impedance of a capacitor: Z_C = 1/(j*omega*C). 傅里叶变换和电容阻抗都可以用于频域分析。');

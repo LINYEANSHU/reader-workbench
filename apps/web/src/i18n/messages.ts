@@ -135,6 +135,7 @@ const diagnostics:Record<string,string>={
  "源版本缓存校验失败":"Source version cache verification failed.",
  "记忆组件正在退出":"The memory runtime is shutting down.",
  "尚未准备本地记忆组件":"The local memory runtime is not ready yet.",
+ "无法为本地记忆创建受保护的临时目录，请检查 Windows 临时目录权限":"Cannot create a private temporary directory for local memory. Check Windows temporary-folder permissions.",
  "记忆检索来源无效":"The memory search source is invalid.",
  "无法连接本地记忆组件":"Cannot connect to the local memory runtime.",
  "记忆组件返回了过大的响应":"The memory runtime returned an oversized response.",

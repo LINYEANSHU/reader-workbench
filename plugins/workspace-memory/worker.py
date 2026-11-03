@@ -35,7 +35,12 @@ os.environ.update({
 })
 if not prepare:
     os.environ.update({"HF_HUB_OFFLINE": "1", "TRANSFORMERS_OFFLINE": "1"})
-os.chdir(root)
+native_root = Path(os.environ.get("READER_COGNEE_NATIVE_ROOT", root))
+if not native_root.is_absolute() or native_root.resolve() != root:
+    raise ValueError("Native working directory must resolve to the workspace cache")
+# Do not resolve this spelling before chdir: the host's private ASCII junction
+# keeps Ladybug's native current-directory conversion independent of Windows ACP.
+os.chdir(native_root)
 protocol = sys.stdout
 
 
@@ -51,8 +56,8 @@ async def main():
             raise RuntimeError("Cognee version mismatch")
         if os.name == "nt":
             # Ladybug's native file open does not handle Unicode absolute
-            # paths. Its subprocess inherits this worker's fixed directory;
-            # use an ASCII relative database path inside that SAME directory.
+            # paths. Its subprocess inherits the host's ASCII working-directory
+            # alias; use an ASCII relative database path inside that directory.
             # This also works when Windows 8.3 aliases retain Chinese letters.
             from cognee.infrastructure.databases.graph.ladybug.adapter import LadybugAdapter
             open_database = LadybugAdapter.create_subprocess

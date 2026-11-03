@@ -7,12 +7,13 @@ import type { WorkspaceId } from '../../../contracts/src/ids.js';
 import type { WorkspaceMemoryEngine, WorkspaceMemoryItem } from '../../../contracts/src/workspace-memory.js';
 import { ReaderError } from '../../../contracts/src/errors.js';
 import { JsonWorker } from './process.js';
+import { createNativeRoot } from './native-root.js';
 interface CogneeSettings {
     pythonPath: string;
     modelCache: string;
 }
 export class CogneeEngine implements WorkspaceMemoryEngine {
-    private workers = new Map<WorkspaceId, JsonWorker>();
+    private workers = new Map<WorkspaceId, {worker:JsonWorker;close:()=>Promise<void>}>();
     private closed = false;
     private queue: Promise<unknown> = Promise.resolve();
     constructor(private workspaces: WorkspaceService) { }
@@ -35,7 +36,7 @@ export class CogneeEngine implements WorkspaceMemoryEngine {
             throw new ReaderError('SERVER_CLOSING', '记忆组件正在退出');
         const old = this.workers.get(id);
         if (old)
-            return old;
+            return old.worker;
         for (const value of this.workers.values())
             await value.close();
         this.workers.clear();
@@ -52,9 +53,17 @@ export class CogneeEngine implements WorkspaceMemoryEngine {
             if (process.env[key])
                 env[key] = process.env[key];
         env.READER_COGNEE_MODEL_CACHE = settings.modelCache;
-        const value = new JsonWorker(settings.pythonPath, ['-I', '-u', worker, root], env, root);
-        this.workers.set(id, value);
-        return value;
+        const nativeRoot=await createNativeRoot(root);
+        try{
+            signal.throwIfAborted();
+            if(this.closed)throw new ReaderError('SERVER_CLOSING','记忆组件正在退出');
+            env.READER_COGNEE_NATIVE_ROOT=nativeRoot.path;
+            const value = new JsonWorker(settings.pythonPath, ['-I', '-u', worker, root], env, nativeRoot.path);
+            let closing:Promise<void>|undefined;
+            const close=()=>closing??=(async()=>{try{await value.close();}finally{await nativeRoot.close();}})();
+            this.workers.set(id, {worker:value,close});
+            return value;
+        }catch(error){await nativeRoot.close();throw error;}
     }
     private execute<T>(operation: () => Promise<T>, signal: AbortSignal) {
         const task = this.queue.catch(() => { }).then(() => {
