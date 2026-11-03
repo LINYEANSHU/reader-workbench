@@ -1,4 +1,4 @@
-import {afterEach,expect,it} from 'vitest';
+import {afterEach,expect,it,vi} from 'vitest';
 import {mkdtemp,mkdir,writeFile,readFile,rm} from 'node:fs/promises';
 import {join,resolve} from 'node:path';import {tmpdir} from 'node:os';
 import {execFileSync} from 'node:child_process';
@@ -6,7 +6,26 @@ import {WorkspaceService} from '../../packages/core/src/workspaces/service.js';
 import {DocumentService} from '../../packages/core/src/documents/service.js';
 import {WorkspaceMemoryService} from '../../packages/core/src/knowledge/service.js';
 import {CogneeEngine} from '../../packages/core/src/knowledge/cognee.js';
-const cleanup:Array<()=>Promise<unknown>>=[];afterEach(async()=>{for(const fn of cleanup.splice(0).reverse())await fn();});
+// Only this synthetic-data test captures worker diagnostics. Production still
+// discards stderr because it may contain a user's source documents.
+const workerDiagnostics=vi.hoisted(()=>({stderr:''}));
+vi.mock('node:child_process',async importOriginal=>{
+ const actual=await importOriginal<typeof import('node:child_process')>();
+ return {...actual,spawn:((...args:Parameters<typeof actual.spawn>)=>{
+  const child=actual.spawn(...args);
+  if(Array.isArray(args[1])&&args[1].some(value=>value.replaceAll('\\','/').endsWith('/plugins/workspace-memory/worker.py'))){
+   child.stderr?.on('data',data=>{workerDiagnostics.stderr=(workerDiagnostics.stderr+data.toString()).slice(-65536);});
+  }
+  return child;
+ }) as typeof actual.spawn};
+});
+const cleanup:Array<()=>Promise<unknown>>=[];afterEach(async({task})=>{
+ try{for(const fn of cleanup.splice(0).reverse())await fn();}
+ finally{
+  if(task.result?.state==='fail'&&workerDiagnostics.stderr)console.error('Synthetic Cognee worker diagnostics:\n'+workerDiagnostics.stderr);
+  workerDiagnostics.stderr='';
+ }
+});
 it.skipIf(!process.env.READER_TEST_COGNEE)('loads the prepared embedding tokenizer with all network access blocked',async()=>{
  const settings=JSON.parse(await readFile(join(resolve(process.env.READER_TEST_COGNEE!),'agent','workspace-memory.json'),'utf8')) as {pythonPath:string;modelCache:string};
  const directory=await mkdtemp(join(tmpdir(),'reader offline tokenizer '));cleanup.push(()=>rm(directory,{recursive:true,force:true}));
