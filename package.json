@@ -120,6 +120,9 @@
   },
   "overrides": {
     "katex": "$katex",
+    "@fastify/static": {
+      "glob": "14.0.2"
+    },
     "pptxgenjs": {
       "image-size": "2.0.4"
     }

@@ -58,7 +58,7 @@ Original-page Office previews need a separate **LibreOffice** installation. Run 
 <details>
 <summary><strong>Already have the v0.4.0 package?</strong></summary>
 
-The published [v0.4.0 release](https://github.com/LINYEANSHU/reader-workbench/releases/tag/v0.4.0) is historical. It does not include the later bilingual interface, workspace memory or these fixes. Use the source instructions above for current features. The application package version remains `0.4.0`, and the SDK protocol remains `1.2.0`; this update creates no new release tag.
+The source still uses application package version `0.4.0` and SDK protocol `1.2.0`. A package with that version number alone does not establish which later changes it contains. For current features, follow the `main` branch source instructions above. Public release packages are listed on the [Releases page](https://github.com/LINYEANSHU/reader-workbench/releases).
 
 To use an existing package, run `npm install --global .\reader-workbench-0.4.0.tgz`, then `reader-workbench web`.
 

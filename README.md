@@ -58,7 +58,7 @@ Office 原版页面预览需要另行安装 **LibreOffice**。安装后运行 `n
 <details>
 <summary><strong>已有 v0.4.0 发行包？</strong></summary>
 
-已发布的 [v0.4.0](https://github.com/LINYEANSHU/reader-workbench/releases/tag/v0.4.0) 是历史版本，不包含后续的双语界面、工作区记忆及本次修复。要使用当前功能，请按上面的源码步骤安装。应用包版本仍为 `0.4.0`，SDK 协议为 `1.2.0`；本次不创建新发布标签。
+源码的应用包版本仍为 `0.4.0`，SDK 协议为 `1.2.0`。单凭同名安装包无法确认它包含哪些后续改动；要使用当前功能，请按上面的 `main` 分支源码步骤安装。公开发行包以 [Releases 页面](https://github.com/LINYEANSHU/reader-workbench/releases)为准。
 
 安装已有包可执行 `npm install --global .\reader-workbench-0.4.0.tgz`，随后运行 `reader-workbench web`。
 

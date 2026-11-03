@@ -25,6 +25,8 @@ import {dirname, isAbsolute, join, resolve} from 'node:path';
 const MANIFEST = 'package.json';
 const BACKUP = join('.reader-runtime', 'package-json-before-pack.json');
 const BUNDLES = [
+  // Preserve the patched glob/minimatch tree in file: tarball installs too.
+  '@fastify/static',
   '@types/debug',
   '@types/hast',
   '@types/katex',
