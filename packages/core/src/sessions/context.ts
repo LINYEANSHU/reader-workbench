@@ -23,6 +23,8 @@ import type {WorkspaceMemoryService} from '../knowledge/service.js';
 function excerpt(text:string,maximum:number):string{let count=0,result='';for(const character of text){count+=estimateTokens(character);if(count>maximum)break;result+=character;}return result;}
 function freeze<T>(value:T):T{if(value&&typeof value==='object'){for(const child of Object.values(value))freeze(child);Object.freeze(value);}return value;}
 const key=(ref:DocumentRef)=>ref.workspaceId+'/'+ref.documentId+'/'+ref.version;
+/** Upper bound (estimated tokens, i.e. UTF-8 bytes) for document page memory attached to one question. */
+export const MEMORY_CONTEXT_BYTES=192*1024;
 export class ContextBuilder{
  readonly agentSettings:AgentSettingsService;
  private workspaceMemory?:WorkspaceMemoryService;
@@ -89,7 +91,9 @@ export class ContextBuilder{
   let documentBudget=Math.max(0,Math.min(Math.floor(inputLimit/4),inputLimit-messageCost(fixed)-256));
   let images=request.attachmentIds.length,imageBytes=0;
   const execution=this.currentExecution.getStore(),scope=this.currentScope.getStore();
-  const memoryBudget=Math.max(0,Math.min(Math.floor(inputLimit/3),inputLimit-messageCost(fixed)-256));
+  // Page memory beyond this is reached through read_document_memory instead of being resent with every question.
+  const memoryBudget=Math.max(0,Math.min(Math.floor(inputLimit/3),MEMORY_CONTEXT_BYTES,inputLimit-messageCost(fixed)-256));
+  const stableMessages=new Set<ModelMessage>();
   const memories=this.documentMemory&&execution&&scope?await this.documentMemory.prepare({...request,documents},scope,execution.lease,signal,execution.progress,memoryBudget):[];
   const documentReadScopes:Array<{document:DocumentRef;pages:number[]}>=[];
   for(const ref of documents){
@@ -99,8 +103,10 @@ export class ContextBuilder{
    if(!memory){const descriptor=await this.documents.waitReady(ref,signal);pages=this.documentMemory?(await this.documentMemory.store.readingPlan(descriptor)).pages:(await this.documents.parsed(ref)).pages.map(page=>page.page);}
    documentReadScopes.push({document:ref,pages});
    if(memory){
-    const selected=memory.selection;
-    fixed.splice(fixed.length-1,0,{role:'user',content:selected.text});
+    const selected=memory.selection,message:ModelMessage={role:'user',content:selected.text};
+    // All completed pages means the provider returned its full memory, which is identical for every question.
+    if(selected.pages.length===memory.reference.completedPages.length)stableMessages.add(message);
+    fixed.splice(fixed.length-1,0,message);
     sourceRanges.push(...selected.pages.map(page=>({...ref,location:{kind:'page' as const,page}})));
     continue;
    }
@@ -197,7 +203,9 @@ export class ContextBuilder{
     historyMessages=[summaryMessage(memory),...structuredClone(kept.flatMap(turn=>turn.messages))];
    }finally{lease.release();}
   }
-  const messages=[fixed[0]!,...historyMessages,...fixed.slice(1)];
+  // Context identical across questions goes before the history, so system prompt, full document memory and earlier turns
+  // form a stable prefix that providers can serve from their prompt cache; per-question context stays after the history.
+  const messages=[fixed[0]!,...fixed.filter(message=>stableMessages.has(message)),...historyMessages,...fixed.slice(1).filter(message=>!stableMessages.has(message))];
   let envelope:ContextEnvelope={workspaceId:request.workspaceId,sessionId:request.sessionId,mainRevision,ownRevision:own.session.revision,memory,documents,documentReadScopes,documentMemories:memories.map(item=>item.reference),messages,sourceRanges:uniqueAnchors(sourceRanges),budget:{limit:capability.contextWindow,inputTokens:messageCost(messages)+toolTokens+64,reservedOutputTokens,estimated:true,reservedToolTokens:toolTokens},summaryCoverage};
   if(envelope.budget.inputTokens+reservedOutputTokens>capability.contextWindow)throw new ReaderError('CONTEXT_LIMIT','上下文摘要后仍超限，请增加容量或减少选区');
   for(const id of this.capabilities.list(request.workspaceId,'context')){
