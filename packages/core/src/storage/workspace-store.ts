@@ -103,7 +103,9 @@ export class SqliteWorkspaceStore implements WorkspaceStore {
   };
   readonly documents:DocumentStorePort={
     get:async ref=>{this.checkWorkspace(ref.workspaceId);const saved=this.getRecord<StoredDocument>('documents',ref.documentId+':'+ref.version);return saved?.record.workspaceId===this.workspaceId?saved:null;},
-    save:async document=>{this.checkWorkspace(document.record.workspaceId);this.putRecord('documents',document.record.documentId+':'+document.record.version,document);},
+    meta:async ref=>{this.checkWorkspace(ref.workspaceId);const row=this.database.prepare("SELECT json_remove(data,'$.parsed') AS data FROM records WHERE domain='documents' AND id=?").get(ref.documentId+':'+ref.version) as {data:string}|undefined;const saved=row?JSON.parse(row.data) as StoredDocument:null;return saved?.record.workspaceId===this.workspaceId?saved:null;},
+    generation:ref=>this.documentGenerations.get(ref.documentId+':'+ref.version)??0,
+    save:async document=>{this.checkWorkspace(document.record.workspaceId);const id=document.record.documentId+':'+document.record.version;this.putRecord('documents',id,document);this.documentGenerations.set(id,(this.documentGenerations.get(id)??0)+1);},
     list:async()=>this.listRecords<StoredDocument>('documents'),
     index:async(ref,blocks)=>this.indexDocument(ref,blocks),
     search:async(ref,query,limit)=>this.searchDocument(ref,query,limit)
@@ -111,6 +113,7 @@ export class SqliteWorkspaceStore implements WorkspaceStore {
   // Context messages (history, page images) can be megabytes. They live in run_contexts and are written
   // once per messages array, so streaming saves only rewrite the small run row.
   private storedRunMessages=new WeakMap<object,RunId>();
+  private documentGenerations=new Map<string,number>();
   private runRow(record:RunRecord):string{return JSON.stringify(record.context?.messages?{...record,context:{...record.context,messages:undefined}}:record);}
   private hydrateRun(data:string):RunRecord{
     const record=JSON.parse(data) as RunRecord;

@@ -31,10 +31,15 @@ export class DocumentService {
   }});
  }
  private key(ref:DocumentRef){return ref.documentId+':'+ref.version;}
- private async saved(ref:DocumentRef):Promise<SavedDocument>{
-  const saved=await(await this.workspaces.storeFor(ref.workspaceId)).documents.get(ref);
+ private async saved(ref:DocumentRef,withParsed=true):Promise<SavedDocument>{
+  const store=(await this.workspaces.storeFor(ref.workspaceId)).documents,saved=withParsed?await store.get(ref):await store.meta(ref);
   if(!saved||saved.record.workspaceId!==ref.workspaceId)throw new ReaderError('DOCUMENT_UNAVAILABLE','此工作区中不存在该文档版本',404);return saved;
  }
+ // A ready version's parsed content never changes, but pre-reading and tools read it page by page; each read used to
+ // parse the whole stored document again. The most recently used ones are kept (treat the returned value as read-only).
+ // An entry is used only while its store instance has not saved that document since it was read.
+ private parsedCache=new Map<string,{store:object;generation:number;parsed:ParsedDocument}>();private static readonly PARSED_CACHE_SIZE=8;
+ private cacheKey(ref:DocumentRef){return ref.workspaceId+'/'+this.key(ref);}
  async open(workspaceId:WorkspaceId,relativePath:string,signal:AbortSignal):Promise<DocumentRecord>{
   const input=await snapshot(this.workspaces,workspaceId,relativePath,signal);const store=await this.workspaces.storeFor(workspaceId);
   const previous=await store.documents.get(input),old=previous?.record.workspaceId===workspaceId?previous:null;
@@ -50,6 +55,7 @@ export class DocumentService {
   publicRecord.viewer=this.registry.get(workspaceId,'viewer',viewerIds[0]!).describe(publicRecord);
   const saved:SavedDocument={record:publicRecord,path:input.path,cacheDir:input.cacheDir};
   publicRecord.processingRunId=await this.jobs.enqueue(workspaceId,input.documentId,async jobSignal=>{
+   this.parsedCache.delete(this.cacheKey(input));
    const office=['.doc','.docx','.ppt','.pptx'].includes(input.extension);
    publicRecord.parseState=office?'converting':'indexing';await store.documents.save(saved);
    const ids=this.registry.list(workspaceId,'document').sort((a,b)=>(a==='core.binary'?2:a.startsWith('core.')?1:0)-(b==='core.binary'?2:b.startsWith('core.')?1:0));
@@ -88,11 +94,12 @@ export class DocumentService {
   await writeFile(path,bytes,{flag:'wx',signal});return this.open(workspaceId,relative,signal);
  }
  async get(ref:DocumentRef):Promise<DocumentRecord>{
-  let saved=await this.saved(ref);
-  if(saved.record.parseState==='ready'&&saved.record.mime==='text/markdown'&&saved.resourceVersion!==1){await this.resourceRepairs.enqueue(ref.workspaceId+':'+this.key(ref),async()=>{const current=await this.saved(ref);if(current.resourceVersion===1)return;const previous=current.resources??{},repaired=await this.snapshotResources(ref.workspaceId,current.record.relativePath,await safeCacheDirectory(this.workspaces,ref.workspaceId,['cache',ref.documentId,ref.version]),current.parsed?.pages[0]?.text??'',new AbortController().signal,previous);if(Object.keys(repaired).length>Object.keys(previous).length)current.record.warnings.push('旧版未快照的图片已补充为修复时的本地版本；原有图片快照已保留。');current.resources=repaired;current.resourceVersion=1;await(await this.workspaces.storeFor(ref.workspaceId)).documents.save(current);});saved=await this.saved(ref);}
+  let saved=await this.saved(ref,false);
+  if(saved.record.parseState==='ready'&&saved.record.mime==='text/markdown'&&saved.resourceVersion!==1){await this.resourceRepairs.enqueue(ref.workspaceId+':'+this.key(ref),async()=>{const current=await this.saved(ref);if(current.resourceVersion===1)return;const previous=current.resources??{},repaired=await this.snapshotResources(ref.workspaceId,current.record.relativePath,await safeCacheDirectory(this.workspaces,ref.workspaceId,['cache',ref.documentId,ref.version]),current.parsed?.pages[0]?.text??'',new AbortController().signal,previous);if(Object.keys(repaired).length>Object.keys(previous).length)current.record.warnings.push('旧版未快照的图片已补充为修复时的本地版本；原有图片快照已保留。');current.resources=repaired;current.resourceVersion=1;await(await this.workspaces.storeFor(ref.workspaceId)).documents.save(current);});saved=await this.saved(ref,false);}
   if(['queued','converting','indexing'].includes(saved.record.parseState)){
    const job=await this.jobs.get(ref.workspaceId,saved.record.processingRunId);
-   if(job.status==='failed'||job.status==='cancelled'){saved.record.parseState=job.status;await(await this.workspaces.storeFor(ref.workspaceId)).documents.save(saved);}
+   // Saving rewrites the whole stored document, so it starts from the full record, parsed content included.
+   if(job.status==='failed'||job.status==='cancelled'){const full=await this.saved(ref);full.record.parseState=job.status;await(await this.workspaces.storeFor(ref.workspaceId)).documents.save(full);saved=full;}
   }
   return saved.record;
  }
@@ -103,17 +110,23 @@ export class DocumentService {
    await delay(20,undefined,{signal});
   }
  }
- async parsed(ref:DocumentRef):Promise<ParsedDocument>{const saved=await this.saved(ref);if(!saved.parsed||saved.record.parseState!=='ready')throw new ReaderError('DOCUMENT_NOT_READY','文档仍在处理或处理失败',409);return saved.parsed;}
+ async parsed(ref:DocumentRef):Promise<ParsedDocument>{
+  const store=await this.workspaces.storeFor(ref.workspaceId),key=this.cacheKey(ref),cached=this.parsedCache.get(key);
+  if(cached&&cached.store===store&&cached.generation===store.documents.generation(ref)){this.parsedCache.delete(key);this.parsedCache.set(key,cached);return cached.parsed;}
+  const generation=store.documents.generation(ref),saved=await this.saved(ref);if(!saved.parsed||saved.record.parseState!=='ready')throw new ReaderError('DOCUMENT_NOT_READY','文档仍在处理或处理失败',409);
+  this.parsedCache.set(key,{store,generation,parsed:saved.parsed});for(const old of this.parsedCache.keys()){if(this.parsedCache.size<=DocumentService.PARSED_CACHE_SIZE)break;this.parsedCache.delete(old);}
+  return saved.parsed;
+ }
  async readPage(ref:DocumentRef,page:number,signal:AbortSignal=new AbortController().signal):Promise<DocumentPage>{return this.pageRenders.enqueue(ref.workspaceId+'/'+this.key(ref),async()=>{
   signal.throwIfAborted();
-  const saved=await this.saved(ref),parsed=saved.parsed;if(!parsed||saved.record.parseState!=='ready')throw new ReaderError('DOCUMENT_NOT_READY','文档仍在处理或处理失败',409);
-  const result=parsed.pages.find(item=>item.page===page);
-  if(!result)throw new ReaderError('PAGE_UNAVAILABLE','页码不存在',404);
+  const parsed=await this.parsed(ref),stored=parsed.pages.find(item=>item.page===page);
+  if(!stored)throw new ReaderError('PAGE_UNAVAILABLE','页码不存在',404);
+  const {imagePath,...result}=stored;
   // Stored paths are untrusted state: verify them against this document version before any file I/O,
   // and derive the render cache from the workspace instead of the saved cacheDir.
-  if(result.imagePath){const image=await this.authorizedFile(ref,result.imagePath).catch(error=>{if((error as NodeJS.ErrnoException).code==='ENOENT'&&parsed.pdfPath)return undefined;throw error;});if(image)return {...result,imagePath:image};delete result.imagePath;}
-  if(parsed.pdfPath){const source=await this.authorizedFile(ref,parsed.pdfPath),cacheDir=await safeCacheDirectory(this.workspaces,ref.workspaceId,['cache',ref.documentId,ref.version]);result.imagePath=await renderPdfPage(source,page,cacheDir,signal);signal.throwIfAborted();}
+  if(imagePath){const image=await this.authorizedFile(ref,imagePath).catch(error=>{if((error as NodeJS.ErrnoException).code==='ENOENT'&&parsed.pdfPath)return undefined;throw error;});if(image)return {...result,imagePath:image};}
   // The rendered file itself marks the page as rendered; rewriting the whole parsed document per page made a full read O(pages²).
+  if(parsed.pdfPath){const source=await this.authorizedFile(ref,parsed.pdfPath),cacheDir=await safeCacheDirectory(this.workspaces,ref.workspaceId,['cache',ref.documentId,ref.version]),rendered=await renderPdfPage(source,page,cacheDir,signal);signal.throwIfAborted();return {...result,imagePath:rendered};}
   return result;
  });}
  async readBlock(ref:DocumentRef,id:string):Promise<DocumentBlock>{const block=(await this.parsed(ref)).blocks.find(item=>item.id===id);if(!block)throw new ReaderError('BLOCK_UNAVAILABLE','文档块不存在',404);return block;}

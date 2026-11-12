@@ -10,6 +10,10 @@ import type {AttachmentId} from './ids.js';
 import type {ArtifactId} from './ids.js';
 export interface DocumentStorePort {
   get(ref:DocumentRef):Promise<StoredDocument|null>;
+  /** The stored document without its parsed content, for frequent status reads. */
+  meta(ref:DocumentRef):Promise<StoredDocument|null>;
+  /** Counts saves of this document version through this store instance, so readers can tell when a cached copy is stale. */
+  generation(ref:DocumentRef):number;
   save(document:StoredDocument):Promise<void>;
   list():Promise<StoredDocument[]>;
   index(ref:DocumentRef,blocks:DocumentBlock[]):Promise<void>;
