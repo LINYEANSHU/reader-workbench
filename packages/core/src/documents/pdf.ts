@@ -1,4 +1,4 @@
-import {readFile,writeFile} from 'node:fs/promises';
+import {readFile,writeFile,access,rename,stat} from 'node:fs/promises';
 import {join,dirname} from 'node:path';
 import {createRequire} from 'node:module';
 import {pathToFileURL} from 'node:url';
@@ -61,18 +61,43 @@ export async function parsePdf(input:VersionedFile,signal:AbortSignal):Promise<P
     if(!text)result.warnings.push('第 '+page+' 页无文本层，可能为扫描页；没有执行 OCR。');documentPage.cleanup();
   }}finally{await release();}return result;
 }
+type LoadedPdf=Awaited<ReturnType<typeof loadPdf>>;
+/**
+ * Keeps recently rendered PDFs open, so rendering consecutive pages parses the file once instead of once per page.
+ * Entries are keyed by path, size and modification time (a converted Office preview can be regenerated in place),
+ * at most `capacity` stay open, and an unused one closes after `idleMs`.
+ */
+export class PdfDocumentCache{
+  private entries=new Map<string,{loading:Promise<LoadedPdf>;users:number;timer?:ReturnType<typeof setTimeout>}>();
+  constructor(private load:(path:string)=>Promise<LoadedPdf>,private capacity=2,private idleMs=30_000){}
+  async use<T>(path:string,task:(pdf:LoadedPdf['pdf'])=>Promise<T>):Promise<T>{
+    const info=await stat(path),key=path+'|'+info.size+'|'+info.mtimeMs;let entry=this.entries.get(key);
+    if(entry){this.entries.delete(key);this.entries.set(key,entry);}
+    else{const created:{loading:Promise<LoadedPdf>;users:number;timer?:ReturnType<typeof setTimeout>}={loading:this.load(path),users:0};entry=created;this.entries.set(key,created);created.loading.catch(()=>{if(this.entries.get(key)===created)this.entries.delete(key);});this.evict();}
+    const current=entry;clearTimeout(current.timer);current.users++;
+    try{return await task((await current.loading).pdf);}
+    finally{current.users--;if(!current.users&&this.entries.get(key)===current){current.timer=setTimeout(()=>this.close(key),this.idleMs);current.timer.unref?.();}}
+  }
+  private evict(){for(const [key,entry] of [...this.entries]){if(this.entries.size<=this.capacity)break;if(!entry.users)this.close(key);}}
+  private close(key:string){const entry=this.entries.get(key);if(!entry)return;this.entries.delete(key);clearTimeout(entry.timer);void entry.loading.then(loaded=>loaded.release()).catch(()=>{});}
+  /** Closes idle documents now; one still rendering closes on its idle timer. */
+  closeAll(){for(const [key,entry] of [...this.entries])if(!entry.users)this.close(key);}
+}
+const renderCache=new PdfDocumentCache(path=>loadPdf(path,new AbortController().signal));
+export function closePdfRenderCache(){renderCache.closeAll();}
 export async function renderPdfPage(path:string,page:number,cacheDir:string,signal:AbortSignal):Promise<string>{
-  const destination=join(cacheDir,'page-'+page+'.png');try{await readFile(destination);return destination;}catch{}
-  const {pdf,release}=await loadPdf(path,signal);
-  try{
+  // The cached image is the record of a rendered page; it is written under a temporary name and renamed into place.
+  const destination=join(cacheDir,'page-'+page+'.png');try{await access(destination);return destination;}catch{}
+  return renderCache.use(path,async pdf=>{
+    signal.throwIfAborted();
     if(!Number.isInteger(page)||page<1||page>pdf.numPages)throw new ReaderError('PAGE_UNAVAILABLE','页码无效',404);
     const documentPage=await pdf.getPage(page);const base=documentPage.getViewport({scale:1});
     const scale=Math.min(1.5,4096/Math.max(base.width,base.height));const viewport=documentPage.getViewport({scale});
     const canvas=createCanvas(Math.ceil(viewport.width),Math.ceil(viewport.height));
     const rendering=documentPage.render({canvas:canvas as unknown as HTMLCanvasElement,viewport});
     const abort=()=>rendering.cancel();signal.addEventListener('abort',abort,{once:true});
-    try{await rendering.promise;signal.throwIfAborted();await writeFile(destination,canvas.toBuffer('image/png'));}
-    finally{signal.removeEventListener('abort',abort);}return destination;
-  }finally{await release();}
+    try{await rendering.promise;signal.throwIfAborted();const temporary=destination+'.'+process.pid+'-'+Date.now()+'.tmp';await writeFile(temporary,canvas.toBuffer('image/png'));await rename(temporary,destination);}
+    finally{signal.removeEventListener('abort',abort);documentPage.cleanup();}return destination;
+  });
 }
 export const pdfAdapter:DocumentAdapter={supports:mime=>mime==='application/pdf',parse:parsePdf};

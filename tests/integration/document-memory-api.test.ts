@@ -1,4 +1,4 @@
-import {afterEach,expect,it} from 'vitest';import {mkdtemp,mkdir,writeFile,rm} from 'node:fs/promises';import {join} from 'node:path';import {tmpdir} from 'node:os';import {PDFDocument} from 'pdf-lib';import {startServer} from '../../apps/server/src/app.js';
+import {afterEach,expect,it} from 'vitest';import {mkdtemp,mkdir,writeFile,rm,readdir} from 'node:fs/promises';import {join} from 'node:path';import {tmpdir} from 'node:os';import {PDFDocument} from 'pdf-lib';import {startServer} from '../../apps/server/src/app.js';
 const cleanup:Array<()=>Promise<any>>=[];afterEach(async()=>{for(const close of cleanup.splice(0).reverse())await close();});
 it('automatically prepares every local image, owns memory routes, rebuilds locally and preserves disabled state',async()=>{
  const dir=await mkdtemp(join(tmpdir(),'visual-api-')),root=join(dir,'workspace');await mkdir(root);const pdf=await PDFDocument.create();for(let page=1;page<=7;page++)pdf.addPage([200,200]).drawText('Page '+page);await writeFile(join(root,'seven.pdf'),await pdf.save());
@@ -6,7 +6,9 @@ it('automatically prepares every local image, owns memory routes, rebuilds local
  expect(host.plugins.list(workspace.id).find(item=>item.manifest.id==='visual-document-memory')?.enabled).toBe(true);
  let calls=0;host.capabilities.register(workspace.id,'model','vision-test',{identity:'vision-test',capabilities:{vision:true,tools:false,contextWindow:100000,maxOutputTokens:12000},async *generate(){calls++;yield{kind:'done'};}});
  const document=await host.documents.open(workspace.id,'seven.pdf',new AbortController().signal);await host.documents.waitReady(document,new AbortController().signal);await host.documentMemory.prepareLocal(document,new AbortController().signal);
- expect((await host.documents.parsed(document)).pages.every(page=>page.imagePath)).toBe(true);expect(calls).toBe(0);
+ // Rendered pages are recorded by their cached image files, not by rewriting the parsed document.
+ const cache=join(await host.workspaces.internalDirectory(workspace.id),'cache',document.documentId,document.version);
+ expect((await readdir(cache)).filter(name=>/^page-\d+\.png$/.test(name)).sort()).toEqual([1,2,3,4,5,6,7].map(page=>'page-'+page+'.png').sort());expect(calls).toBe(0);
  const url='/api/v1/workspaces/'+workspace.id+'/documents/'+document.documentId+'/'+document.version+'/memory',headers={authorization:'Bearer '+host.auth.token,host:new URL(host.url).host};
  const status=await host.app.inject({method:'GET',url:url+'?providerId=vision-test',headers});expect(status.statusCode).toBe(200);expect(status.json()).toMatchObject({status:'not-started',pageCount:7,generation:0});
  const cacheKey=host.documentMemory.store.key(document,'visual-document-memory','1','vision-test');await writeFile(join(await host.workspaces.internalDirectory(workspace.id),'document-memory',cacheKey,'generation-0.json'),'{bad json');

@@ -11,7 +11,7 @@ import {ReaderError} from '../../../contracts/src/errors.js';
 import {snapshot,safeCacheDirectory,mimeFor} from './versions.js';
 import {DocumentJobService} from './jobs.js';
 import {DocumentIndex} from './index.js';
-import {markdownAdapter} from './markdown.js';import {textAdapter} from './text.js';import {pdfAdapter,renderPdfPage} from './pdf.js';
+import {markdownAdapter} from './markdown.js';import {textAdapter} from './text.js';import {pdfAdapter,renderPdfPage,closePdfRenderCache} from './pdf.js';
 import {officeAdapter} from './office.js';import {imageAdapter} from './image.js';import {binaryAdapter} from './binary.js';
 import {isWithin} from '../workspaces/path-guard.js';
 import {markdownResources} from './markdown-resources.js';import {resourceUri} from '../../../contracts/src/resource-uri.js';import {KeyedQueue} from '../runs/queue.js';
@@ -106,12 +106,14 @@ export class DocumentService {
  async parsed(ref:DocumentRef):Promise<ParsedDocument>{const saved=await this.saved(ref);if(!saved.parsed||saved.record.parseState!=='ready')throw new ReaderError('DOCUMENT_NOT_READY','文档仍在处理或处理失败',409);return saved.parsed;}
  async readPage(ref:DocumentRef,page:number,signal:AbortSignal=new AbortController().signal):Promise<DocumentPage>{return this.pageRenders.enqueue(ref.workspaceId+'/'+this.key(ref),async()=>{
   signal.throwIfAborted();
-  const saved=await this.saved(ref),parsed=await this.parsed(ref);const result=parsed.pages.find(item=>item.page===page);
+  const saved=await this.saved(ref),parsed=saved.parsed;if(!parsed||saved.record.parseState!=='ready')throw new ReaderError('DOCUMENT_NOT_READY','文档仍在处理或处理失败',409);
+  const result=parsed.pages.find(item=>item.page===page);
   if(!result)throw new ReaderError('PAGE_UNAVAILABLE','页码不存在',404);
   // Stored paths are untrusted state: verify them against this document version before any file I/O,
   // and derive the render cache from the workspace instead of the saved cacheDir.
   if(result.imagePath){const image=await this.authorizedFile(ref,result.imagePath).catch(error=>{if((error as NodeJS.ErrnoException).code==='ENOENT'&&parsed.pdfPath)return undefined;throw error;});if(image)return {...result,imagePath:image};delete result.imagePath;}
-  if(parsed.pdfPath){const source=await this.authorizedFile(ref,parsed.pdfPath),cacheDir=await safeCacheDirectory(this.workspaces,ref.workspaceId,['cache',ref.documentId,ref.version]);result.imagePath=await renderPdfPage(source,page,cacheDir,signal);signal.throwIfAborted();saved.parsed=parsed;await(await this.workspaces.storeFor(ref.workspaceId)).documents.save(saved);}
+  if(parsed.pdfPath){const source=await this.authorizedFile(ref,parsed.pdfPath),cacheDir=await safeCacheDirectory(this.workspaces,ref.workspaceId,['cache',ref.documentId,ref.version]);result.imagePath=await renderPdfPage(source,page,cacheDir,signal);signal.throwIfAborted();}
+  // The rendered file itself marks the page as rendered; rewriting the whole parsed document per page made a full read O(pages²).
   return result;
  });}
  async readBlock(ref:DocumentRef,id:string):Promise<DocumentBlock>{const block=(await this.parsed(ref)).blocks.find(item=>item.id===id);if(!block)throw new ReaderError('BLOCK_UNAVAILABLE','文档块不存在',404);return block;}
@@ -130,5 +132,5 @@ export class DocumentService {
   return {path:await this.authorizedFile(ref,path),mime:preview&&saved.parsed?.pdfPath?'application/pdf':saved.record.mime};
  }
  async resource(ref:DocumentRef,name:string){await this.get(ref);const resource=(await this.saved(ref)).resources?.[resourceUri(name)];if(!resource)throw new ReaderError('RESOURCE_UNAVAILABLE','引用资源不存在或未授权',404);return {...resource,path:await this.authorizedFile(ref,resource.path)};}
- async close(){await this.jobs.close();}
+ async close(){await this.jobs.close();closePdfRenderCache();}
 }
