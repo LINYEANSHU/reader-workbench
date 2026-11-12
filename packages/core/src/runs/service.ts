@@ -13,6 +13,7 @@ import type {DocumentMemoryConsumer} from '../documents/memory-consumer.js';
 import {readFile} from 'node:fs/promises';
 import {validateImageRequest,DEFAULT_IMAGE_LIMITS} from '../models/image-budget.js';
 import {modelUsageScope} from '../models/usage-scope.js';
+import {withoutReasoning} from '../sessions/memory.js';
 const PARTIAL_SAVE_INTERVAL_MS=250;
 interface Dependencies{workspaces:WorkspaceService;repository:SessionRepository;context:ContextBuilder;tools:ToolRegistry;documents:DocumentService;capabilities:CapabilityRegistry;artifacts?:ArtifactService;documentMemory?:DocumentMemoryConsumer}
 export class RunService{
@@ -65,7 +66,7 @@ export class RunService{
    });signal.throwIfAborted();
    for(const anchor of envelope.sourceRanges)await this.records.emit(record,'citation',anchor);
    const content=record.request.question+(record.request.selection?'\n选区：'+record.request.selection.text+'\n来源：'+JSON.stringify(record.request.selection.anchors):'');
-   signal.throwIfAborted();await this.dependencies.repository.completeOwnTurn(scope,{id:randomUUID(),runId:record.id,question:record.request.question,answer:result.answer,messages:[{role:'user',content},...result.ownMessages],sourceAnchors:uniqueAnchors([...envelope.sourceRanges,...result.anchors]),attachmentIds:record.request.attachmentIds,...(record.request.selection?{selection:structuredClone(record.request.selection)}:{})},signal);
+   signal.throwIfAborted();await this.dependencies.repository.completeOwnTurn(scope,{id:randomUUID(),runId:record.id,question:record.request.question,answer:result.answer,messages:[{role:'user',content},...result.ownMessages.map(withoutReasoning)],sourceAnchors:uniqueAnchors([...envelope.sourceRanges,...result.anchors]),attachmentIds:record.request.attachmentIds,...(record.request.selection?{selection:structuredClone(record.request.selection)}:{})},signal);
    record.result=result.answer;record.status='completed';
    });
   }catch(error){record.status=signal.aborted?'cancelled':'failed';record.error=signal.aborted?new ReaderError('CANCELLED','本次回答已取消，部分输出未加入会话记忆').public():publicError(error);await this.records.emit(record,'error',record.error);}
