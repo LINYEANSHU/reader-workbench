@@ -10,7 +10,8 @@ import {estimateTokens,messageTokens} from '../models/tokens.js';import {ModelMe
 import {validateImageRequest,DEFAULT_IMAGE_LIMITS} from '../models/image-budget.js';
 export async function toolLoop(model:ModelProvider,envelope:ContextEnvelope,tools:ModelTool[],scope:RunScope,executor:ToolExecutor,emit:(kind:RunEvent['kind'],data:unknown)=>Promise<unknown>,signal:AbortSignal,reasoningEffort?:string,resolveImages?:(anchors:SourceAnchor[])=>Promise<ModelMessage[]>){
  const messages:ModelMessage[]=structuredClone([...envelope.messages]),ownMessages:ModelMessage[]=[],anchors:SourceAnchor[]=[];let answer='',overflowRecovered=false,compactions=0;
- const currentQuestion=structuredClone(envelope.messages.at(-1)!);
+ const currentQuestion=structuredClone(envelope.messages.at(-1)!),viewedImages=new WeakSet<ModelMessage>();
+ const imageNote=(message:ModelMessage)=>'[已查看过的页面图像已移出上下文；如需再次核对请重新调用工具] '+(Array.isArray(message.content)?message.content.flatMap(block=>block.type==='text'?[block.text]:[]).join(' '):'');
  const inputCost=()=>messageTokens(messages,model.imageLimits?.imageTokens??1024)+estimateTokens(JSON.stringify(tools))+64;
  const compact=async()=>{
   signal.throwIfAborted();await emit('progress',{label:'正在压缩上下文'});
@@ -70,6 +71,9 @@ export async function toolLoop(model:ModelProvider,envelope:ContextEnvelope,tool
    if(result.pageImages?.length){if(!resolveImages)throw new ReaderError('VISION_UNAVAILABLE','本次运行没有页面图像解析能力');transient.push(...await resolveImages(result.pageImages));}
   }
   // Image payloads belong only to this request, never to committed history or tool storage.
+  // Pages the model has already looked at become text notes, so repeated revisits cannot exceed the image limit.
+  if(transient.length)for(let index=0;index<messages.length;index++){const message=messages[index]!;if(viewedImages.has(message))messages[index]={role:'user',content:imageNote(message)};}
+  for(const message of transient)viewedImages.add(message);
   messages.push(...transient);
  }
  throw new ReaderError('TOOL_ROUND_LIMIT','工具调用已达到 8 轮，请调整问题后继续');
