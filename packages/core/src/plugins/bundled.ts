@@ -5,12 +5,12 @@ import type {PluginManifest} from '../../../sdk/src/manifest.js';
 import {ReaderError} from '../../../contracts/src/errors.js';
 const names=new Set(['reader-helper','python-helper','visual-document-memory','document-translation']);
 export function bundledPluginPath(name:string){if(!names.has(name))throw Error('Unknown bundled plugin');const relative=import.meta.url.includes('/packages/core/src/')?'../../../../plugins/':'../plugins/';return fileURLToPath(new URL(relative+name+'/',import.meta.url));}
-// Known shipped v1 code only: use the updated bundle without overwriting user-owned files.
-const legacyReadingFiles:Record<string,string>={
- 'index.mjs':'c94656458faefa0eb1eff6f8721268fc848456fae4a87e1acaa25adbbe99ab33',
- 'context.mjs':'2a3ba60f4d72f39f5fd263b27b3e45ee1b1173b287128ba8c745f82565b9d892',
- 'plugin.json':'de2926f651240de1a21ef441166967c6eae7510db65ce0547898b31318a0b87b',
- 'reading.mjs':'1bb9af55bfccffb872e8ab656bff0e1be2a38f09e54d5076d48567c0f74f8e2f'
+// Known shipped v1 code only (the first release and the 0.4.0 copy): use the updated bundle without overwriting user-owned files.
+const legacyReadingFiles:Record<string,string[]>={
+ 'index.mjs':['c94656458faefa0eb1eff6f8721268fc848456fae4a87e1acaa25adbbe99ab33','02b844438dbf72fb30ae60bf7dbe24a7178e272477e57be46768c4e8aa043fff'],
+ 'context.mjs':['2a3ba60f4d72f39f5fd263b27b3e45ee1b1173b287128ba8c745f82565b9d892','50f527eb9f5b86f1d3902594edceb994b2108c71cdb3f78eed435bf4eaba0a72'],
+ 'plugin.json':['de2926f651240de1a21ef441166967c6eae7510db65ce0547898b31318a0b87b'],
+ 'reading.mjs':['1bb9af55bfccffb872e8ab656bff0e1be2a38f09e54d5076d48567c0f74f8e2f','c1eaa091df9bc821fac9b6c627b039980ce7210456a91203f65e53b7812d5cc0']
 };
 // document-translation 1.0.0 as shipped in 0.4.0; exact copies keep using the current bundle after app updates.
 const shippedTranslationFiles:Record<string,string>={
@@ -33,7 +33,7 @@ export async function currentBundledPluginRoot(root:string,manifest:PluginManife
  if(manifest.id!=='visual-document-memory'||manifest.version!=='1.0.0'||manifest.entry!=='index.mjs')return root;
  try{
   const files=await readdir(root);if(files.length!==Object.keys(legacyReadingFiles).length)return root;
-  for(const[name,expected]of Object.entries(legacyReadingFiles))if(createHash('sha256').update((await readFile(join(root,name),'utf8')).replace(/\r\n/g,'\n')).digest('hex')!==expected)return root;
+  for(const[name,expected]of Object.entries(legacyReadingFiles))if(!expected.includes(createHash('sha256').update((await readFile(join(root,name),'utf8')).replace(/\r\n/g,'\n')).digest('hex')))return root;
   return bundledPluginPath(manifest.id);
  }catch{return root;}
 }

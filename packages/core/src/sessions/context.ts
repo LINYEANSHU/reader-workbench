@@ -107,6 +107,10 @@ export class ContextBuilder{
    const record=await this.documents.waitReady(ref,signal),parsed=await this.documents.parsed(ref);
    const allowedBlocks=new Set(parsed.pages.filter(page=>pages.includes(page.page)).flatMap(page=>page.anchors.flatMap(anchor=>anchor.location.kind==='block'?[anchor.location.blockId]:[]))),inRange=(anchor:SourceAnchor)=>anchor.location.kind==='page'?pages.includes(anchor.location.page):allowedBlocks.has(anchor.location.blockId),blocks=parsed.blocks.filter(block=>inRange(block.anchor));
    let hits=(await this.documents.search(ref,request.question,4,pages)).filter(hit=>inRange(hit.anchor));
+   // Search treats every number as a required exact token; an incidental one in a full question ("第3页", "2024年")
+   // must not discard all text matches, so retry with the descriptive words before falling back to leading blocks.
+   const descriptive=request.question.replace(/\d+(?:\.\d+)*/g,' ').trim();
+   if(!hits.length&&descriptive&&descriptive!==request.question.trim())hits=(await this.documents.search(ref,descriptive,4,pages)).filter(hit=>inRange(hit.anchor));
    if(!hits.length)hits=blocks.slice(0,4).map(block=>({text:block.text,anchor:block.anchor,score:0}));
    if(!blocks.some(block=>block.text.trim())&&record.pageCount>0&&!capability.vision&&!model.ocrToolId)throw new ReaderError('VISION_UNAVAILABLE','文档没有可读文字；需要视觉模型或已配置的 OCR 工具');
    for(const hit of hits){
