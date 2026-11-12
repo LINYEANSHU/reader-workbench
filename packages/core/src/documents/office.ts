@@ -9,6 +9,7 @@ import {findLibreOffice} from '../runtime/doctor.js';
 import {runProcess} from '../runtime/process.js';
 import {parsePdf} from './pdf.js';
 import {extractNotes} from './notes.js';
+import {docxFormulaBlocks} from './office-math.js';
 import {isWithin} from '../workspaces/path-guard.js';
 let queue:Promise<unknown>=Promise.resolve();
 export async function convertOffice(input:VersionedFile,signal:AbortSignal):Promise<string>{
@@ -40,5 +41,7 @@ export const officeAdapter:DocumentAdapter={supports:(_mime,extension)=>['.doc',
       parsed.blocks.push({id:'unmapped-'+note.id,text:note.text,kind:'notes-unmapped',anchor:{workspaceId:input.workspaceId,documentId:input.documentId,version:input.version,location:{kind:'block',blockId:'unmapped-'+note.id,start:0,end:note.text.length}}});
     }
   }}
+  // Rendered PDF text scatters formula glyphs; the source OMML gives each formula exactly, as LaTeX blocks on its page.
+  if(input.extension==='.docx'){try{const {blocks,unmapped}=await docxFormulaBlocks(input,parsed.pages);parsed.blocks.push(...blocks);if(unmapped)parsed.warnings.push(unmapped+' 个 Word 公式无法对应到预览页，未加入页内公式。');}catch{parsed.warnings.push('Word 公式未能从原文件读取，页内公式以转换后的文字为准。');}}
   parsed.warnings.push('Office 页面由 LibreOffice 转换；缺失字体或转换器差异可能改变排版。');return parsed;
 }};
