@@ -50,6 +50,21 @@ it('reads at most two batches at once and commits each result without losing ear
  const record=await prepare(s.host,new AbortController().signal);expect(record.completedPages).toEqual([1,2,3,4,5,6,7]);expect(peak).toBe(2);
  for(let index=1;index<saves.length;index++)expect(saves[index]!.length).toBeGreaterThanOrEqual(saves[index-1]!.length);expect(s.saved.completedPages).toEqual([1,2,3,4,5,6,7]);
 });
+it('merges the earlier overview with only the newly read pages when more pages are read',async()=>{
+ const{prepare}=await import(modulePath),s=await setup(),generate=s.host.generate,overviews:string[]=[];
+ s.host.generate=async function*(input:any,signal:any){if(String(input.messages[0].content).includes('VISUAL_DOCUMENT_MEMORY_OVERVIEW'))overviews.push(String(input.messages[1].content));yield* generate(input,signal);};
+ s.host.readingPages=[1,2,3];await prepare(s.host,new AbortController().signal);
+ expect(overviews).toHaveLength(1);expect(overviews[0]).toContain('"page":3');expect(s.saved.overviewPages).toEqual([1,2,3]);
+ s.host.readingPages=[1,2,3,4,5,6,7];const record=await prepare(s.host,new AbortController().signal);
+ expect(overviews).toHaveLength(2);expect(overviews[1]).toContain('已有概览（覆盖第 1-3 页');expect(overviews[1]).toContain('"page":7');expect(overviews[1]).not.toContain('"page":2');
+ expect(record.overviewPages).toEqual([1,2,3,4,5,6,7]);expect(record.status).toBe('ready');
+});
+it('keeps an earlier overview tied to the pages it covers while new pages are still being read',async()=>{
+ const{prepare}=await import(modulePath),s=await setup();s.host.readingPages=[1,2];await prepare(s.host,new AbortController().signal);
+ s.host.readingPages=[1,2,3];s.fail=true;s.host.readPageImage=async(page:number)=>{if(page===3)throw Object.assign(new Error('render failed'),{code:'DOCUMENT_IMAGE_UNAVAILABLE'});return{page,mime:'image/png',bytes:Buffer.from('PAGE'+page),anchors:[]};};
+ await expect(prepare(s.host,new AbortController().signal)).rejects.toThrow('render failed');
+ expect(s.saved.overviewPages).toEqual([1,2]);expect(s.saved.overview).not.toBe('');
+});
 it('keeps page batches small even when the provider allows hundreds of images',async()=>{
  const{prepare}=await import(modulePath),s=await setup(600);await prepare(s.host,new AbortController().signal);
  expect(Math.max(...s.calls.map(pages=>pages.length))).toBeLessThanOrEqual(4);expect(s.calls.flat()).toEqual([1,2,3,4,5,6,7]);
