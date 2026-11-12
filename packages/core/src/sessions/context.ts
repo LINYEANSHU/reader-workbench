@@ -13,7 +13,7 @@ import type {DocumentRef,SourceAnchor} from '../../../contracts/src/documents.js
 import {uniqueAnchors} from '../../../contracts/src/documents.js';
 import {ReaderError} from '../../../contracts/src/errors.js';
 import type {AttachmentService} from '../documents/attachments.js';
-import {ModelMemoryProvider,summaryMessage,withoutReasoning} from './memory.js';
+import {ModelMemoryProvider,summaryMessage,historyTurn,RECENT_TOOL_RESULT_TURNS} from './memory.js';
 import type {DocumentMemoryConsumer} from '../documents/memory-consumer.js';
 import type {CapabilityLease} from '../plugins/registry.js';
 import {estimateTokens,messageTokens} from '../models/tokens.js';export {estimateTokens} from '../models/tokens.js';
@@ -160,8 +160,8 @@ export class ContextBuilder{
     }
    }
   }
-  // Turns committed by older versions may still carry reasoning; it is never resent or summarized.
-  const history=[...(parent?.turns??[]),...own.turns].map(turn=>turn.messages.some(message=>message.reasoning_content!==undefined)?{...turn,messages:turn.messages.map(withoutReasoning)}:turn);const allHistory=history.flatMap(turn=>turn.messages);
+  // Reasoning (kept by older versions) is never resent or summarized; tool output of all but the latest turns is reduced to a note.
+  const history=[...(parent?.turns??[]),...own.turns].map((turn,index,all)=>historyTurn(turn,index>=all.length-RECENT_TOOL_RESULT_TURNS));const allHistory=history.flatMap(turn=>turn.messages);
   let historyMessages:ModelMessage[]=structuredClone(allHistory);let summaryCoverage:string[]=[];let memory:MemorySummary|undefined;
   const remaining=inputLimit-messageCost(fixed);
   const historyIds=new Set(history.map(turn=>turn.id)),saved=own.summary;
