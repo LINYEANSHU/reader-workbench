@@ -19,7 +19,8 @@ for(const code of ['MODEL_OUTPUT_LIMIT','DOCUMENT_MEMORY_INVALID'])it('retries s
  };
  const record=await prepare(s.host,new AbortController().signal);
  expect(record.status).toBe('ready');expect(record.completedPages).toEqual([1,2,3,4,5,6,7]);
- expect(attempts).toEqual([4,2,2,3]);
+ // Batches run concurrently, so only the set of attempted batch sizes is fixed.
+ expect([...attempts].sort()).toEqual([2,2,3,4]);
 });
 it('retries a timed-out page batch in halves',async()=>{
  const{prepare}=await import(modulePath),s=await setup(),generate=s.host.generate,attempts:number[]=[];
@@ -29,7 +30,7 @@ it('retries a timed-out page batch in halves',async()=>{
   yield* generate(input,signal);
  };
  const record=await prepare(s.host,new AbortController().signal);
- expect(record.completedPages).toEqual([1,2,3,4,5,6,7]);expect(attempts).toEqual([4,2,2,3,1,2]);
+ expect(record.completedPages).toEqual([1,2,3,4,5,6,7]);expect([...attempts].sort()).toEqual([1,2,2,2,3,4]);
 });
 it('reads pages with a complete PDF text layer as text without rendering or sending their images',async()=>{
  const{prepare,prepareLocal}=await import(modulePath),s=await setup(),rendered:number[]=[],requests:any[]=[],generate=s.host.generate;
@@ -41,6 +42,13 @@ it('reads pages with a complete PDF text layer as text without rendering or send
  const sent=requests.filter(request=>request.messages[0].content.includes('VISUAL_DOCUMENT_MEMORY_PAGES')).flatMap(request=>request.messages[1].content);
  expect(sent.filter((block:any)=>block.type==='image_url')).toHaveLength(1);
  expect(sent.find((block:any)=>block.type==='text'&&block.text.startsWith('文档页 1'))?.text).toBe('文档页 1（PDF 文字层，未发送页面图像）\nTEXT LAYER 1');
+});
+it('reads at most two batches at once and commits each result without losing earlier pages',async()=>{
+ const{prepare}=await import(modulePath),s=await setup(2),generate=s.host.generate,saves:number[][]=[];let active=0,peak=0;
+ s.host.generate=async function*(input:any,signal:any){const reading=String(input.messages[0].content).includes('VISUAL_DOCUMENT_MEMORY_PAGES');if(reading){active++;peak=Math.max(peak,active);await new Promise(resolve=>setTimeout(resolve,5));}try{yield* generate(input,signal);}finally{if(reading)active--;}};
+ const save=s.host.save;s.host.save=async(value:any,signal:any)=>{saves.push([...value.completedPages]);await new Promise(resolve=>setTimeout(resolve,value.completedPages.length%2?8:1));return save(value,signal);};
+ const record=await prepare(s.host,new AbortController().signal);expect(record.completedPages).toEqual([1,2,3,4,5,6,7]);expect(peak).toBe(2);
+ for(let index=1;index<saves.length;index++)expect(saves[index]!.length).toBeGreaterThanOrEqual(saves[index-1]!.length);expect(s.saved.completedPages).toEqual([1,2,3,4,5,6,7]);
 });
 it('keeps page batches small even when the provider allows hundreds of images',async()=>{
  const{prepare}=await import(modulePath),s=await setup(600);await prepare(s.host,new AbortController().signal);
