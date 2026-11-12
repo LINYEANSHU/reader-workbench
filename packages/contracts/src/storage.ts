@@ -32,6 +32,10 @@ export interface RunStorePort {
  create(record:RunRecord):Promise<void>;
  save(record:RunRecord):Promise<void>;
  list():Promise<RunRecord[]>;
+ /** Looks up a run by its unique (session, caller, request) key without scanning other runs. */
+ findByRequest(sessionId:SessionId,callerId:string,requestId:string):Promise<RunRecord|null>;
+ /** Reads only the status, for frequent progress checks. */
+ status(id:RunId):Promise<RunStatus>;
  appendEvent(event:RunEvent):Promise<void>;
  readEvents(id:RunId,afterSeq:number):Promise<RunEvent[]>;
  setStatus(id:RunId,status:RunStatus,error?:PublicError):Promise<void>;

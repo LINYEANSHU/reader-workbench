@@ -13,6 +13,7 @@ import type {DocumentMemoryConsumer} from '../documents/memory-consumer.js';
 import {readFile} from 'node:fs/promises';
 import {validateImageRequest,DEFAULT_IMAGE_LIMITS} from '../models/image-budget.js';
 import {modelUsageScope} from '../models/usage-scope.js';
+const PARTIAL_SAVE_INTERVAL_MS=250;
 interface Dependencies{workspaces:WorkspaceService;repository:SessionRepository;context:ContextBuilder;tools:ToolRegistry;documents:DocumentService;capabilities:CapabilityRegistry;artifacts?:ArtifactService;documentMemory?:DocumentMemoryConsumer}
 export class RunService{
  readonly records:RunRepository;readonly executor:ToolExecutor;private queue=new KeyedQueue();private recovery=new KeyedQueue();private controllers=new Map<RunId,AbortController>();private liveRecords=new Map<RunId,RunRecord>();private modelLeases=new Map<RunId,CapabilityLease<ModelProvider>>();private tasks=new Map<RunId,Promise<void>>();private closed=false;
@@ -49,8 +50,10 @@ export class RunService{
    const session=await this.dependencies.repository.authorizeScope(scope);
    const definitions=this.dependencies.tools.list(scope.workspaceId).filter(tool=>session.kind==='main'||tool.effect==='read'||tool.effect==='write_artifact'&&scope.allowArtifactWrites);
    const tools=model.value.capabilities.tools?definitions.map(tool=>({type:'function' as const,function:{name:tool.name,description:tool.description,parameters:tool.inputSchema}})):[];
+   // Deltas are already stored as events; the partial answer copy is only refreshed periodically and on finish.
+   let partialSavedAt=0;
    const result=await toolLoop(model.value,envelope,tools,scope,this.executor,async(kind,data)=>{
-    if(kind==='delta'){record.partialText+=(data as {text:string}).text;await this.records.save(record);}await this.records.emit(record,kind,data);
+    if(kind==='delta'){record.partialText+=(data as {text:string}).text;const now=Date.now();if(now-partialSavedAt>=PARTIAL_SAVE_INTERVAL_MS){partialSavedAt=now;await this.records.save(record);}}await this.records.emit(record,kind,data);
    },signal,record.request.reasoningEffort,async anchors=>{
     if(!model.value.capabilities.vision)throw new ReaderError('VISION_UNAVAILABLE','重看页面需要视觉模型');
     const messages:import('../../../contracts/src/models.js').ModelMessage[]=[];
@@ -81,7 +84,9 @@ export class RunService{
  async *events(workspaceId:WorkspaceId,id:RunId,afterSeq:number,signal:AbortSignal):AsyncIterable<RunEvent>{
   if(!Number.isSafeInteger(afterSeq)||afterSeq<0)throw new ReaderError('INVALID_CURSOR','事件序号无效');const record=await this.get(workspaceId,id);
   if(record.kind==='document'){yield* this.dependencies.documents.jobs.events(workspaceId,id,afterSeq,signal);return;}
-  yield* replayEvents(async()=>await this.get(workspaceId,id) as RunRecord,after=>this.records.readEvents(workspaceId,id,after),afterSeq,signal);
+  // Poll only the status column; fall back to the full record (which marks interrupted runs) when no task owns the run.
+  const status=async()=>{const value=await this.records.status(workspaceId,id);return terminal({status:value})||this.controllers.has(id)?{status:value}:await this.get(workspaceId,id);};
+  yield* replayEvents(status,after=>this.records.readEvents(workspaceId,id,after),afterSeq,signal,()=>this.records.waitForEvent(workspaceId,id,signal));
  }
  async cancel(workspaceId:WorkspaceId,id:RunId,actor:Actor):Promise<void>{
   const record=await this.get(workspaceId,id);if(record.kind==='document'){await this.dependencies.documents.jobs.cancel(workspaceId,id);return;}

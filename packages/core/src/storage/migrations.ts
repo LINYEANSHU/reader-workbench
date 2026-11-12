@@ -12,5 +12,7 @@ export function migrate(database:DatabaseSync){
     CREATE TABLE IF NOT EXISTS runs(id TEXT PRIMARY KEY, session_id TEXT NOT NULL REFERENCES sessions(id), request_key TEXT UNIQUE NOT NULL, data TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS run_events(run_id TEXT NOT NULL REFERENCES runs(id), seq INTEGER NOT NULL, data TEXT NOT NULL, PRIMARY KEY(run_id,seq));
     CREATE TABLE IF NOT EXISTS artifacts(id TEXT PRIMARY KEY, session_id TEXT NOT NULL REFERENCES sessions(id), data TEXT NOT NULL);
-    PRAGMA user_version=5; COMMIT;`);
+    -- Model messages of a run's context are written once here, so frequent run saves stay small.
+    CREATE TABLE IF NOT EXISTS run_contexts(run_id TEXT PRIMARY KEY REFERENCES runs(id), data TEXT NOT NULL);
+    PRAGMA user_version=6; COMMIT;`);
 }

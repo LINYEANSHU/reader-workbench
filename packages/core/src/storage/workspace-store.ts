@@ -108,17 +108,40 @@ export class SqliteWorkspaceStore implements WorkspaceStore {
     index:async(ref,blocks)=>this.indexDocument(ref,blocks),
     search:async(ref,query,limit)=>this.searchDocument(ref,query,limit)
   };
+  // Context messages (history, page images) can be megabytes. They live in run_contexts and are written
+  // once per messages array, so streaming saves only rewrite the small run row.
+  private storedRunMessages=new WeakMap<object,RunId>();
+  private runRow(record:RunRecord):string{return JSON.stringify(record.context?.messages?{...record,context:{...record.context,messages:undefined}}:record);}
+  private hydrateRun(data:string):RunRecord{
+    const record=JSON.parse(data) as RunRecord;
+    if(record.context&&!record.context.messages){const row=this.database.prepare('SELECT data FROM run_contexts WHERE run_id=?').get(record.id) as {data:string}|undefined;record.context.messages=row?JSON.parse(row.data):[];}
+    return record;
+  }
+  private writeRun(record:RunRecord,write:(data:string)=>void){
+    const messages=record.context?.messages,pending=messages&&this.storedRunMessages.get(messages)!==record.id?messages:undefined;
+    if(!pending){write(this.runRow(record));return;}
+    this.transaction(()=>{write(this.runRow(record));this.database.prepare('INSERT INTO run_contexts(run_id,data) VALUES(?,?) ON CONFLICT(run_id) DO UPDATE SET data=excluded.data').run(record.id,JSON.stringify(pending));});
+    this.storedRunMessages.set(pending,record.id);
+  }
   readonly runs:RunStorePort={
     get:async id=>{
       const row=this.database.prepare('SELECT data FROM runs WHERE id=?').get(id) as {data:string}|undefined;
-      if(!row)throw new ReaderError('RUN_UNAVAILABLE','此工作区中不存在该运行',404);return JSON.parse(row.data) as RunRecord;
+      if(!row)throw new ReaderError('RUN_UNAVAILABLE','此工作区中不存在该运行',404);return this.hydrateRun(row.data);
     },
     create:async record=>{
       this.checkWorkspace(record.workspaceId);this.readSession(record.sessionId);
-      this.database.prepare('INSERT INTO runs(id,session_id,request_key,data) VALUES(?,?,?,?)').run(record.id,record.sessionId,JSON.stringify([record.sessionId,record.callerId,record.requestId]),JSON.stringify(record));
+      this.writeRun(record,data=>this.database.prepare('INSERT INTO runs(id,session_id,request_key,data) VALUES(?,?,?,?)').run(record.id,record.sessionId,JSON.stringify([record.sessionId,record.callerId,record.requestId]),data));
     },
-    save:async record=>{this.checkWorkspace(record.workspaceId);this.database.prepare('UPDATE runs SET data=? WHERE id=?').run(JSON.stringify(record),record.id);},
-    list:async()=> (this.database.prepare('SELECT data FROM runs ORDER BY rowid').all() as {data:string}[]).map(row=>JSON.parse(row.data) as RunRecord),
+    save:async record=>{this.checkWorkspace(record.workspaceId);this.writeRun(record,data=>this.database.prepare('UPDATE runs SET data=? WHERE id=?').run(data,record.id));},
+    list:async()=> (this.database.prepare('SELECT data FROM runs ORDER BY rowid').all() as {data:string}[]).map(row=>this.hydrateRun(row.data)),
+    findByRequest:async(sessionId,callerId,requestId)=>{
+      const row=this.database.prepare('SELECT data FROM runs WHERE request_key=?').get(JSON.stringify([sessionId,callerId,requestId])) as {data:string}|undefined;
+      return row?this.hydrateRun(row.data):null;
+    },
+    status:async id=>{
+      const row=this.database.prepare("SELECT json_extract(data,'$.status') AS status FROM runs WHERE id=?").get(id) as {status:RunRecord['status']}|undefined;
+      if(!row)throw new ReaderError('RUN_UNAVAILABLE','此工作区中不存在该运行',404);return row.status;
+    },
     appendEvent:async event=>{
       this.checkWorkspace(event.workspaceId);
       this.transaction(()=>{
