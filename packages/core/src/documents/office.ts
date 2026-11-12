@@ -10,6 +10,7 @@ import {runProcess} from '../runtime/process.js';
 import {parsePdf} from './pdf.js';
 import {extractNotes} from './notes.js';
 import {docxFormulaBlocks} from './office-math.js';
+import {extractSlides,slidePages,type SlideContent} from './slides.js';
 import {isWithin} from '../workspaces/path-guard.js';
 let queue:Promise<unknown>=Promise.resolve();
 export async function convertOffice(input:VersionedFile,signal:AbortSignal):Promise<string>{
@@ -33,7 +34,17 @@ export async function convertOffice(input:VersionedFile,signal:AbortSignal):Prom
 }
 export const officeAdapter:DocumentAdapter={supports:(_mime,extension)=>['.doc','.docx','.ppt','.pptx'].includes(extension),parse:async(input,signal)=>{
   const pdfPath=await convertOffice(input,signal);const parsed=await parsePdf({...input,path:pdfPath,mime:'application/pdf'},signal);parsed.pdfPath=pdfPath;
-  if(input.extension==='.pptx'){const notes=await extractNotes(input.path);for(const note of notes){
+  if(input.extension==='.pptx'){
+    // Slide structure, tables, chart data and formulas come from the .pptx itself. A slide whose content is all text
+    // (see slideContent) is pre-read from that text instead of its rendered image.
+    let slides:SlideContent[]=[];try{slides=await extractSlides(input.path);}catch{parsed.warnings.push('PPT 原文件结构未能读取，幻灯片内容以转换后的页面文字为准。');}
+    const visible=slides.length?slidePages(slides):undefined,mapped=visible&&visible.size===parsed.pages.length?visible:undefined;
+    if(slides.length&&!mapped)parsed.warnings.push('PPT 可见幻灯片数与预览页数不一致，未加入幻灯片原文结构。');
+    if(mapped)for(const slide of slides){const page=mapped.get(slide.slide),target=page?parsed.pages.find(item=>item.page===page):undefined;if(!page||!target)continue;
+      if(slide.markdown)parsed.blocks.push({id:'slide-'+page,text:slide.markdown,kind:'slide',anchor:{workspaceId:input.workspaceId,documentId:input.documentId,version:input.version,location:{kind:'page',page}}});
+      target.profile={...(target.profile??{textChars:0,garbledRatio:0,imageCoverage:0,pathOps:0,mathRatio:0}),textSufficient:slide.textSufficient};}
+    // Notes are numbered by slide; hidden slides are not rendered, so later notes move to their visible page.
+    const notes=(await extractNotes(input.path)).map(note=>({...note,page:mapped?mapped.get(note.page)??0:note.page}));for(const note of notes){
     const page=parsed.pages.find(page=>page.page===note.page);
     if(page)parsed.blocks.push({id:'note-'+note.page,text:note.text,kind:'notes',anchor:{workspaceId:input.workspaceId,documentId:input.documentId,version:input.version,location:{kind:'page',page:note.page}}});
     else {

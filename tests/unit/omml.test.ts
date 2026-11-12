@@ -3,7 +3,7 @@ import {mkdtemp,rm,writeFile} from 'node:fs/promises';import {tmpdir} from 'node
 import {zipSync,strToU8} from 'fflate';
 import {ommlToLatex,parseOrderedXml,extractFormulas} from '../../packages/core/src/documents/omml.js';
 import {locateFormulas,docxFormulaBlocks} from '../../packages/core/src/documents/office-math.js';
-import {withPageFormulas} from '../../packages/core/src/documents/memory-consumer.js';
+import {pageReadingText} from '../../packages/core/src/documents/memory-consumer.js';
 import {formulaImage} from '../../packages/core/src/artifacts/formula.js';
 const cleanup:Array<()=>Promise<void>>=[];afterEach(async()=>{for(const step of cleanup.splice(0))await step();});
 const run=(text:string)=>'<m:r><m:t>'+text+'</m:t></m:r>';
@@ -41,5 +41,5 @@ it('adds exact formula blocks from a .docx to the pages that pre-reading sends a
  const pages=[{page:1,text:'Title',width:1,height:1,anchors:[]},{page:2,text:'Energy relation on page two. E = m c 2',width:1,height:1,anchors:[]}];
  const {blocks,unmapped}=await docxFormulaBlocks({path,workspaceId:'w',documentId:'d',version:'v'} as never,pages);
  expect(unmapped).toBe(0);expect(blocks).toEqual([{id:'formula-1',text:'$E=m{c}^{2}$',kind:'formula',anchor:{workspaceId:'w',documentId:'d',version:'v',location:{kind:'page',page:2}}}]);
- expect(withPageFormulas('Energy relation on page two. E = m c 2',blocks,2)).toContain('[本页公式');expect(withPageFormulas('Title',blocks,1)).toBe('Title');
+ expect(pageReadingText('Energy relation on page two. E = m c 2',blocks,2)).toContain('[本页公式');expect(pageReadingText('Title',blocks,1)).toBe('Title');
 });
