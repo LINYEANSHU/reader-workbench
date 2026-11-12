@@ -14,6 +14,7 @@ import {readFile} from 'node:fs/promises';
 import {validateImageRequest,DEFAULT_IMAGE_LIMITS} from '../models/image-budget.js';
 import {modelUsageScope} from '../models/usage-scope.js';
 import {withoutReasoning} from '../sessions/memory.js';
+import {DeltaBatcher} from './delta-batcher.js';
 const PARTIAL_SAVE_INTERVAL_MS=250;
 interface Dependencies{workspaces:WorkspaceService;repository:SessionRepository;context:ContextBuilder;tools:ToolRegistry;documents:DocumentService;capabilities:CapabilityRegistry;artifacts?:ArtifactService;documentMemory?:DocumentMemoryConsumer}
 export class RunService{
@@ -51,10 +52,11 @@ export class RunService{
    const session=await this.dependencies.repository.authorizeScope(scope);
    const definitions=this.dependencies.tools.list(scope.workspaceId).filter(tool=>session.kind==='main'||tool.effect==='read'||tool.effect==='write_artifact'&&scope.allowArtifactWrites);
    const tools=model.value.capabilities.tools?definitions.map(tool=>({type:'function' as const,function:{name:tool.name,description:tool.description,parameters:tool.inputSchema}})):[];
-   // Deltas are already stored as events; the partial answer copy is only refreshed periodically and on finish.
-   let partialSavedAt=0;
+   // Deltas are stored as batched events; the partial answer copy is only refreshed periodically and on finish.
+   let partialSavedAt=0;const stream=new DeltaBatcher((kind,data)=>this.records.emit(record,kind,data));
    const result=await toolLoop(model.value,envelope,tools,scope,this.executor,async(kind,data)=>{
-    if(kind==='delta'){record.partialText+=(data as {text:string}).text;const now=Date.now();if(now-partialSavedAt>=PARTIAL_SAVE_INTERVAL_MS){partialSavedAt=now;await this.records.save(record);}}await this.records.emit(record,kind,data);
+    if(kind!=='delta'){await stream.event(kind,data);return;}
+    const text=(data as {text:string}).text;record.partialText+=text;stream.delta(text);const now=Date.now();if(now-partialSavedAt>=PARTIAL_SAVE_INTERVAL_MS){partialSavedAt=now;await this.records.save(record);}
    },signal,record.request.reasoningEffort,async anchors=>{
     if(!model.value.capabilities.vision)throw new ReaderError('VISION_UNAVAILABLE','重看页面需要视觉模型');
     const messages:import('../../../contracts/src/models.js').ModelMessage[]=[];
@@ -63,7 +65,7 @@ export class RunService{
      messages.push({role:'user',content:[{type:'text',text:'按需重看文档页：'+JSON.stringify(anchor)},{type:'image_url',image_url:{url:'data:'+(document.viewer.kind==='image'?document.mime:'image/png')+';base64,'+bytes.toString('base64')}}]});
     }
     validateImageRequest(messages,model.value.imageLimits??DEFAULT_IMAGE_LIMITS,{messages});return messages;
-   });signal.throwIfAborted();
+   }).finally(()=>stream.flush().catch(()=>{}));await stream.flush();signal.throwIfAborted();
    for(const anchor of envelope.sourceRanges)await this.records.emit(record,'citation',anchor);
    const content=record.request.question+(record.request.selection?'\n选区：'+record.request.selection.text+'\n来源：'+JSON.stringify(record.request.selection.anchors):'');
    signal.throwIfAborted();await this.dependencies.repository.completeOwnTurn(scope,{id:randomUUID(),runId:record.id,question:record.request.question,answer:result.answer,messages:[{role:'user',content},...result.ownMessages.map(withoutReasoning)],sourceAnchors:uniqueAnchors([...envelope.sourceRanges,...result.anchors]),attachmentIds:record.request.attachmentIds,...(record.request.selection?{selection:structuredClone(record.request.selection)}:{})},signal);
