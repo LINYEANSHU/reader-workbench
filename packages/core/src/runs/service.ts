@@ -18,7 +18,7 @@ import {DeltaBatcher} from './delta-batcher.js';
 const PARTIAL_SAVE_INTERVAL_MS=250;
 interface Dependencies{workspaces:WorkspaceService;repository:SessionRepository;context:ContextBuilder;tools:ToolRegistry;documents:DocumentService;capabilities:CapabilityRegistry;artifacts?:ArtifactService;documentMemory?:DocumentMemoryConsumer}
 export class RunService{
- readonly records:RunRepository;readonly executor:ToolExecutor;private queue=new KeyedQueue();private recovery=new KeyedQueue();private controllers=new Map<RunId,AbortController>();private liveRecords=new Map<RunId,RunRecord>();private modelLeases=new Map<RunId,CapabilityLease<ModelProvider>>();private tasks=new Map<RunId,Promise<void>>();private closed=false;
+ readonly records:RunRepository;readonly executor:ToolExecutor;private queue=new KeyedQueue();private recovery=new KeyedQueue();private controllers=new Map<RunId,AbortController>();private liveRecords=new Map<RunId,RunRecord>();private modelLeases=new Map<RunId,CapabilityLease<ModelProvider>>();private tasks=new Map<RunId,Promise<void>>();private compactions=new Map<string,AbortController>();private closed=false;
  constructor(readonly dependencies:Dependencies){this.records=new RunRepository(dependencies.workspaces);this.executor=new ToolExecutor(dependencies.tools,dependencies.workspaces);dependencies.context.attachToolExecutor(this.executor);if(!dependencies.capabilities.list('*' as WorkspaceId,'tool').includes('core.reading'))dependencies.capabilities.register('*','tool','core.reading',builtinTools(dependencies.documents,dependencies.repository,this.records));if(dependencies.artifacts)dependencies.capabilities.register('*','tool','core.artifacts',artifactTools(dependencies.artifacts));}
  async submit(request:AskRequest,actor:Actor):Promise<{runId:RunId}>{
   if(this.closed)throw new ReaderError('SERVER_CLOSING','服务正在退出',503);
@@ -30,6 +30,8 @@ export class RunService{
   const record:RunRecord={id:randomUUID() as RunId,kind:'agent',workspaceId:request.workspaceId,sessionId:request.sessionId,status:'queued',requestId:request.requestId,request:structuredClone(request),callerId:actor.callerId,createdAt:new Date().toISOString(),partialText:''};
   let result;try{record.outputDirectory=await this.dependencies.artifacts?.getOutputDirectory(request.workspaceId);result=await this.records.createOrGet(record);}catch(error){model.release();throw error;}if(!result.created){model.release();return{runId:result.record.id};}this.modelLeases.set(record.id,model);
   const controller=new AbortController();this.controllers.set(record.id,controller);this.liveRecords.set(record.id,record);await this.records.emit(record,'state',{status:'queued'});
+  // A new question never waits for background compaction of its session: it is cancelled and redone later if needed.
+  this.compactions.get(record.workspaceId+'/'+record.sessionId)?.abort();
   const task=this.queue.enqueue(record.workspaceId+'/'+record.sessionId,()=>this.perform(record,actor,controller.signal));this.tasks.set(record.id,task);
   const cleanup=()=>{this.modelLeases.get(record.id)?.release();this.modelLeases.delete(record.id);this.tasks.delete(record.id);this.controllers.delete(record.id);this.liveRecords.delete(record.id);};void task.then(cleanup,cleanup);return{runId:record.id};
  }
@@ -69,10 +71,25 @@ export class RunService{
    for(const anchor of envelope.sourceRanges)await this.records.emit(record,'citation',anchor);
    const content=record.request.question+(record.request.selection?'\n选区：'+record.request.selection.text+'\n来源：'+JSON.stringify(record.request.selection.anchors):'');
    signal.throwIfAborted();await this.dependencies.repository.completeOwnTurn(scope,{id:randomUUID(),runId:record.id,question:record.request.question,answer:result.answer,messages:[{role:'user',content},...result.ownMessages.map(withoutReasoning)],sourceAnchors:uniqueAnchors([...envelope.sourceRanges,...result.anchors]),attachmentIds:record.request.attachmentIds,...(record.request.selection?{selection:structuredClone(record.request.selection)}:{})},signal);
-   record.result=result.answer;record.status='completed';
+   record.result=result.answer;record.status='completed';this.scheduleCompaction(record,actor,usageSession.epoch??0);
    });
   }catch(error){record.status=signal.aborted?'cancelled':'failed';record.error=signal.aborted?new ReaderError('CANCELLED','本次回答已取消，部分输出未加入会话记忆').public():publicError(error);await this.records.emit(record,'error',record.error);}
   finally{release?.();releaseModel?.();await this.records.save(record);await this.records.emit(record,'state',{status:record.status});}
+ }
+ /** After an answer, older turns of a long main session are summarized on the session queue while the user reads. */
+ private scheduleCompaction(record:RunRecord,actor:Actor,epoch:number){
+  const key=record.workspaceId+'/'+record.sessionId;this.compactions.get(key)?.abort();const controller=new AbortController();this.compactions.set(key,controller);
+  void this.queue.enqueue(key,async()=>{
+   if(controller.signal.aborted||this.closed)return;let model:CapabilityLease<ModelProvider>|undefined;
+   try{
+    model=this.dependencies.capabilities.acquire(record.workspaceId,'model',record.request.providerId);const lease=model;
+    const summary=await modelUsageScope.run({workspaceId:record.workspaceId,sessionId:record.sessionId,runId:record.id,epoch},()=>this.dependencies.context.backgroundSummary(record.workspaceId,record.sessionId,record.request.providerId,lease.value,controller.signal));
+    if(!summary||controller.signal.aborted)return;
+    const scope:RunScope={actor:structuredClone(actor),workspaceId:record.workspaceId,sessionId:record.sessionId,runId:('compact-'+record.id) as RunId,allowArtifactWrites:false};
+    const release=await this.dependencies.repository.registerScope(scope);try{await this.dependencies.repository.saveOwnSummary(scope,summary);}finally{release();}
+   }catch{/* Best effort: the next question compacts before answering if history is still too long. */}
+   finally{model?.release();if(this.compactions.get(key)===controller)this.compactions.delete(key);}
+  }).catch(()=>{});
  }
  async get(workspaceId:WorkspaceId,id:RunId):Promise<RunRecord|DocumentJobRecord>{
   return this.recovery.enqueue(workspaceId+'/'+id,async()=>{
@@ -97,5 +114,5 @@ export class RunService{
   const live=this.liveRecords.get(id);if(live?.status==='queued'){live.status='cancelled';live.error=new ReaderError('CANCELLED','排队请求已取消').public();this.modelLeases.get(id)?.release();this.modelLeases.delete(id);await this.records.save(live);await this.records.emit(live,'error',live.error);await this.records.emit(live,'state',{status:'cancelled'});return;}
   await this.tasks.get(id);
  }
- async close(){this.closed=true;for(const controller of this.controllers.values())controller.abort();await Promise.allSettled([...this.tasks.values()]);}
+ async close(){this.closed=true;for(const controller of [...this.controllers.values(),...this.compactions.values()])controller.abort();await Promise.allSettled([...this.tasks.values()]);await this.queue.idle();}
 }
