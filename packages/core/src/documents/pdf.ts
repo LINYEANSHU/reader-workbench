@@ -2,7 +2,7 @@ import {readFile,writeFile,access,rename,stat} from 'node:fs/promises';
 import {join,dirname} from 'node:path';
 import {createRequire} from 'node:module';
 import {pathToFileURL} from 'node:url';
-import {createCanvas} from '@napi-rs/canvas';
+import {createCanvas,loadImage} from '@napi-rs/canvas';
 import {getDocument,GlobalWorkerOptions,OPS} from 'pdfjs-dist/legacy/build/pdf.mjs';
 import type {DocumentAdapter} from '../../../sdk/src/capabilities.js';
 import type {VersionedFile,ParsedDocument,PageProfile} from '../../../contracts/src/documents.js';
@@ -99,5 +99,22 @@ export async function renderPdfPage(path:string,page:number,cacheDir:string,sign
     try{await rendering.promise;signal.throwIfAborted();const temporary=destination+'.'+process.pid+'-'+Date.now()+'.tmp';await writeFile(temporary,canvas.toBuffer('image/png'));await rename(temporary,destination);}
     finally{signal.removeEventListener('abort',abort);documentPage.cleanup();}return destination;
   });
+}
+/**
+ * A rendered page as sent to a model. Scanned and photo-heavy pages are often several times smaller as JPEG (quality 85,
+ * on white), which shortens uploads and fits more pages under request size limits; image tokens depend on dimensions
+ * only. Text and line art compress better as PNG, so the smaller format wins. The JPEG is cached beside the render; when
+ * it would not be smaller an empty marker records that the PNG is kept. Returns undefined to keep the PNG.
+ */
+export async function modelRender(pngPath:string,signal:AbortSignal):Promise<Buffer|undefined>{
+  if(!/\.png$/i.test(pngPath))return undefined;
+  const target=pngPath.replace(/\.png$/i,'')+'.model.jpg',marker=target+'.none';
+  try{return await readFile(target,{signal});}catch{}
+  try{await access(marker);return undefined;}catch{}
+  const png=await readFile(pngPath,{signal}),image=await loadImage(png);signal.throwIfAborted();
+  const canvas=createCanvas(image.width,image.height),context=canvas.getContext('2d');context.fillStyle='#ffffff';context.fillRect(0,0,image.width,image.height);context.drawImage(image,0,0);
+  const jpeg=canvas.toBuffer('image/jpeg',85),temporary=(jpeg.length<png.length?target:marker)+'.'+process.pid+'-'+Date.now()+'.tmp';
+  await writeFile(temporary,jpeg.length<png.length?jpeg:'');await rename(temporary,jpeg.length<png.length?target:marker);
+  return jpeg.length<png.length?jpeg:undefined;
 }
 export const pdfAdapter:DocumentAdapter={supports:mime=>mime==='application/pdf',parse:parsePdf};

@@ -5,13 +5,13 @@ import {memorySearchScore} from '../../../contracts/src/document-memory.js';
 import {setTimeout as delay} from 'node:timers/promises';
 import type {WorkspaceService} from '../workspaces/service.js';
 import {CapabilityRegistry} from '../plugins/registry.js';
-import type {DocumentRef,DocumentRecord,DocumentPage,SearchHit,ParsedDocument,DocumentBlock,StoredDocument} from '../../../contracts/src/documents.js';
+import type {DocumentRef,DocumentRecord,DocumentPage,SearchHit,ParsedDocument,DocumentBlock,StoredDocument,SourceAnchor} from '../../../contracts/src/documents.js';
 import type {WorkspaceId} from '../../../contracts/src/ids.js';
 import {ReaderError} from '../../../contracts/src/errors.js';
 import {snapshot,safeCacheDirectory,mimeFor} from './versions.js';
 import {DocumentJobService} from './jobs.js';
 import {DocumentIndex} from './index.js';
-import {markdownAdapter} from './markdown.js';import {textAdapter} from './text.js';import {pdfAdapter,renderPdfPage,closePdfRenderCache} from './pdf.js';
+import {markdownAdapter} from './markdown.js';import {textAdapter} from './text.js';import {pdfAdapter,renderPdfPage,closePdfRenderCache,modelRender} from './pdf.js';
 import {officeAdapter} from './office.js';import {imageAdapter} from './image.js';import {binaryAdapter} from './binary.js';
 import {isWithin} from '../workspaces/path-guard.js';
 import {markdownResources} from './markdown-resources.js';import {resourceUri} from '../../../contracts/src/resource-uri.js';import {KeyedQueue} from '../runs/queue.js';
@@ -129,6 +129,13 @@ export class DocumentService {
   if(parsed.pdfPath){const source=await this.authorizedFile(ref,parsed.pdfPath),cacheDir=await safeCacheDirectory(this.workspaces,ref.workspaceId,['cache',ref.documentId,ref.version]),rendered=await renderPdfPage(source,page,cacheDir,signal);signal.throwIfAborted();return {...result,imagePath:rendered};}
   return result;
  });}
+ /** A page image for a model: rendered pages through modelRender (JPEG when smaller), image documents unchanged. */
+ async modelImage(ref:DocumentRef,page:number,signal:AbortSignal):Promise<{mime:string;bytes:Buffer;anchors:SourceAnchor[]}|undefined>{
+  const result=await this.readPage(ref,page,signal);if(!result.imagePath)return undefined;
+  const record=await this.get(ref),file=await this.authorizedFile(ref,result.imagePath);
+  if(record.viewer.kind==='image')return{mime:record.mime,bytes:await readFile(file,{signal}),anchors:result.anchors};
+  const jpeg=await modelRender(file,signal);return jpeg?{mime:'image/jpeg',bytes:jpeg,anchors:result.anchors}:{mime:'image/png',bytes:await readFile(file,{signal}),anchors:result.anchors};
+ }
  async readBlock(ref:DocumentRef,id:string):Promise<DocumentBlock>{const block=(await this.parsed(ref)).blocks.find(item=>item.id===id);if(!block)throw new ReaderError('BLOCK_UNAVAILABLE','文档块不存在',404);return block;}
  async search(ref:DocumentRef,query:string,limit:number,pages?:readonly number[]):Promise<SearchHit[]>{const parsed=await this.parsed(ref);if(!query.trim()||query.length>1000)return [];const maximum=Math.max(1,Math.min(limit||20,100));if(pages){const allowed=new Set(pages),blocks=new Set(parsed.pages.filter(page=>allowed.has(page.page)).flatMap(page=>page.anchors.flatMap(anchor=>anchor.location.kind==='block'?[anchor.location.blockId]:[])));return parsed.blocks.filter(block=>block.anchor.location.kind==='page'?allowed.has(block.anchor.location.page):blocks.has(block.id)).map(block=>({text:block.text,anchor:block.anchor,score:memorySearchScore(block.text,query)})).filter(hit=>hit.score>0).sort((a,b)=>b.score-a.score).slice(0,maximum);}return new DocumentIndex(await this.workspaces.storeFor(ref.workspaceId)).search(ref,query,maximum);}
  async list(workspaceId:WorkspaceId):Promise<DocumentRecord[]>{return(await(await this.workspaces.storeFor(workspaceId)).documents.list()).map(saved=>saved.record);}

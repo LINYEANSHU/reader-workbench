@@ -10,7 +10,6 @@ import {artifactTools} from '../tools/artifacts.js';
 import {uniqueAnchors} from '../../../contracts/src/documents.js';
 import type {CapabilityLease} from '../plugins/registry.js';
 import type {DocumentMemoryConsumer} from '../documents/memory-consumer.js';
-import {readFile} from 'node:fs/promises';
 import {validateImageRequest,DEFAULT_IMAGE_LIMITS} from '../models/image-budget.js';
 import {modelUsageScope} from '../models/usage-scope.js';
 import {withoutReasoning} from '../sessions/memory.js';
@@ -63,8 +62,8 @@ export class RunService{
     if(!model.value.capabilities.vision)throw new ReaderError('VISION_UNAVAILABLE','重看页面需要视觉模型');
     const messages:import('../../../contracts/src/models.js').ModelMessage[]=[];
     for(const anchor of anchors){if(anchor.location.kind!=='page'||!envelope.documents.some(ref=>ref.workspaceId===anchor.workspaceId&&ref.documentId===anchor.documentId&&ref.version===anchor.version))throw new ReaderError('TOOL_SCOPE_DENIED','重看页面越过本次文档权限',403);
-     const page=await this.dependencies.documents.readPage(anchor,anchor.location.page);if(!page.imagePath)throw new ReaderError('DOCUMENT_IMAGE_UNAVAILABLE','页面图像不可用');const document=await this.dependencies.documents.get(anchor),bytes=await readFile(await this.dependencies.documents.authorizedFile(anchor,page.imagePath),{signal});
-     messages.push({role:'user',content:[{type:'text',text:'按需重看文档页：'+JSON.stringify(anchor)},{type:'image_url',image_url:{url:'data:'+(document.viewer.kind==='image'?document.mime:'image/png')+';base64,'+bytes.toString('base64')}}]});
+     const image=await this.dependencies.documents.modelImage(anchor,anchor.location.page,signal);if(!image)throw new ReaderError('DOCUMENT_IMAGE_UNAVAILABLE','页面图像不可用');
+     messages.push({role:'user',content:[{type:'text',text:'按需重看文档页：'+JSON.stringify(anchor)},{type:'image_url',image_url:{url:'data:'+image.mime+';base64,'+image.bytes.toString('base64')}}]});
     }
     validateImageRequest(messages,model.value.imageLimits??DEFAULT_IMAGE_LIMITS,{messages});return messages;
    }).finally(()=>stream.flush().catch(()=>{}));await stream.flush();signal.throwIfAborted();

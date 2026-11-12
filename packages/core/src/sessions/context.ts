@@ -165,10 +165,11 @@ export class ContextBuilder{
    if(record.viewer.kind==='fallback')fixed.splice(fixed.length-1,0,{role:'user',content:'文件 '+record.relativePath+' 的正文未解析，不能声称已读懂内容。'});
    if((capability.vision||model.ocrToolId)&&readingMode(record)==='visual'&&['pdf','image'].includes(record.viewer.kind)){
     for(const pageNumber of pages.slice(0,1)){
-     if(images>=4)break;const page=await this.documents.readPage(ref,pageNumber);if(!page.imagePath)continue;
-     const bytes=await readFile(await this.documents.authorizedFile(ref,page.imagePath),{signal});
+     if(images>=4)break;
+     // A vision model gets the compact model image; an OCR tool keeps the original render.
+     const image=capability.vision?await this.documents.modelImage(ref,pageNumber,signal):await this.documents.readPage(ref,pageNumber).then(async page=>page.imagePath?{mime:record.viewer.kind==='image'?record.mime:'image/png',bytes:await readFile(await this.documents.authorizedFile(ref,page.imagePath),{signal})}:undefined);
+     if(!image)continue;const {bytes,mime}=image;
      if(bytes.length>4*1024*1024||imageBytes+bytes.length>12*1024*1024)throw new ReaderError('IMAGE_CONTEXT_LIMIT','页面图像超过发送大小上限');
-     const mime=record.viewer.kind==='image'?record.mime:'image/png';
      if(capability.vision){
       if(messageCost(fixed)+(model.imageLimits?.imageTokens??1024)+76>inputLimit)throw new ReaderError('CONTEXT_LIMIT','图像和问题超过模型容量，请减少页数或提高容量');
       fixed.splice(fixed.length-1,0,{role:'user',content:[{type:'text',text:'实际发送的文档页图像：'+JSON.stringify({...ref,page:pageNumber})},{type:'image_url',image_url:{url:'data:'+mime+';base64,'+bytes.toString('base64')}}]});
