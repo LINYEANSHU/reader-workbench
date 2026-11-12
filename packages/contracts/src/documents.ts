@@ -10,7 +10,9 @@ export interface DocumentRecord extends DocumentRef {id:DocumentId;relativePath:
 export interface ViewerDescriptor {kind:'markdown'|'pdf'|'text'|'image'|'fallback'|'plugin';moduleKey?:string}
 export interface VersionedFile extends DocumentRef {path:string;cacheDir:string;mime:string;extension:string;relativePath:string}
 export interface DocumentBlock {id:string;text:string;anchor:SourceAnchor;kind?:string}
-export interface DocumentPage {page:number;text:string;width:number;height:number;imagePath?:string;anchors:SourceAnchor[]}
+/** How far a PDF page's text layer can stand in for its image. Ratios are 0–1 shares of the page or its characters. */
+export interface PageProfile {textChars:number;garbledRatio:number;imageCoverage:number;pathOps:number;mathRatio:number;textSufficient:boolean}
+export interface DocumentPage {page:number;text:string;width:number;height:number;imagePath?:string;anchors:SourceAnchor[];profile?:PageProfile}
 export interface ParsedDocument {pages:DocumentPage[];blocks:DocumentBlock[];warnings:string[];pdfPath?:string}
 export interface SearchHit {text:string;anchor:SourceAnchor;score:number}
 export interface Attachment {id:AttachmentId;workspaceId:WorkspaceId;sessionId:SessionId;mime:string;sha256:string;anchors:SourceAnchor[];width:number;height:number;captureKind?:'document'|'screen'}

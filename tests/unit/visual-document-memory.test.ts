@@ -31,6 +31,17 @@ it('retries a timed-out page batch in halves',async()=>{
  const record=await prepare(s.host,new AbortController().signal);
  expect(record.completedPages).toEqual([1,2,3,4,5,6,7]);expect(attempts).toEqual([4,2,2,3,1,2]);
 });
+it('reads pages with a complete PDF text layer as text without rendering or sending their images',async()=>{
+ const{prepare,prepareLocal}=await import(modulePath),s=await setup(),rendered:number[]=[],requests:any[]=[],generate=s.host.generate;
+ s.host.readPageText=async(page:number)=>'TEXT LAYER '+page;s.host.readPageProfile=async(page:number)=>({textSufficient:page!==3});
+ const readImage=s.host.readPageImage;s.host.readPageImage=async(page:number,signal:any)=>{rendered.push(page);return readImage(page,signal);};
+ s.host.generate=async function*(input:any,signal:any){requests.push(input);yield* generate(input,signal);};
+ await prepareLocal(s.host,new AbortController().signal);expect(rendered).toEqual([3]);rendered.splice(0);
+ const record=await prepare(s.host,new AbortController().signal);expect(record.completedPages).toEqual([1,2,3,4,5,6,7]);expect(rendered).toEqual([3]);
+ const sent=requests.filter(request=>request.messages[0].content.includes('VISUAL_DOCUMENT_MEMORY_PAGES')).flatMap(request=>request.messages[1].content);
+ expect(sent.filter((block:any)=>block.type==='image_url')).toHaveLength(1);
+ expect(sent.find((block:any)=>block.type==='text'&&block.text.startsWith('文档页 1'))?.text).toBe('文档页 1（PDF 文字层，未发送页面图像）\nTEXT LAYER 1');
+});
 it('keeps page batches small even when the provider allows hundreds of images',async()=>{
  const{prepare}=await import(modulePath),s=await setup(600);await prepare(s.host,new AbortController().signal);
  expect(Math.max(...s.calls.map(pages=>pages.length))).toBeLessThanOrEqual(4);expect(s.calls.flat()).toEqual([1,2,3,4,5,6,7]);
