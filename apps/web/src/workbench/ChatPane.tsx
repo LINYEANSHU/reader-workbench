@@ -35,10 +35,14 @@ export function ChatPane({controls,kind,workspaceId,sessionId,document,state,upd
  const forgetRun=useCallback((id?:RunId)=>forgetSubmission(sessionId,id),[forgetSubmission,sessionId]);
  const observe=useCallback(async(id:RunId,question:string,selection?:SelectionContext,providerId?:string)=>{
   observed.current=id;observer.current?.abort();const controller=new AbortController();observer.current=controller;if(active.current)setLive({id,providerId,question,text:'',status:'queued',anchors:[],artifacts:[],selection});
+  // Streaming text is merged once per frame: each render re-parses the whole live answer (Markdown and KaTeX).
+  let pendingText='',frame=0;const flushText=()=>{if(frame)cancelAnimationFrame(frame);frame=0;const text=pendingText;pendingText='';if(text&&active.current)setLive(current=>current&&current.id===id?{...current,text:current.text+text}:current);};
   try{await subscribeRun(id,workspaceId,0,event=>{if(!active.current)return;
+   if(event.kind==='delta'){pendingText+=String((event.data as Record<string,unknown>).text??'');if(!frame)frame=requestAnimationFrame(flushText);return;}
+   flushText();
    setLive(current=>{if(!current||current.id!==id)return current;const data=event.data as Record<string,unknown>;if(event.kind==='delta')return{...current,text:current.text+String(data.text??'')};if(event.kind==='state')return{...current,status:String(data.status)};if(event.kind==='progress')return{...current,label:String(data.label??'处理中')};if(event.kind==='context')return{...current,revision:Number(data.mainRevision),contextUsage:(data.contextUsage as ContextUsage|undefined)??current.contextUsage,summaryCount:(data.summaryCoverage as unknown[]|undefined)?.length??0};if(event.kind==='error')return{...current,error:String(data.message??'回答失败')};if(event.kind==='citation')return{...current,anchors:[...current.anchors,event.data as SourceAnchor]};if(event.kind==='artifact')return{...current,artifacts:[...current.artifacts,data.id as ArtifactId]};if(event.kind==='tool-start')return{...current,label:'正在调用 '+String(data.name)};return current;});
    if(event.kind==='artifact')onArtifact();
-  },controller.signal);if(controller.signal.aborted)return;const record=await api.run(workspaceId,id) as RunRecord;await reload();forgetRun(id);if(active.current&&record.status==='completed')setLive(null);
+  },controller.signal);flushText();if(controller.signal.aborted)return;const record=await api.run(workspaceId,id) as RunRecord;await reload();forgetRun(id);if(active.current&&record.status==='completed')setLive(null);
   }catch(error){if(!controller.signal.aborted&&active.current)setError(message(error)+'；刷新页面可重新连接，问题不会重复提交。');}
  },[workspaceId,reload,forgetRun,onArtifact]);
  const observeRef=useRef(observe);observeRef.current=observe;
