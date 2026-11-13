@@ -11,16 +11,14 @@ export async function readOfficeParts(path:string,wanted:(name:string)=>boolean)
 }
 const squash=(text:string)=>text.normalize('NFKC').replace(/\s+/g,'').toLowerCase();
 /**
- * Finds the rendered page of each formula from its surrounding paragraph text, moving forward through the document
- * so repeated phrases resolve to the next occurrence. Formulas without a findable context return page 0.
+ * Finds the rendered page of each source element (formula, table) from its own text, else from the paragraph before it
+ * (which may sit at the foot of the previous page), moving forward through the document so repeated phrases resolve to
+ * the next occurrence. Elements without findable text return page 0.
  */
-export function locateFormulas(formulas:ExtractedFormula[],pages:Pick<DocumentPage,'page'|'text'>[]):number[]{
+export function locateFormulas(items:ReadonlyArray<{context:string;before:string}>,pages:Pick<DocumentPage,'page'|'text'>[]):number[]{
  const texts=pages.map(page=>squash(page.text));let cursor=0;
- return formulas.map(formula=>{
-  const probes=[formula.context,formula.before].map(squash).filter(value=>value.length>=6).flatMap(value=>[value.slice(0,24),value.slice(-24)]);
-  for(let offset=0;offset<texts.length;offset++){const index=(cursor+offset)%texts.length;if(probes.some(probe=>texts[index]!.includes(probe))){cursor=index;return pages[index]!.page;}}
-  return 0;
- });
+ const find=(value:string)=>{const text=squash(value);if(text.length<6)return -1;const probes=[text.slice(0,24),text.slice(-24)];for(let offset=0;offset<texts.length;offset++){const index=(cursor+offset)%texts.length;if(probes.some(probe=>texts[index]!.includes(probe)))return index;}return -1;};
+ return items.map(item=>{let index=find(item.context);if(index<0)index=find(item.before);if(index<0)return 0;cursor=index;return pages[index]!.page;});
 }
 /** Formula blocks for a .docx whose pages come from a PDF rendering; each carries exact LaTeX converted from OMML. */
 export async function docxFormulaBlocks(input:VersionedFile,pages:DocumentPage[]):Promise<{blocks:DocumentBlock[];unmapped:number}>{

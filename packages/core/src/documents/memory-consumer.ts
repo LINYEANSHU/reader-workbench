@@ -3,13 +3,15 @@ import type {DocumentService} from './service.js';import type {SessionRepository
 import type {ReadingPlan} from '../../../contracts/src/reading-plan.js';import {KeyedQueue} from '../runs/queue.js';import type {DocumentBlock} from '../../../contracts/src/documents.js';
 /**
  * Text a page is pre-read from. Content taken from the Office source is preferred over the rendered page text:
- * a slide's own structure (tables, chart data, formulas) and speaker notes, and exact Word formulas after the page text.
+ * a slide's own structure (tables, chart data, formulas) and speaker notes, and exact Word tables and formulas after
+ * the page text.
  */
 export function pageReadingText(text:string,blocks:DocumentBlock[],page:number){
  const on=(kind:string)=>blocks.filter(block=>block.kind===kind&&block.anchor.location.kind==='page'&&block.anchor.location.page===page).map(block=>block.text);
- const slide=on('slide'),notes=on('notes'),formulas=on('formula');
+ const slide=on('slide'),notes=on('notes'),tables=on('table'),formulas=on('formula');
  let result=slide.length?slide.join('\n\n'):text;
  if(notes.length)result+='\n\n[演讲者备注]\n'+notes.join('\n');
+ if(tables.length)result+='\n\n[本页表格（取自 Word 原文件，行列结构比上文中的表格文字准确）]\n'+tables.join('\n\n');
  if(formulas.length)result+='\n\n[本页公式（由 Office 原文件转换的 LaTeX，比上文中的公式文字准确）]\n'+formulas.join('\n');
  return result;
 }

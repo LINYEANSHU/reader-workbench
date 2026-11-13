@@ -10,6 +10,7 @@ import {runProcess} from '../runtime/process.js';
 import {parsePdf} from './pdf.js';
 import {extractNotes} from './notes.js';
 import {docxFormulaBlocks} from './office-math.js';
+import {docxTableBlocks} from './docx-tables.js';
 import {extractSlides,slidePages,type SlideContent} from './slides.js';
 import {isWithin} from '../workspaces/path-guard.js';
 let queue:Promise<unknown>=Promise.resolve();
@@ -53,6 +54,8 @@ export const officeAdapter:DocumentAdapter={supports:(_mime,extension)=>['.doc',
     }
   }}
   // Rendered PDF text scatters formula glyphs; the source OMML gives each formula exactly, as LaTeX blocks on its page.
-  if(input.extension==='.docx'){try{const {blocks,unmapped}=await docxFormulaBlocks(input,parsed.pages);parsed.blocks.push(...blocks);if(unmapped)parsed.warnings.push(unmapped+' 个 Word 公式无法对应到预览页，未加入页内公式。');}catch{parsed.warnings.push('Word 公式未能从原文件读取，页内公式以转换后的文字为准。');}}
+  if(input.extension==='.docx'){try{const {blocks,unmapped}=await docxFormulaBlocks(input,parsed.pages);parsed.blocks.push(...blocks);if(unmapped)parsed.warnings.push(unmapped+' 个 Word 公式无法对应到预览页，未加入页内公式。');}catch{parsed.warnings.push('Word 公式未能从原文件读取，页内公式以转换后的文字为准。');}
+    // Likewise tables: rows, columns and merged cells come from the source instead of interleaved rendered text.
+    try{const {blocks,unmapped}=await docxTableBlocks(input,parsed.pages);parsed.blocks.push(...blocks);if(unmapped)parsed.warnings.push(unmapped+' 个 Word 表格无法对应到预览页，未加入页内表格。');}catch{parsed.warnings.push('Word 表格未能从原文件读取，表格以转换后的文字为准。');}}
   parsed.warnings.push('Office 页面由 LibreOffice 转换；缺失字体或转换器差异可能改变排版。');return parsed;
 }};
