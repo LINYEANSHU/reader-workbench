@@ -25,3 +25,11 @@ it('renders a page into the cache directory without leaving temporary files and 
  const first=await renderPdfPage(path,1,directory,new AbortController().signal);expect((await readFile(first)).subarray(0,4)).toEqual(Buffer.from([137,80,78,71]));
  expect(await renderPdfPage(path,1,directory,new AbortController().signal)).toBe(first);expect((await readdir(directory)).filter(name=>name.endsWith('.tmp'))).toEqual([]);
 });
+it('keeps all active documents alive when concurrent renders exceed the cache capacity',async()=>{
+ const{paths}=await files(3),released:string[]=[],finish:Array<()=>void>=[],tasks:Promise<unknown>[]=[];
+ const cache=new PdfDocumentCache(async path=>({pdf:{numPages:1} as never,release:async()=>{released.push(path);}}),2,10_000);
+ try{
+  for(const path of paths){let entered!:()=>void;const started=new Promise<void>(resolve=>entered=resolve);tasks.push(cache.use(path,async()=>{entered();await new Promise<void>(resolve=>finish.push(resolve));}));await started;}
+  expect([...released]).toEqual([]);
+ }finally{for(const done of finish)done();await Promise.allSettled(tasks);cache.closeAll();}
+});

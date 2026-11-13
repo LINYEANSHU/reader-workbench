@@ -1,24 +1,25 @@
 import {readFile} from 'node:fs/promises';
-import {unzipSync,strFromU8} from 'fflate';
+import {strFromU8} from 'fflate';
+import {boundedUnzip} from './bounded-zip.js';
 import type {DocumentBlock,DocumentPage,VersionedFile} from '../../../contracts/src/documents.js';
 import {extractFormulas,type ExtractedFormula} from './omml.js';
 const MAX_PART_BYTES=16*1024*1024,MAX_FORMULAS=2000;
-/** Reads selected XML parts of an Office zip, skipping oversized entries. */
+/** Reads selected XML parts of an Office zip, enforcing limits on actual expanded bytes. */
 export async function readOfficeParts(path:string,wanted:(name:string)=>boolean):Promise<Record<string,string>>{
- let remaining=64*1024*1024;
- const zip=unzipSync(new Uint8Array(await readFile(path)),{filter:file=>{if(!wanted(file.name)||file.originalSize>MAX_PART_BYTES||file.originalSize>remaining)return false;remaining-=file.originalSize;return true;}});
+ const zip=boundedUnzip(new Uint8Array(await readFile(path)),{filter:wanted,limits:{maxEntryBytes:MAX_PART_BYTES,maxTotalBytes:64*1024*1024}});
  return Object.fromEntries(Object.entries(zip).map(([name,bytes])=>[name,strFromU8(bytes)]));
 }
 const squash=(text:string)=>text.normalize('NFKC').replace(/\s+/g,'').toLowerCase();
 /**
- * Finds the rendered page of each source element (formula, table) from its own text, else from the paragraph before it
- * (which may sit at the foot of the previous page), moving forward through the document so repeated phrases resolve to
- * the next occurrence. Elements without findable text return page 0.
+ * Locates an element only when its complete own paragraph/cell context occurs on exactly one rendered page.
+ * A preceding paragraph may be on another page; repeated or split context is not proof of a page location.
+ * Ambiguous elements return page 0 so the caller can retain the rendered page as the authoritative source.
  */
 export function locateFormulas(items:ReadonlyArray<{context:string;before:string}>,pages:Pick<DocumentPage,'page'|'text'>[]):number[]{
- const texts=pages.map(page=>squash(page.text));let cursor=0;
- const find=(value:string)=>{const text=squash(value);if(text.length<6)return -1;const probes=[text.slice(0,24),text.slice(-24)];for(let offset=0;offset<texts.length;offset++){const index=(cursor+offset)%texts.length;if(probes.some(probe=>texts[index]!.includes(probe)))return index;}return -1;};
- return items.map(item=>{let index=find(item.context);if(index<0)index=find(item.before);if(index<0)return 0;cursor=index;return pages[index]!.page;});
+ const texts=pages.map(page=>squash(page.text));
+ return items.map(item=>{const context=squash(item.context);if(context.length<6)return 0;
+  const matches=texts.flatMap((text,index)=>text.includes(context)?[pages[index]!.page]:[]);return matches.length===1?matches[0]!:0;
+ });
 }
 /** Formula blocks for a .docx whose pages come from a PDF rendering; each carries exact LaTeX converted from OMML. */
 export async function docxFormulaBlocks(input:VersionedFile,pages:DocumentPage[]):Promise<{blocks:DocumentBlock[];unmapped:number}>{

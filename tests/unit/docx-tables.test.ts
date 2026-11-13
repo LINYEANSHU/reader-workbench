@@ -1,7 +1,7 @@
 import {afterEach,expect,it} from 'vitest';
 import {mkdtemp,rm,writeFile} from 'node:fs/promises';import {tmpdir} from 'node:os';import {join} from 'node:path';
 import {zipSync,strToU8} from 'fflate';
-import {extractTables,docxTableBlocks} from '../../packages/core/src/documents/docx-tables.js';
+import {extractTables,docxTableBlocks,tableBlocks} from '../../packages/core/src/documents/docx-tables.js';
 import {pageReadingText} from '../../packages/core/src/documents/memory-consumer.js';
 const cleanup:Array<()=>Promise<void>>=[];afterEach(async()=>{for(const step of cleanup.splice(0))await step();});
 const paragraph=(text:string)=>'<w:p><w:r><w:t xml:space="preserve">'+text+'</w:t></w:r></w:p>';
@@ -23,4 +23,10 @@ it('places each table on the rendered page holding its cells and adds it to the 
  const {blocks,unmapped}=await docxTableBlocks({path,workspaceId:'w',documentId:'d',version:'v'} as never,pages);
  expect(unmapped).toBe(0);expect(blocks.map(block=>[block.id,block.kind,block.anchor.location])).toEqual([['table-1','table',{kind:'page',page:2}]]);
  const reading=pageReadingText(pages[1]!.text,blocks,2);expect(reading).toContain('[本页表格（取自 Word 原文件');expect(reading).toContain('| 方案B | ${10}^{3}$ | 3 ms |');expect(pageReadingText('x',blocks,1)).toBe('x');
+});
+it('leaves tables unlocated when only a preceding paragraph or repeated header matches',()=>{
+ const input={workspaceId:'w',documentId:'d',version:'v'} as never;
+ const xml=document(paragraph('The preceding page introduction.')+'<w:p><w:r><w:br w:type="page"/></w:r></w:p><w:tbl>'+row(tableCell(paragraph('A')),tableCell(paragraph('1')))+'</w:tbl>');
+ expect(tableBlocks(xml,input,[{page:1,text:'The preceding page introduction.'},{page:2,text:'A 1'}])).toEqual({blocks:[],unmapped:1});
+ expect(tableBlocks(sample,input,[{page:1,text:'吞吐量 | Mbps'},{page:2,text:'吞吐量 | Mbps'}])).toEqual({blocks:[],unmapped:1});
 });

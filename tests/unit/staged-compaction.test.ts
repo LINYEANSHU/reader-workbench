@@ -37,3 +37,13 @@ it('fails clearly only when the question itself exceeds the window',async()=>{
  await expect(toolLoop(model,envelope('记忆','史','问'.repeat(5000)),[],scope,{} as any,async()=>{},new AbortController().signal)).rejects.toMatchObject({code:'CONTEXT_LIMIT'});
  expect(clipTokens('一二三四五',9,'…')).toBe('一二…');expect(clipTokens('短',100,'…')).toBe('短');
 });
+it('recovers when the provider rejects both the initial context and its history compaction request',async()=>{
+ let conversations=0,rejectedSummaries=0;const sizes:number[]=[];
+ const model:any={identity:'summary-overflow',capabilities:{vision:false,tools:true,contextWindow:1_000_000},async *generate(request:any){
+  const size=Buffer.byteLength(JSON.stringify(request.messages));
+  if(request.usagePurpose==='compaction'){if(size>15_000){rejectedSummaries++;throw new ReaderError('CONTEXT_LIMIT','summary overflow');}yield{kind:'delta',text:'历史检查点'};yield{kind:'done'};return;}
+  conversations++;sizes.push(size);if(size>15_000)throw new ReaderError('CONTEXT_LIMIT','conversation overflow');yield{kind:'delta',text:'回答'};yield{kind:'done'};
+ }};
+ const result=await toolLoop(model,envelope('d'.repeat(20_000),'h'.repeat(12_000)),[],scope,{} as any,async()=>{},new AbortController().signal);
+ expect(result.answer).toBe('回答');expect(rejectedSummaries).toBe(1);expect(conversations).toBeGreaterThan(1);expect(sizes.at(-1)).toBeLessThanOrEqual(15_000);
+});

@@ -1,5 +1,12 @@
 // Application diagnostics only. Source documents and model responses never pass through this catalog.
 const diagnostics:Record<string,string>={
+ '本次运行无法读取问题原文':'The original question cannot be read in this run.',
+ '问题不属于本次运行':'The question does not belong to this run.',
+ '读取其他会话的问题需指定历史轮次':'Specify a history turn to read a question from another chat.',
+ 'Word 公式未能从原文件读取，改用页面图像核对。':'Word equations could not be read from the source file. Page images will be used to check them.',
+ 'Word 表格未能从原文件读取，改用页面图像核对。':'Word tables could not be read from the source file. Page images will be used to check them.',
+ 'PPT 原文件结构未能读取，幻灯片内容以转换后的页面文字为准。':'The PowerPoint source structure could not be read. Converted page text is used for the slide content.',
+ 'PPT 可见幻灯片数与预览页数不一致，未加入幻灯片原文结构。':'The visible slide count differs from the preview page count. Source slide structure was not added.',
  '操作失败，请重试':'Operation failed. Please try again.',
  '请求失败':'Request failed.',
  '服务没有返回可用响应':'The service did not return a valid response.',
@@ -501,6 +508,8 @@ const templates:ReadonlyArray<readonly [RegExp,(match:RegExpExecArray)=>string]>
  [/^模型 API 拒绝请求（HTTP (\d{3})）$/u,match=>`The model API rejected the request (HTTP ${match[1]}).`],
  [/^无法读取模型列表（HTTP (\d{3})）$/u,match=>`Cannot load the model list (HTTP ${match[1]}).`],
  [/^PPT 备注无法对应源页: ([^\r\n]+)$/u,match=>`PPT notes could not be matched to a source slide: ${match[1]}`],
+ [/^(\d+) 个 Word 公式无法对应到预览页，改用页面图像核对。$/u,match=>`${match[1]} Word equations could not be matched to preview pages. Page images will be used to check them.`],
+ [/^(\d+) 个 Word 表格无法对应到预览页，改用页面图像核对。$/u,match=>`${match[1]} Word tables could not be matched to preview pages. Page images will be used to check them.`],
  [/^请先启用依赖插件: ([^\r\n]+)$/u,match=>`Enable the required plugin first: ${match[1]}`],
  [/^插件未声明工具权限: ([^\r\n]+)$/u,match=>`The plugin has not declared tool permission: ${match[1]}`],
  [/^能力重复注册: ([^\r\n]+)$/u,match=>`Capability already registered: ${match[1]}`],

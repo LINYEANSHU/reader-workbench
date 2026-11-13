@@ -1,4 +1,4 @@
-import {afterEach,expect,it,vi} from 'vitest';import {mkdtemp,mkdir,rm,writeFile} from 'node:fs/promises';import {join} from 'node:path';import {tmpdir} from 'node:os';
+import {afterEach,expect,it,vi} from 'vitest';import {mkdtemp,mkdir,rm,writeFile,readFile,utimes,rename} from 'node:fs/promises';import {join} from 'node:path';import {tmpdir} from 'node:os';
 import {WorkspaceService} from '../../packages/core/src/workspaces/service.js';import {DocumentMemoryStore} from '../../packages/core/src/documents/memory-store.js';import {SharedMemoryJobs} from '../../packages/core/src/documents/memory-consumer.js';import {CapabilityRegistry} from '../../packages/core/src/plugins/registry.js';
 const cleanup:Array<()=>Promise<any>>=[];afterEach(async()=>{for(const f of cleanup.splice(0).reverse())await f();});
 async function setup(){const root=await mkdtemp(join(tmpdir(),'memory-store-'));const workspaces=new WorkspaceService(join(root,'config'));await mkdir(join(root,'workspace'));const workspace=await workspaces.select(join(root,'workspace'),{callerId:'local-owner',transport:'internal'});cleanup.push(()=>rm(root,{recursive:true,force:true}),()=>workspaces.close());const ref={workspaceId:workspace.id,documentId:'d',version:'v'} as any;return{workspaces,ref,store:new DocumentMemoryStore(workspaces)};}
@@ -17,4 +17,24 @@ it('parses and validates a memory file once per version and hands out independen
  // A file rewritten outside this store (another process, a restore) is read again and still validated.
  const file=join(await (store as any).directory(ref,key),'generation-0.json');await new Promise(resolve=>setTimeout(resolve,20));await writeFile(file,'{"broken":');
  await expect(store.load(ref,key)).rejects.toThrow();
+});
+it('rejects a mismatched document identity even when its memory file is cached',async()=>{
+ const{store,ref}=await setup(),key=store.key(ref,'plugin','1','model');
+ await store.save(ref,key,record(ref),new AbortController().signal);await store.load(ref,key);
+ for(const other of [{...ref,documentId:'different-document'},{...ref,version:'different-version'}])await expect(store.load(other,key)).rejects.toMatchObject({code:'DOCUMENT_MEMORY_INVALID'});
+ expect((await store.load(ref,key))?.document).toEqual(ref);
+});
+it('revalidates cached block sources after the parsed document is replaced',async()=>{
+ const{store,ref,workspaces}=await setup(),key=store.key(ref,'plugin','1','model'),documents=(await workspaces.storeFor(ref.workspaceId)).documents;
+ const text='before x = y after',anchor={...ref,location:{kind:'block',blockId:'b0',start:0,end:text.length}},document:any={record:{...ref,parseState:'ready'},path:'unused',cacheDir:'unused',parsed:{pages:[{page:1,text,width:0,height:0,anchors:[anchor]}],blocks:[{id:'b0',text,anchor}],warnings:[]}};
+ await documents.save(document);const sourced:any=record(ref);sourced.pages[0].entries=[{kind:'formula',text:'x = y',source:{kind:'block',blockId:'b0',start:7,end:12}}];
+ await store.save(ref,key,sourced,new AbortController().signal);await store.load(ref,key);
+ document.parsed.blocks[0].text='before x = z after';await documents.save(document);
+ await expect(store.load(ref,key)).rejects.toMatchObject({code:'DOCUMENT_MEMORY_INVALID'});
+});
+it('reloads an externally replaced memory file with the same size and modification time',async()=>{
+ const{store,ref}=await setup(),key=store.key(ref,'plugin','1','model');await store.save(ref,key,record(ref),new AbortController().signal);
+ const file=join(await (store as any).directory(ref,key),'generation-0.json'),modified=new Date('2020-01-01T00:00:00Z');await utimes(file,modified,modified);await store.load(ref,key);
+ const content=await readFile(file,'utf8'),replacement=file+'.replacement';await writeFile(replacement,content.replace('LAST PAGE','NEXT PAGE'));await utimes(replacement,modified,modified);await rename(replacement,file);
+ expect((await store.load(ref,key))?.pages[0]?.summary).toBe('NEXT PAGE');
 });

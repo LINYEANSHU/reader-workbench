@@ -2,7 +2,31 @@
 
 版本使用 `主版本.次版本.修订版本`，每次发布记录实际变化、验证和未测范围。
 
-## 未发布 — 当前源码
+## 0.5.0 — 2026-11-12
+
+### 中文
+
+- 合入上下文上限持久化、超长问题读取、旧运行细节清理、文档记忆缓存四项优化及其前置解析与性能改进。
+- 长对话支持后台摘要、分阶段上下文压缩，以及服务拒绝后的预算收缩；学习到的预算保存在本机并于 30 天后过期，损坏的派生缓存可恢复。
+- 支持工具的模型可分段读取超长问题，并回查获授权历史问题的原文；不支持工具的模型保留完整提问，容量不足时明确报错。
+- 复用已解析文档、PDF 渲染资源及校验后的文档记忆；缓存命中仍核验身份与原文版本，重写缓存后重新校验。
+- PDF 文字层、Word 表格与 OMML 公式、PowerPoint 结构化文本用于减少重复图像输入；有图形或无法可靠映射到页面的内容保守保留视觉读取。
+- 流式回答按批写入，预读并发处理两个批次，概览增量合并。最近 20 次运行保留完整细节，较早且已结束的运行移除大块上下文快照与重复流事件，保留问题、答案、状态与已提交会话历史。
+- 内置 Agent 提示词、表达偏好和阅读规则提供中英文版本；语言切换保留自定义提示词、输入草稿、原文及聊天内容。
+- 中英文 README 同步提供 0.5.0 安装、升级与行为边界；SDK 协议保持 1.2.0。
+- 更新 fast-xml-parser、Hono 与 Hono Node 适配器的修复版本；发布验收要求 Windows 构建、完整测试和依赖审计成功，测试不得跳过。
+
+### English
+
+- Integrates persisted input budgets, oversized-question retrieval, old-run detail retention and validated memory caching, together with the preceding document and streaming improvements.
+- Adds background history summaries and staged context recovery. Learned provider budgets persist locally for 30 days; malformed derived cache files can recover.
+- Tool-enabled models can read long questions in slices and revisit authorized historical questions. Models without tools keep the complete question and report insufficient capacity explicitly.
+- Reuses parsed documents, PDF rendering resources and validated document memory while checking identity and source changes. Structured PDF/Word/PowerPoint extraction retains visual fallbacks for uncertain content.
+- Batches stream writes, reads two pre-reading batches concurrently and updates overviews incrementally. Full details are retained for the latest 20 runs; older finished runs keep questions, final answers, status and committed history.
+- Ships Chinese and English Agent presets, expression rules, reading instructions and READMEs. Custom prompts and user content stay verbatim. The paper-inspired interface includes Light, Graphite and Lamplight themes.
+- Updates vulnerable XML and HTTP dependencies. Windows is the maintained release platform; full tests, builds and the dependency audit must pass without skipped tests. SDK protocol remains 1.2.0.
+
+### 本版同时收录的前期改动
 
 - 以“灯下”深色外观替换墨蓝：提亮的暖褐深色，不使用接近纯黑的底色，Markdown 与文本文档改为暗棕纸张以减少夜间眩光（PDF 页面保持原样）；此前保存为墨蓝的偏好自动改用灯下。
 - 字体排版：正文与 AI 回答使用 Noto Serif SC（思源宋体）450 字重，界面使用 Segoe UI Variable 搭配 Noto Sans SC（思源黑体），缺失时回退微软雅黑/华文宋体；中文界面下双引号、破折号保持全角，英文界面改用半角，撇号与截断省略号始终为半角；Markdown 的斜体与加粗在无对应字形的中文字体中也能显示；中英文、数字之间自动留出间距；英文界面的分组标题改用较紧字距。

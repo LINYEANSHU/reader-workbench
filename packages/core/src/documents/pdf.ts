@@ -23,9 +23,9 @@ async function loadPdf(path:string,signal:AbortSignal,fontNames=false){
 const MATH_FONT=/(?:^|\+)(?:CMMI|CMSY|CMEX|CMBSY|MSAM|MSBM|EUFM|EUSM|RSFS|LMMath|lmmi|lmsy|lmex|STIX\w*Math|XITS\w*Math|Cambria\W?Math|Latin\W?Modern\W?Math|TeXGyre\w*Math|Asana|Symbol|MT\W?Extra|Euclid|MathematicalPi)/i;
 const MATH_CHAR=/[Α-Ωα-ω∀-⋿⨀-⫿⟀-⟯←-⇿\u{1d400}-\u{1d7ff}]/u;
 const GARBLED_CHAR=/[�-\u0000-\u0008\u000b\u000c\u000e-\u001f]/u;
-// A page goes to the model as text only when that is clearly safe: enough readable text, no sizeable pictures,
-// no dense vector drawing (charts, diagrams) and few formula glyphs. Anything else keeps its page image.
-export const TEXT_PAGE_LIMITS=Object.freeze({minChars:80,maxGarbledRatio:0.02,maxImageCoverage:0.1,maxPathOps:120,maxMathRatio:0.08});
+// A text layer cannot explain even a small picture/vector or recover an isolated malformed/math glyph. Keep every
+// detected visual; 80 readable characters is only a minimum evidence threshold, never proof that all content is text.
+export const TEXT_PAGE_LIMITS=Object.freeze({minChars:80,maxGarbledRatio:0,maxImageCoverage:0,maxPathOps:0,maxMathRatio:0});
 interface ProfileText {str:string;fontName?:string;transform?:number[];width?:number;height?:number}
 // A page that fails the text test only through formula glyphs is read as text plus crops of its formula regions,
 // unless there are so many that the crops would cost about as much as the page image.
@@ -66,7 +66,10 @@ export function profilePage(items:ProfileText[],fontName:(id:string)=>string|und
     else if(operation===OPS.paintFormXObjectEnd)scale=stack.pop()??scale;
     else if(operation===OPS.paintImageXObject||operation===OPS.paintInlineImageXObject||operation===OPS.paintImageMaskXObject)imageArea+=scale;
     else if(operation===OPS.paintImageXObjectRepeat){const [,scaleX,scaleY,positions]=args as [unknown,number,number,number[]];imageArea+=Math.abs(scaleX*scaleY)*scale*Math.max(1,(positions?.length??2)/2);}
-    else if(operation===OPS.constructPath)pathOps++;});
+    // Grouped images and masks have renderer-specific transforms. Their presence is enough to retain the page image;
+    // a precise area estimate is not needed for deciding whether plain text preserves all detected content.
+    else if(operation===OPS.paintInlineImageXObjectGroup||operation===OPS.paintImageMaskXObjectGroup||operation===OPS.paintImageMaskXObjectRepeat||operation===OPS.paintSolidColorImageMask)imageArea+=Math.max(1,scale);
+    else if(operation===OPS.constructPath||operation===OPS.shadingFill||operation===OPS.rawFillPath)pathOps++;});
   const ratio=(value:number)=>characters?value/characters:0,imageCoverage=Math.min(1,width*height>0?imageArea/(width*height):0);
   const profile={textChars:characters,garbledRatio:ratio(garbled),imageCoverage,pathOps,mathRatio:ratio(math)},limits=TEXT_PAGE_LIMITS;
   const cleanText=characters>=limits.minChars&&profile.garbledRatio<=limits.maxGarbledRatio&&imageCoverage<=limits.maxImageCoverage&&pathOps<=limits.maxPathOps;
@@ -101,10 +104,10 @@ export class PdfDocumentCache{
   async use<T>(path:string,task:(pdf:LoadedPdf['pdf'])=>Promise<T>):Promise<T>{
     const info=await stat(path),key=path+'|'+info.size+'|'+info.mtimeMs;let entry=this.entries.get(key);
     if(entry){this.entries.delete(key);this.entries.set(key,entry);}
-    else{const created:{loading:Promise<LoadedPdf>;users:number;timer?:ReturnType<typeof setTimeout>}={loading:this.load(path),users:0};entry=created;this.entries.set(key,created);created.loading.catch(()=>{if(this.entries.get(key)===created)this.entries.delete(key);});this.evict();}
-    const current=entry;clearTimeout(current.timer);current.users++;
+    else{const created:{loading:Promise<LoadedPdf>;users:number;timer?:ReturnType<typeof setTimeout>}={loading:this.load(path),users:0};entry=created;this.entries.set(key,created);created.loading.catch(()=>{if(this.entries.get(key)===created)this.entries.delete(key);});}
+    const current=entry;clearTimeout(current.timer);current.users++;this.evict();
     try{return await task((await current.loading).pdf);}
-    finally{current.users--;if(!current.users&&this.entries.get(key)===current){current.timer=setTimeout(()=>this.close(key),this.idleMs);current.timer.unref?.();}}
+    finally{current.users--;this.evict();if(!current.users&&this.entries.get(key)===current){current.timer=setTimeout(()=>this.close(key),this.idleMs);current.timer.unref?.();}}
   }
   private evict(){for(const [key,entry] of [...this.entries]){if(this.entries.size<=this.capacity)break;if(!entry.users)this.close(key);}}
   private close(key:string){const entry=this.entries.get(key);if(!entry)return;this.entries.delete(key);clearTimeout(entry.timer);void entry.loading.then(loaded=>loaded.release()).catch(()=>{});}

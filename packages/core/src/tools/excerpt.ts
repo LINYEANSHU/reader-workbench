@@ -16,10 +16,10 @@ export function excerptAround(text:string,query:string,limit=SEARCH_EXCERPT_CHAR
  return{text:(start>0?'…':'')+text.slice(start,end)+(end<text.length?'…':''),truncated:true};
 }
 /** One bounded slice of a page (or another long text read through `tool`); the note names the offset that continues it. */
-export function pageSlice(text:string,offset=0,limit=PAGE_READ_CHARS,tool='read_document_page',unit='本页'):string{
- if(offset>=text.length&&offset>0)return '[offset '+offset+' 超出'+unit+'长度 '+text.length+'，'+unit+'没有更多文字]';
+export function pageSlice(text:string,offset=0,limit=PAGE_READ_CHARS,tool='read_document_page',unit='本页',locale:'zh-CN'|'en'='zh-CN'):string{
+ if(offset>=text.length&&offset>0)return locale==='en'?'[offset '+offset+' is beyond the '+unit+' length of '+text.length+'; no more text]':'[offset '+offset+' 超出'+unit+'长度 '+text.length+'，'+unit+'没有更多文字]';
  const slice=text.slice(offset,offset+limit),rest=text.length-offset-slice.length;
- return slice+(rest>0?'\n['+unit+'还有 '+rest+' 字未返回；需要时再次调用 '+tool+' 并传 offset: '+(offset+slice.length)+']':'');
+ return slice+(rest>0?(locale==='en'?'\n['+rest+' characters remain in the '+unit+'; call '+tool+' again with offset: '+(offset+slice.length)+']':'\n['+unit+'还有 '+rest+' 字未返回；需要时再次调用 '+tool+' 并传 offset: '+(offset+slice.length)+']'):'');
 }
 /** Up to `limit` windows of the text around case-insensitive occurrences of the query, with their offsets. */
 export function occurrences(text:string,query:string,limit=10,radius=300):Array<{offset:number;text:string}>{

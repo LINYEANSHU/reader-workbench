@@ -38,15 +38,28 @@ async function setup(contextLength?:number){
   const response=await fetch(host.url+'/api/v1/workspaces/'+workspace.id+path,{method:body===undefined?'GET':'PUT',headers:{authorization:'Bearer '+host.auth.token,'content-type':'application/json'},...(body===undefined?{}:{body:JSON.stringify(body)})});
   return{status:response.status,data:await response.json()};
  };
- const ask=async(sessionId:any,question:string)=>{
-  const run=await host.runs.submit({workspaceId:workspace.id,sessionId,question,providerId:'agent',documents:[],attachmentIds:[],allowArtifactWrites:false,requestId:randomUUID()},actor);
+ const ask=async(sessionId:any,question:string,locale?:'zh-CN'|'en')=>{
+  const run=await host.runs.submit({workspaceId:workspace.id,sessionId,question,providerId:'agent',documents:[],attachmentIds:[],allowArtifactWrites:false,requestId:randomUUID(),...(locale?{locale}:{})},actor);
   for await(const _event of host.runs.events(workspace.id,run.runId,0,new AbortController().signal)){}
-  const record=await host.runs.get(workspace.id,run.runId);expect(record.status).toBe('completed');return record;
+  const record=await host.runs.get(workspace.id,run.runId);expect(record.status,JSON.stringify(record.error)).toBe('completed');return record;
  };
  return{get host(){return host;},workspace,requests,request,ask,settings,get catalogReads(){return catalogReads;},restart:async()=>{await host.close();host=await startServer(config);}};
 }
 
 describe('agent settings and conversation statistics',()=>{
+ it('uses the requested language for built-in main and follow-up guidance without rewriting custom prompts or questions',async()=>{
+  const s=await setup(),main=await s.host.sessions.createMain(s.workspace.id,'languages'),temporary=await s.host.sessions.createTemporary(s.workspace.id,main.id);
+  await s.ask(main.id,'USER 中文 source stays unchanged','en');await s.ask(temporary.id,'Explain the evidence','en');
+  const mainPrompt=s.requests[0].messages[0].content,temporaryPrompt=s.requests[1].messages[0].content;
+  expect(mainPrompt).toContain('Reading and permission rules:');expect(mainPrompt).toContain('main conversation');
+  expect(mainPrompt).not.toMatch(/[\u3400-\u9fff]/);expect(temporaryPrompt).toContain('independent follow-up');
+  expect(s.requests[0].messages.at(-1).content).toBe('USER 中文 source stays unchanged');
+  const saved=(await s.request('/settings/agent')).data,custom={...saved,systemPrompt:'自定义 SYSTEM exactly',personalPrompt:'偏好 PERSONAL exactly'};
+  await s.request('/settings/agent',custom);await s.ask(main.id,'Keep custom prompts','en');
+  expect(s.requests[2].messages[0].content).toContain(custom.systemPrompt);expect(s.requests[2].messages[0].content).toContain(custom.personalPrompt);
+  expect((await s.request('/settings/agent')).data).toEqual(custom);
+  await s.ask(main.id,'继续','zh-CN');expect(s.requests[3].messages[0].content).toContain('阅读与权限规则');
+ },serverIntegrationTimeout);
  it('persists validated workspace prompt preferences and applies them to actual requests',async()=>{
   const s=await setup();
   const initial=await s.request('/settings/agent');expect(initial.status).toBe(200);

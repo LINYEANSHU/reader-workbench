@@ -2,7 +2,7 @@
 
 仓库根目录为 `G:\My_project\try`，正式分支为 `main`，首个发布标签为 `v0.1.0`。此前的全部开发提交已保留；使用 `git log --oneline --decorate --graph --all` 查看历史。
 
-当前功能迭代为 `v0.4.0`：按范围首读与补读、来源检索、文档翻译、本地中英离线翻译、主对话归档恢复及全局 AI 设置。SDK 协议保持 1.2.0。源码与启动入口采用当前根目录；旧版本与标签保留。各版本的行为和验收边界见 `CHANGELOG.md`。
+当前功能迭代为 `v0.5.0`：长上下文恢复、超长问题按需读取、文档缓存与结构化提取、后台历史压缩、运行细节保留策略，以及中英文 Agent 和纸张风格界面。SDK 协议保持 1.2.0。源码与启动入口采用当前根目录；旧版本与标签保留。各版本的行为和验收边界见 `CHANGELOG.md`。
 
 原开发 worktree `.worktrees/reader-workbench` 保留，因为现有应用、Office 资源及语音模型正在使用那里。它不再是唯一源码位置；当前根目录包含完整应用源码。不要运行 `git clean -fdx`，这会删除忽略的运行资源与私有配置。
 
@@ -48,10 +48,10 @@ git merge --ff-only codex/your-feature
 npm version patch --no-git-tag-version
 ```
 
-该命令更新根 `package.json` 与 `package-lock.json`。发布前核对需要同步的运行时版本字段；插件及 SDK 的独立协议版本仅在协议实际变化时修改。将“未发布”条目移到新版本及日期下，完成对应版本的检查，再提交和创建注释标签：
+该命令更新根 `package.json` 与 `npm-shrinkwrap.json`。发布前核对需要同步的 CLI、MCP、OpenAPI 和启动事件版本字段；插件及 SDK 的独立协议版本仅在协议实际变化时修改。将“未发布”条目移到新版本及日期下，完成对应版本的检查，再提交和创建注释标签：
 
 ```powershell
-git add package.json package-lock.json CHANGELOG.md
+git add package.json npm-shrinkwrap.json CHANGELOG.md
 git commit -m "chore: release 0.1.1"
 git tag -a v0.1.1 -m "Reader Workbench 0.1.1"
 npm pack --pack-destination release
@@ -76,7 +76,7 @@ git revert COMMIT_ID
 
 ```powershell
 git push origin main
-git push origin v0.4.0
+git push origin v0.5.0
 ```
 
-发布前同时检查当前文件及待推送的 Git 历史，确认没有真实凭据或工作区数据；`.gitignore` 不会移除历史中已提交的内容。跨平台 CI 状态以 GitHub Actions 实际结果为准。
+发布前同时检查当前文件及待推送的 Git 历史，确认没有真实凭据或工作区数据；`.gitignore` 不会移除历史中已提交的内容。代码和标签推送后均须跟进最终提交 SHA 的全部 GitHub Actions 检查；Windows 构建、完整测试与安全审计全部成功、测试无跳过后才发布正式 Release。macOS/Linux 不在维护和发布范围内。

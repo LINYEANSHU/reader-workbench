@@ -29,10 +29,21 @@ it('finds inline and display formulas with the paragraph text that locates them'
   {latex:'C=B\\log {(1+S/N)}',display:true,context:'',before:'Section 2 explains channel capacity.'},
   {latex:'B',display:false,context:'where is the bandwidth in hertz.',before:'Section 2 explains channel capacity.'}]);
 });
-it('places formulas on the rendered page that holds their paragraph text, moving forward through the document',()=>{
+it('places formulas only when their complete own paragraph text identifies one rendered page',()=>{
  const pages=[{page:1,text:'Intro text about channels.'},{page:2,text:'Section 2 explains\nchannel capacity. C = B log ( 1 + S / N )'},{page:3,text:'Appendix repeats: Section 2 explains channel capacity.'}];
  const formula=(context:string,before='')=>({latex:'x',display:false,context,before});
- expect(locateFormulas([formula('','Section 2 explains channel capacity.'),formula('Appendix repeats: Section 2'),formula('nowhere to be found')],pages)).toEqual([2,3,0]);
+ expect(locateFormulas([formula('','Section 2 explains channel capacity.'),formula('Appendix repeats: Section 2'),formula('Section 2 explains channel capacity.'),formula('nowhere to be found')],pages)).toEqual([0,3,0,0]);
+});
+it('does not attach a formula across an explicit page break to the preceding paragraph',async()=>{
+ const directory=await mkdtemp(join(tmpdir(),'docx-math-break-'));cleanup.push(()=>rm(directory,{recursive:true,force:true}));
+ const xml='<w:document><w:body><w:p><w:r><w:t>Energy relation introduction.</w:t><w:br w:type="page"/></w:r></w:p><w:p><m:oMath>'+run('E=mc2')+'</m:oMath></w:p></w:body></w:document>',path=join(directory,'paper.docx');
+ await writeFile(path,zipSync({'word/document.xml':strToU8(xml)}));
+ const pages=[{page:1,text:'Energy relation introduction.',width:1,height:1,anchors:[]},{page:2,text:'E = m c 2',width:1,height:1,anchors:[]}];
+ const result=await docxFormulaBlocks({path,workspaceId:'w',documentId:'d',version:'v'} as never,pages);expect(result).toEqual({blocks:[],unmapped:1});
+});
+it('does not locate a cross-page paragraph from only its matching prefix or suffix',()=>{
+ const context='A unique starting phrase ends here. A unique ending phrase begins here.';
+ expect(locateFormulas([{context,before:''}],[{page:1,text:'A unique starting phrase ends here.'},{page:2,text:'A unique ending phrase begins here.'}])).toEqual([0]);
 });
 it('adds exact formula blocks from a .docx to the pages that pre-reading sends as text',async()=>{
  const directory=await mkdtemp(join(tmpdir(),'docx-math-'));cleanup.push(()=>rm(directory,{recursive:true,force:true}));

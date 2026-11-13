@@ -6,7 +6,7 @@ export const defaultZipLimits:ZipLimits={maxEntries:5000,maxEntryBytes:64*1024*1
 const CHUNK=16*1024,RATIO_FLOOR=4*1024*1024;
 const fail=(message:string):never=>{throw new ReaderError('ARCHIVE_LIMIT',message,413);};
 const invalid=():never=>{throw new ReaderError('ARCHIVE_INVALID','压缩包结构无效');};
-export function boundedUnzip(bytes:Uint8Array,options:{limits?:Partial<ZipLimits>;signal?:AbortSignal}={}):Record<string,Uint8Array>{
+export function boundedUnzip(bytes:Uint8Array,options:{limits?:Partial<ZipLimits>;signal?:AbortSignal;filter?:(name:string)=>boolean}={}):Record<string,Uint8Array>{
  const limits={...defaultZipLimits,...options.limits},view=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength),u16=(at:number)=>at+2<=bytes.length?view.getUint16(at,true):invalid(),u32=(at:number)=>at+4<=bytes.length?view.getUint32(at,true):invalid();
  let end=-1;for(let at=bytes.length-22;at>=Math.max(0,bytes.length-22-0xffff);at--)if(u32(at)===0x06054b50){end=at;break;}
  if(end<0)invalid();
@@ -20,6 +20,7 @@ export function boundedUnzip(bytes:Uint8Array,options:{limits?:Partial<ZipLimits
   const flags=u16(at+8),method=u16(at+10),compressed=u32(at+20),declared=u32(at+24),nameLength=u16(at+28),extraLength=u16(at+30),commentLength=u16(at+32),local=u32(at+42);
   if(at+46+nameLength>bytes.length)invalid();
   const name=decoder.decode(bytes.subarray(at+46,at+46+nameLength));at+=46+nameLength+extraLength+commentLength;
+  if(options.filter&&!options.filter(name))continue;
   if(flags&1)fail('不支持加密压缩包');
   if(declared>limits.maxEntryBytes||total+declared>limits.maxTotalBytes)fail('压缩包展开后超过大小上限');
   if(u32(local)!==0x04034b50)invalid();

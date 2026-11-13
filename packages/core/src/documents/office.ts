@@ -43,7 +43,8 @@ export const officeAdapter:DocumentAdapter={supports:(_mime,extension)=>['.doc',
     if(slides.length&&!mapped)parsed.warnings.push('PPT 可见幻灯片数与预览页数不一致，未加入幻灯片原文结构。');
     if(mapped)for(const slide of slides){const page=mapped.get(slide.slide),target=page?parsed.pages.find(item=>item.page===page):undefined;if(!page||!target)continue;
       if(slide.markdown)parsed.blocks.push({id:'slide-'+page,text:slide.markdown,kind:'slide',anchor:{workspaceId:input.workspaceId,documentId:input.documentId,version:input.version,location:{kind:'page',page}}});
-      target.profile={...(target.profile??{textChars:0,garbledRatio:0,imageCoverage:0,pathOps:0,mathRatio:0}),textSufficient:slide.textSufficient};}
+      // The rendered profile also sees inherited layout/master and background visuals, absent from the slide XML.
+      target.profile={...(target.profile??{textChars:0,garbledRatio:0,imageCoverage:0,pathOps:0,mathRatio:0}),textSufficient:slide.textSufficient&&target.profile?.textSufficient===true,formulaRegions:slide.textSufficient?target.profile?.formulaRegions:undefined};}
     // Notes are numbered by slide; hidden slides are not rendered, so later notes move to their visible page.
     const notes=(await extractNotes(input.path)).map(note=>({...note,page:mapped?mapped.get(note.page)??0:note.page}));for(const note of notes){
     const page=parsed.pages.find(page=>page.page===note.page);
@@ -54,8 +55,10 @@ export const officeAdapter:DocumentAdapter={supports:(_mime,extension)=>['.doc',
     }
   }}
   // Rendered PDF text scatters formula glyphs; the source OMML gives each formula exactly, as LaTeX blocks on its page.
-  if(input.extension==='.docx'){try{const {blocks,unmapped}=await docxFormulaBlocks(input,parsed.pages);parsed.blocks.push(...blocks);if(unmapped)parsed.warnings.push(unmapped+' 个 Word 公式无法对应到预览页，未加入页内公式。');}catch{parsed.warnings.push('Word 公式未能从原文件读取，页内公式以转换后的文字为准。');}
+  if(input.extension==='.docx'){let requiresVisual=false;try{const {blocks,unmapped}=await docxFormulaBlocks(input,parsed.pages);parsed.blocks.push(...blocks);if(unmapped){requiresVisual=true;parsed.warnings.push(unmapped+' 个 Word 公式无法对应到预览页，改用页面图像核对。');}}catch{requiresVisual=true;parsed.warnings.push('Word 公式未能从原文件读取，改用页面图像核对。');}
     // Likewise tables: rows, columns and merged cells come from the source instead of interleaved rendered text.
-    try{const {blocks,unmapped}=await docxTableBlocks(input,parsed.pages);parsed.blocks.push(...blocks);if(unmapped)parsed.warnings.push(unmapped+' 个 Word 表格无法对应到预览页，未加入页内表格。');}catch{parsed.warnings.push('Word 表格未能从原文件读取，表格以转换后的文字为准。');}}
+    try{const {blocks,unmapped}=await docxTableBlocks(input,parsed.pages);parsed.blocks.push(...blocks);if(unmapped){requiresVisual=true;parsed.warnings.push(unmapped+' 个 Word 表格无法对应到预览页，改用页面图像核对。');}}catch{requiresVisual=true;parsed.warnings.push('Word 表格未能从原文件读取，改用页面图像核对。');}
+    // The missing element's page is unknown, so every selected page must be checked visually rather than guessed.
+    if(requiresVisual)for(const page of parsed.pages)page.profile={...(page.profile??{textChars:page.text.length,garbledRatio:0,imageCoverage:0,pathOps:0,mathRatio:0}),textSufficient:false,formulaRegions:undefined,requiresVisual:true};}
   parsed.warnings.push('Office 页面由 LibreOffice 转换；缺失字体或转换器差异可能改变排版。');return parsed;
 }};

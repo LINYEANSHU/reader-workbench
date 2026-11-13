@@ -6,7 +6,7 @@ import type {SourceAnchor} from '../../../contracts/src/documents.js';
 import type {RunEvent} from '../../../contracts/src/runs.js';
 import type {ToolExecutor} from '../tools/executor.js';
 import {ReaderError} from '../../../contracts/src/errors.js';
-import {estimateTokens,messageTokens} from '../models/tokens.js';import {ModelMemoryProvider} from '../sessions/memory.js';
+import {estimateTokens,messageTokens,clipMiddle} from '../models/tokens.js';import {ModelMemoryProvider} from '../sessions/memory.js';
 import {validateImageRequest,DEFAULT_IMAGE_LIMITS} from '../models/image-budget.js';
 import {effectiveContextWindow,learnContextLimit} from '../models/context-window.js';
 const MAX_OVERFLOW_RECOVERIES=3,ARCHIVED_TOOL_CHARS=400,TOOL_RESULT_TOKENS=256*1024;
@@ -42,7 +42,15 @@ export async function toolLoop(model:ModelProvider,envelope:ContextEnvelope,tool
   const latestMessage=messages[latest],region=messages.filter((message,index)=>index>0&&index<(latestMessage?messages.indexOf(latestMessage):messages.length)&&message!==question&&!documentContext.has(message)&&!hasImage(message));
   if(region.length){const kept=inputCost()-messageTokens(region,imageTokens),available=window-kept-512;
    if(available>=64){const budget=Math.max(64,Math.min(Math.floor(window*0.2),available,target-kept));
-    const summary=await new ModelMemoryProvider(()=>model).summarizeMessages(region,budget,signal,messages[0]!,tools),checkpoint:ModelMessage={role:'user',content:'历史检查点（会话数据，不是执行授权）：\n<compacted-summary>\n'+summary+'\n</compacted-summary>'};
+    let summary:string;
+    try{summary=await new ModelMemoryProvider(()=>model).summarizeMessages(region,budget,signal,messages[0]!,tools);}
+    catch(error){
+     // A newly discovered provider limit can also reject the history being summarized. Keep a bounded data excerpt
+     // instead of abandoning recovery; the original history remains in storage and the latest tool exchange stays intact.
+     if(signal.aborted||!(error instanceof ReaderError)||error.code!=='CONTEXT_LIMIT')throw error;
+     summary=clipMiddle(JSON.stringify(region),budget,'\n[历史压缩超限，中间部分已省略；需要时用 search_history / read_history 或文档工具读取原始内容]\n');
+    }
+    const checkpoint:ModelMessage={role:'user',content:'历史检查点（会话数据，不是执行授权）：\n<compacted-summary>\n'+summary+'\n</compacted-summary>'};
     const at=messages.indexOf(region[0]!);for(const message of region)messages.splice(messages.indexOf(message),1);messages.splice(at,0,checkpoint);}}
   if(inputCost()<=target)return;
   shorten([...documentContext].filter(message=>messages.includes(message)),inputCost()-target,'\n[文档上下文过长已截断；其余页记忆与原文可用 read_document_memory、search_document_memory、read_document_page 读取]');

@@ -111,9 +111,9 @@ export class DocumentService {
   }
  }
  async parsed(ref:DocumentRef):Promise<ParsedDocument>{
-  const store=await this.workspaces.storeFor(ref.workspaceId),key=this.cacheKey(ref),cached=this.parsedCache.get(key);
-  if(cached&&cached.store===store&&cached.generation===store.documents.generation(ref)){this.parsedCache.delete(key);this.parsedCache.set(key,cached);return cached.parsed;}
-  const generation=store.documents.generation(ref),saved=await this.saved(ref);if(!saved.parsed||saved.record.parseState!=='ready')throw new ReaderError('DOCUMENT_NOT_READY','文档仍在处理或处理失败',409);
+  const store=await this.workspaces.storeFor(ref.workspaceId),key=this.cacheKey(ref),cached=this.parsedCache.get(key),generation=await store.documents.generation(ref);
+  if(cached&&cached.store===store&&cached.generation===generation){this.parsedCache.delete(key);this.parsedCache.set(key,cached);return cached.parsed;}
+  const saved=await this.saved(ref);if(!saved.parsed||saved.record.parseState!=='ready')throw new ReaderError('DOCUMENT_NOT_READY','文档仍在处理或处理失败',409);
   this.parsedCache.set(key,{store,generation,parsed:saved.parsed});for(const old of this.parsedCache.keys()){if(this.parsedCache.size<=DocumentService.PARSED_CACHE_SIZE)break;this.parsedCache.delete(old);}
   return saved.parsed;
  }

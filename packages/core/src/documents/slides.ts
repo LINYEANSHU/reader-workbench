@@ -38,6 +38,9 @@ function points(node:XmlNode|undefined):string[]{const values:string[]=[];if(!no
 export function chartMarkdown(xml:string):string{
  const root={root:parseOrderedXml(xml)},title=first(path(first(root,'c:chart'),'c:title'),'c:tx'),heading=title?descendants(title,'a:t').map(textContent).join('').trim():'',plot=first(root,'c:plotArea');if(!plot)return '';
  const sections:string[]=[];
+ // Scatter series have independent x coordinates and bubble sizes add another dimension. The shared-category table
+ // below cannot represent either faithfully, including mixed charts, so let the page image carry their meaning.
+ if(childrenOf(plot).some(node=>tagOf(node)==='c:scatterChart'||tagOf(node)==='c:bubbleChart'))return '';
  for(const chart of childrenOf(plot)){const kind=(tagOf(chart)??'').replace(/^c:/,'');if(!chartKinds[kind])continue;
   const series=childrenOf(chart).filter(item=>tagOf(item)==='c:ser').map((item,index)=>({name:textContent(first(child(item,'c:tx'),'c:v')??{}).trim()||'系列'+(index+1),categories:points(child(item,'c:cat')??child(item,'c:xVal')),values:points(child(item,'c:val')??child(item,'c:yVal'))}));
   if(!series.length)continue;const categories=series.find(item=>item.categories.length)?.categories??[],count=Math.min(MAX_CHART_ROWS,Math.max(categories.length,...series.map(item=>item.values.length)));

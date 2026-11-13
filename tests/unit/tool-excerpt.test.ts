@@ -25,3 +25,9 @@ it('returns archived dialogue without raw tool messages and finds Chinese turns 
  expect(await history.search(scope,'s' as never,'完全无关')).toEqual([]);
  await expect(history.read(scope,'other' as never)).rejects.toMatchObject({code:'TOOL_SCOPE_DENIED'});
 });
+it('returns the matching middle of an archived long question',async()=>{
+ const question='前'.repeat(6000)+'MIDDLE_FACT: bandwidth controls capacity.'+'后'.repeat(6000),turn={id:'t',runId:'r',revision:1,question,answer:'已回答',messages:[],sourceAnchors:[],attachmentIds:[]};
+ const history=new HistorySearch({authorizeScope:async()=>({id:'s',kind:'main'}),getCommittedTurns:async()=>[turn]} as any);
+ const hits=await history.search({workspaceId:'w',sessionId:'s'} as any,'s' as never,'MIDDLE_FACT');
+ expect(hits).toHaveLength(1);expect(hits[0]?.question).toContain('MIDDLE_FACT: bandwidth controls capacity.');expect(hits[0]!.question.length).toBeLessThanOrEqual(4002);
+});

@@ -6,6 +6,27 @@ async function language(page:Page,name:'English'|'简体中文'){
  await page.getByRole('option',{name,exact:true}).click();
 }
 
+test('localizes preset selection and reset while preserving unsaved custom text across language changes',async({page,host,root,context},testInfo)=>{
+ await openWorkspace(page,host,root);await language(page,'English');
+ await page.getByRole('button',{name:'Open settings',exact:true}).click();await page.getByRole('button',{name:'Prompts & preferences',exact:true}).click();
+ const dialog=page.getByRole('dialog');
+ await expect(dialog.getByRole('textbox',{name:'System prompt',exact:true})).toHaveValue(/professional and reliable learning and research assistant/);
+ await dialog.getByRole('combobox',{name:'Preset style',exact:true}).click();await page.getByRole('option',{name:'Candid',exact:true}).click();
+ await expect(dialog.getByRole('textbox',{name:'System prompt',exact:true})).toHaveValue(/candid and direct/);
+ const custom='UNSAVED 自定义 $& {locale}';await dialog.getByRole('textbox',{name:'System prompt',exact:true}).fill(custom);
+ await dialog.getByRole('textbox',{name:'Personal prompt',exact:true}).fill('PERSONAL 原样');
+ const other=await context.newPage();await other.goto(host.url);await language(other,'简体中文');
+ await expect(dialog.getByRole('textbox',{name:'系统提示词',exact:true})).toHaveValue(custom);
+ await expect(dialog.getByRole('textbox',{name:'个性化提示词',exact:true})).toHaveValue('PERSONAL 原样');
+ await dialog.getByRole('button',{name:'恢复默认提示词',exact:true}).click();
+ await expect(dialog.getByRole('textbox',{name:'系统提示词',exact:true})).toHaveValue(/你是专业可靠的学习与科研助手/);
+ await language(other,'English');await other.close();
+ await expect(dialog.getByRole('textbox',{name:'System prompt',exact:true})).toHaveValue(/professional and reliable learning and research assistant/);
+ await dialog.locator('summary').filter({hasText:'View combined prompt'}).click();
+ await expect(dialog.getByRole('textbox',{name:'Combined prompt preview',exact:true})).toHaveValue(/Expression preferences/);
+ for(const width of [1600,390]){await page.setViewportSize({width,height:1000});expect(await dialog.evaluate(node=>node.scrollWidth<=node.clientWidth)).toBe(true);await page.screenshot({path:testInfo.outputPath('agent-preferences-en-'+width+'.png')});}
+});
+
 test('localizes tool settings while preserving prompts, shortcuts, identifiers and drafts',async({page,host,root,modelUrl})=>{
  await model(host,root,modelUrl);await openWorkspace(page,host,root);await language(page,'English');
  const main=page.getByRole('region',{name:'Main chat',exact:true});
@@ -24,7 +45,7 @@ test('localizes tool settings while preserving prompts, shortcuts, identifiers a
  await shortcut.fill('Mod+Shift+X');await dialog.getByRole('button',{name:'Save shortcut',exact:true}).click();
  await dialog.getByRole('button',{name:'Prompts & preferences',exact:true}).click();
  const system=dialog.getByRole('textbox',{name:'System prompt',exact:true});
- await expect(system).toHaveValue(/你是专业可靠的学习与科研助手/);
+ await expect(system).toHaveValue(/professional and reliable learning and research assistant/);
  await system.fill('SYSTEM 原文 do not translate');
  await dialog.getByRole('textbox',{name:'Personal prompt',exact:true}).fill('PERSONAL 中文 preference');
  await dialog.getByRole('button',{name:'Save prompts',exact:true}).click();
@@ -52,7 +73,7 @@ test('localizes tool settings while preserving prompts, shortcuts, identifiers a
  await expect(page.getByRole('textbox',{name:'个性化提示词',exact:true})).toHaveValue('PERSONAL 中文 preference');
 });
 
-test('keeps capture errors and chat content correct when the interface language changes',async({page,host,root,modelUrl})=>{
+test('keeps capture errors and chat content correct when the interface language changes',async({page,host,root,modelUrl,modelCalls})=>{
  await model(host,root,modelUrl);await openWorkspace(page,host,root);await language(page,'English');
  await page.keyboard.press('ControlOrMeta+Shift+X');
  await expect(page.getByRole('alert')).toContainText('Open a document before capturing a screenshot');
@@ -63,8 +84,11 @@ test('keeps capture errors and chat content correct when the interface language 
  const main=page.getByRole('region',{name:'Main chat',exact:true});
  const question='USER 中文 exact content';
  await main.getByRole('textbox',{name:'Main chat input',exact:true}).fill(question);
+ const submitted=page.waitForRequest(request=>request.method()==='POST'&&new URL(request.url()).pathname==='/api/v1/runs');
  await main.getByRole('button',{name:'Send',exact:true}).click();
+ expect((await submitted).postDataJSON()).toMatchObject({locale:'en',question});
  await expect(main.getByText('解释：'+question+'。独立回答。',{exact:true})).toBeVisible();
+ expect(modelCalls.at(-1).messages[0].content).toContain('Reading and permission rules:');
  const stats=page.getByRole('region',{name:'Workspace statistics',exact:true});
  await stats.getByRole('button',{name:'Workspace usage and context details',exact:true}).click();
  await expect(stats).toContainText('All workspace chats');

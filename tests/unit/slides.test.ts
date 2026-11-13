@@ -48,3 +48,11 @@ it('skips slides whose parts are missing instead of failing the document',async(
  // The rendered deck still has the missing slide, so page mapping is refused by the visible-count check.
  const slides=await extractSlides(broken);expect(slides.map(slide=>slide.slide)).toEqual([1,3,4]);expect(slidePages(slides).size).toBe(2);
 });
+it.each(['scatterChart','bubbleChart'])('keeps %s visual instead of presenting series on a fabricated shared x grid',kind=>{
+ const series=(name:string,x:number,y:number)=>'<c:ser><c:tx><c:v>'+name+'</c:v></c:tx><c:xVal><c:numLit><c:pt idx="0"><c:v>'+x+'</c:v></c:pt></c:numLit></c:xVal><c:yVal><c:numLit><c:pt idx="0"><c:v>'+y+'</c:v></c:pt></c:numLit></c:yVal><c:bubbleSize><c:numLit><c:pt idx="0"><c:v>50</c:v></c:pt></c:numLit></c:bubbleSize></c:ser>';
+ const chart='<c:chartSpace><c:chart><c:plotArea><c:'+kind+'>'+series('A',1,10)+series('B',100,30)+'</c:'+kind+'></c:plotArea></c:chart></c:chartSpace>';
+ const xml='<p:sld><p:cSld><p:spTree><p:graphicFrame><a:graphic><a:graphicData><c:chart r:id="rId1"/></a:graphicData></a:graphic></p:graphicFrame></p:spTree></p:cSld></p:sld>';
+ const parts={'ppt/slides/_rels/slide1.xml.rels':'<Relationships><Relationship Id="rId1" Target="../charts/chart1.xml"/></Relationships>','ppt/charts/chart1.xml':chart};
+ const content=slideContent(xml,'ppt/slides/slide1.xml',parts,1,1);
+ expect(content.textSufficient).toBe(false);expect(chartMarkdown(chart)).toBe('');
+});

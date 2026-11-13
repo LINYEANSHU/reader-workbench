@@ -21,12 +21,13 @@ function textMode(host,document){return host.mode==='text'||host.mode===undefine
 // A visual page whose PDF text layer is clearly complete (see the host's page profile) is read as text: no render, no image tokens.
 // One that is complete except for its formulas is read as text plus crops of the formula regions, when they fit the
 // model's image limits; otherwise, and for every other page, the whole page image is sent.
-async function pageRoute(host,page){const profile=await host.readPageProfile?.(page);return profile?.textSufficient===true?'text':profile?.formulaRegions?.length&&host.readPageFormulas?'formulas':'image';}
-async function pageInput(host,page,asText,signal){if(asText)return{page,text:await host.readPageText(page)};const route=await pageRoute(host,page);
- if(route==='text')return{page,text:await host.readPageText(page),textLayer:true};
+async function pageRoute(host,page,asText=false){const profile=await host.readPageProfile?.(page);if(profile?.requiresVisual)return 'image';return asText||profile?.textSufficient===true?'text':profile?.formulaRegions?.length&&host.readPageFormulas?'formulas':'image';}
+async function pageInput(host,page,asText,signal){const route=await pageRoute(host,page,asText);
+ if(route==='text')return{page,text:await host.readPageText(page),...(!asText?{textLayer:true}:{})};
+ if(!host.capabilities.vision)fail('该页原文结构无法可靠定位，需要视觉模型核对页面','VISION_UNAVAILABLE');
  if(route==='formulas'){const crops=await host.readPageFormulas(page,signal),input={page,text:await host.readPageText(page),textLayer:true,crops};if(crops.length&&fits(host,[input]))return input;}
  return host.readPageImage(page,signal);}
-export async function prepareLocal(host,signal){const record=await host.describe();if(textMode(host,record))return;for(const page of selectedPages(host,record)){signal.throwIfAborted();const route=await pageRoute(host,page);if(route==='formulas')await host.readPageFormulas(page,signal);else if(route==='image')await host.readPageImage(page,signal);}}
+export async function prepareLocal(host,signal){const record=await host.describe(),asText=textMode(host,record);for(const page of selectedPages(host,record)){signal.throwIfAborted();const route=await pageRoute(host,page,asText);if(route==='formulas')await host.readPageFormulas(page,signal);else if(route==='image')await host.readPageImage(page,signal);}}
 export async function prepare(host,signal){signal.throwIfAborted();const document=await host.describe(),asText=textMode(host,document),selected=selectedPages(host,document);if(!asText&&!host.capabilities.vision)fail('逐页图像阅读需要视觉模型','VISION_UNAVAILABLE');let record=await host.load();if(record&&selected.every(page=>record.completedPages.includes(page))&&overviewMatches(record,selected))return record;const now=new Date().toISOString();record??={schemaVersion:1,document:{workspaceId:document.workspaceId,documentId:document.documentId,version:document.version},pluginId:host.pluginId,promptVersion:'1',modelIdentity:host.modelIdentity,generation:host.generation,pageCount:document.pageCount,status:'partial',pages:[],completedPages:[],batches:[],overview:'',createdAt:now,updatedAt:now};
  // An earlier overview stays valid for the pages it covers (records from before overviewPages covered completedPages).
  // When more pages are read, it is merged with only the new pages instead of summarizing every page again.

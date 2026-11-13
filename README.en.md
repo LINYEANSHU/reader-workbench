@@ -14,13 +14,13 @@ Read papers in your own workspace, trace ideas back to their sources, and turn u
 [![Node.js](https://img.shields.io/badge/Node.js-24%2B-417e38)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-64748b)](LICENSE)
 
-[Quick start](#quick-start) · [Agent architecture](#agent-architecture) · [Agent workflow](#agent-workflow) · [Translation and memory](#translation-and-memory) · [Documentation](#documentation)
+[New in 0.5.0](#new-in-050) · [Quick start](#quick-start) · [Agent architecture](#agent-architecture) · [Language switching](#language-switching) · [Documentation](#documentation)
 
 </div>
 
-![Actual English interface showing the source document, main chat and independent follow-up chat](docs/evidence/2026-10-22/bilingual/english-workbench.png)
+![Actual 0.5.0 English interface showing the source document, main chat and independent follow-up chat](assets/readme/workbench.en.png)
 
-<div align="center"><sub>Real application · synthetic sample document · English interface. This demonstrates the reading workflow, not model answer quality; current interface details may differ.</sub></div>
+<div align="center"><sub>Actual 0.5.0 interface · self-authored sample document · deterministic local protocol-model responses · Light theme. This demonstrates the reading workflow, not remote model answer quality.</sub></div>
 
 ## The reading experience
 
@@ -29,7 +29,7 @@ Read papers in your own workspace, trace ideas back to their sources, and turn u
 - **Start with the pages you need.** Choose all pages, the first few or ranges such as `2-3,10-15` when opening PDF/Office files; read missing pages later.
 - **Follow evidence back to the source.** Search terms, formulas and figures and click citations. Scans and images without a text layer are not automatically OCRed.
 - **Preserve the originals.** Preview a translation and explicitly save a new file. Generated files default to `outputs/<session>/`.
-- **Make room for your reading style.** Chinese/English controls, Light/Graphite/Ink themes, resizable panes with independent zoom, and offline speech input.
+- **Make room for your reading style.** Chinese/English controls, paper-inspired Light/Graphite/Lamplight themes, resizable panes with independent zoom, and offline speech input.
 
 > **Maintained platform: Windows.** Current builds, tests, security audits and future updates cover Windows, primarily validated on Windows x64. macOS and Linux maintenance and releases have ended.
 
@@ -56,13 +56,32 @@ The browser opens `http://127.0.0.1:4317` by default. After building, double-cli
 Original-page Office previews need a separate **LibreOffice** installation. Run `node bin/reader-workbench.mjs doctor` to check dependencies; PDF, Markdown and images work independently. See [installation and troubleshooting](docs/installation.md).
 
 <details>
-<summary><strong>Already have the v0.4.0 package?</strong></summary>
+<summary><strong>Install the v0.5.0 release package</strong></summary>
 
-The source still uses application package version `0.4.0` and SDK protocol `1.2.0`. A package with that version number alone does not establish which later changes it contains. For current features, follow the `main` branch source instructions above. Public release packages are listed on the [Releases page](https://github.com/LINYEANSHU/reader-workbench/releases).
+Download `reader-workbench-0.5.0.tgz` from the [v0.5.0 Release](https://github.com/LINYEANSHU/reader-workbench/releases/tag/v0.5.0), compare its hash with `SHA256SUMS.txt` on that page, then run in the download folder:
 
-To use an existing package, run `npm install --global .\reader-workbench-0.4.0.tgz`, then `reader-workbench web`.
+```powershell
+Get-FileHash .\reader-workbench-0.5.0.tgz -Algorithm SHA256
+npm install --global .\reader-workbench-0.5.0.tgz
+reader-workbench web
+```
+
+Stop the old service before upgrading, then restart it and refresh the browser. Keep your workspace and local settings; chats, document memory and model caches do not need to be deleted. The SDK protocol remains `1.2.0`.
 
 </details>
+
+## New in 0.5.0
+
+This release reduces repeated parsing, repeated input and waiting during long reading sessions.
+
+| Reading task | What changed |
+| --- | --- |
+| Extended conversations | Background history summaries and staged context reduction. A provider rejection teaches a smaller input budget, stored locally for 30 days. |
+| Very long questions | Models with tools receive the beginning and end, then retrieve the middle on demand. Models without tools retain the full question and report when it cannot fit. |
+| Revisiting a document | Parsed documents, page images and validated document memory are cached and revalidated when the document version or cached files change. |
+| PDFs, Word files and slides | Pages with a complete text layer prefer text input. Word tables and equations and PowerPoint slide structure are extracted directly; formula crops supplement text when needed. |
+
+Streamed answers use batched writes, pre-reading handles two batches concurrently, and overviews merge newly read pages. Each chat keeps full diagnostics for its latest **20 runs**. Older finished runs lose context snapshots and repeated streaming events while **questions, final answers, status and committed chat history remain**. These implementation changes do not establish speed or answer-quality guarantees for any particular model.
 
 ## Agent architecture
 
@@ -103,7 +122,7 @@ Both diagrams preserve the structure of the Agent diagram set and adapt it to Gi
 
 ## Language switching
 
-Use **界面语言 / Interface language** on the welcome page or upper-right workbench toolbar to choose **简体中文 / English**. Your browser remembers the choice and preserves the chat and draft when switching. Original documents, filenames and chat content keep their language; AI answer language follows your question and model instructions.
+Use **界面语言 / Interface language** on the welcome page or upper-right workbench toolbar to choose **简体中文 / English**. Your browser remembers the choice and preserves the chat and draft when switching. Built-in Agent presets, expression preferences and reading instructions are available in both languages; edited custom prompts are preserved verbatim. Original documents, filenames and chat content are not automatically translated, and answers still follow your explicit language requests.
 
 The [Chinese edition](README.md) and this English edition link to each other at the top.
 

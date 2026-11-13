@@ -3,7 +3,7 @@ import type {RunId,WorkspaceId} from '../../../../packages/contracts/src/ids.js'
 import type {WorkbenchState} from './state.js';
 export interface PendingSubmission{request:AskRequest;runId?:RunId;modelScope?:'global'}
 export type Submissions=Record<string,PendingSubmission>;
-export function sameSubmission(left:AskRequest,right:Omit<AskRequest,'requestId'>){const snapshot=(item:Omit<AskRequest,'requestId'>)=>JSON.stringify([item.workspaceId,item.sessionId,item.question,item.documents,item.selection??null,item.attachmentIds,item.providerId,item.reasoningEffort??null,item.allowArtifactWrites]);return snapshot(left)===snapshot(right);}
+export function sameSubmission(left:AskRequest,right:Omit<AskRequest,'requestId'>){const snapshot=(item:Omit<AskRequest,'requestId'>)=>JSON.stringify([item.workspaceId,item.sessionId,item.question,item.documents,item.selection??null,item.attachmentIds,item.providerId,item.reasoningEffort??null,item.allowArtifactWrites,item.locale??'zh-CN']);return snapshot(left)===snapshot(right);}
 export function submissionKey(client:string,workspaceId:WorkspaceId){return'reader:submissions:'+client+':'+workspaceId;}
 export function loadSubmissions(key:string,workspaceId:WorkspaceId,sessions:SessionRecord[]):Submissions{
  try{const saved=JSON.parse(localStorage.getItem(key)??'{}') as Submissions;return Object.fromEntries(Object.entries(saved).filter(([id,item])=>sessions.some(session=>session.id===id)&&item?.request?.sessionId===id&&item.request.workspaceId===workspaceId&&typeof item.request.requestId==='string'&&typeof item.request.question==='string'));}catch{return{};}

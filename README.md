@@ -14,13 +14,13 @@
 [![Node.js](https://img.shields.io/badge/Node.js-24%2B-417e38)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-64748b)](LICENSE)
 
-[快速开始](#快速开始) · [Agent 架构](#agent-架构) · [运行工作流](#运行工作流) · [翻译与记忆](#翻译与记忆) · [文档](#文档)
+[0.5.0 新功能](#050-新功能) · [快速开始](#快速开始) · [Agent 架构](#agent-架构) · [中英文切换](#中英文切换) · [文档](#文档)
 
 </div>
 
-![真实应用中的三栏阅读：原文、主对话与独立追问并排显示](docs/ui-polish/2026-10-14/evidence/final-ink-pdf.png)
+![0.5.0 中文界面的三栏阅读：原文、主对话与独立追问并排显示](assets/readme/workbench.zh-CN.png)
 
-<div align="center"><sub>真实应用 · 合成示例文档 · 墨蓝外观。截图展示阅读流程，不代表模型回答质量；当前界面细节可能有所更新。</sub></div>
+<div align="center"><sub>0.5.0 真实界面 · 自编示例文档 · 本机协议测试模型的固定演示回答 · 浅色外观。展示阅读流程，不代表远程模型的回答质量。</sub></div>
 
 ## 阅读方式
 
@@ -29,7 +29,7 @@
 - **先读需要的页。** 首次打开 PDF/Office 时选择全部、前几页或 `2-3,10-15`，后续补读缺失页面。
 - **沿着来源回原文。** 搜索术语、公式和图表，点击引用回看；扫描件与无文字层图片不自动 OCR。
 - **整理时保留原文件。** 预览译文后显式另存，生成结果默认写入 `outputs/<session>/`。
-- **按自己的习惯阅读。** 中英文界面、浅色/石墨/墨蓝外观、可拖动三栏与独立缩放、离线语音输入。
+- **按自己的习惯阅读。** 中英文界面、纸张风格的浅色/石墨灰/灯下外观、可拖动三栏与独立缩放、离线语音输入。
 
 > **维护范围：Windows。** 当前版本只提供 Windows 构建、测试、安全审计和后续更新，主要验证环境为 Windows x64。macOS 与 Linux 停止维护和发布。
 
@@ -56,13 +56,32 @@ npm start
 Office 原版页面预览需要另行安装 **LibreOffice**。安装后运行 `node bin/reader-workbench.mjs doctor` 检查依赖；PDF、Markdown 和图片可独立使用。详细步骤见[安装与运行](docs/installation.md)。
 
 <details>
-<summary><strong>已有 v0.4.0 发行包？</strong></summary>
+<summary><strong>直接安装 v0.5.0 发行包</strong></summary>
 
-源码的应用包版本仍为 `0.4.0`，SDK 协议为 `1.2.0`。单凭同名安装包无法确认它包含哪些后续改动；要使用当前功能，请按上面的 `main` 分支源码步骤安装。公开发行包以 [Releases 页面](https://github.com/LINYEANSHU/reader-workbench/releases)为准。
+在 [v0.5.0 Release](https://github.com/LINYEANSHU/reader-workbench/releases/tag/v0.5.0) 下载 `reader-workbench-0.5.0.tgz`，核对同页 `SHA256SUMS.txt`，然后在下载目录运行：
 
-安装已有包可执行 `npm install --global .\reader-workbench-0.4.0.tgz`，随后运行 `reader-workbench web`。
+```powershell
+Get-FileHash .\reader-workbench-0.5.0.tgz -Algorithm SHA256
+npm install --global .\reader-workbench-0.5.0.tgz
+reader-workbench web
+```
+
+升级前停止旧服务，升级后重启并刷新浏览器。保留原工作区及本机配置，无需删除聊天、文档记忆或模型缓存。SDK 协议保持 `1.2.0`。
 
 </details>
+
+## 0.5.0 新功能
+
+本版围绕长文档和长对话，减少重复解析、重复发送与等待。
+
+| 阅读场景 | 本版变化 |
+| --- | --- |
+| 长时间追问 | 后台压缩历史、分阶段缩减上下文；服务拒绝过长输入后学习较小预算，并在本机保存 30 天。 |
+| 一次提交很长的问题 | 支持工具的模型先读取首尾，再按需读取中间原文；不支持工具时保留完整提问，超出容量则明确报错。 |
+| 反复打开与查看同一文档 | 缓存已解析文档、页面图像和校验后的文档记忆，按文档版本及缓存变化重新校验。 |
+| 阅读 PDF、Word 与课件 | 有完整文字层的页面优先用文字；提取 Word 表格与公式、PowerPoint 幻灯片结构，必要时补充公式裁图。 |
+
+流式回答合并写入，预读同时处理两个批次；概览只合并新读页面。每个会话保留最近 **20 次运行**的完整诊断细节，较早且已结束的运行裁去上下文快照与重复流事件，**保留问题、最终回答、状态和已提交聊天历史**。这些是实现改进，不代表特定模型上的速度或回答质量保证。
 
 ## Agent 架构
 
@@ -103,7 +122,7 @@ Office 原版页面预览需要另行安装 **LibreOffice**。安装后运行 `n
 
 ## 中英文切换
 
-欢迎页和工作台右上角的 **界面语言 / Interface language** 可切换 **简体中文 / English**。浏览器保存选择，切换时保留对话和输入草稿。原文、文件名及聊天内容保持原样；AI 的回答语言由提问与模型提示词决定。
+欢迎页和工作台右上角的 **界面语言 / Interface language** 可切换 **简体中文 / English**。浏览器保存选择，切换时保留对话和输入草稿。内置 Agent 预设、表达规则和阅读指令提供中英文版本；已编辑的自定义提示词保持原文。原文、文件名及聊天内容不自动翻译，回答仍会遵循你的明确语言要求。
 
 本文档的[英文版本](README.en.md)与中文版本在顶部互相链接。
 

@@ -12,7 +12,7 @@ export interface VersionedFile extends DocumentRef {path:string;cacheDir:string;
 export interface DocumentBlock {id:string;text:string;anchor:SourceAnchor;kind?:string}
 /** How far a PDF page's text layer can stand in for its image. Ratios are 0–1 shares of the page or its characters. */
 /** formulaRegions: [left, top, right, bottom] page fractions of formulas on a page whose text is otherwise complete. */
-export interface PageProfile {textChars:number;garbledRatio:number;imageCoverage:number;pathOps:number;mathRatio:number;textSufficient:boolean;formulaRegions?:Array<[number,number,number,number]>}
+export interface PageProfile {textChars:number;garbledRatio:number;imageCoverage:number;pathOps:number;mathRatio:number;textSufficient:boolean;formulaRegions?:Array<[number,number,number,number]>;/** Source structure could not be assigned safely; overrides a document's default text route. */requiresVisual?:boolean}
 export interface DocumentPage {page:number;text:string;width:number;height:number;imagePath?:string;anchors:SourceAnchor[];profile?:PageProfile}
 export interface ParsedDocument {pages:DocumentPage[];blocks:DocumentBlock[];warnings:string[];pdfPath?:string}
 export interface SearchHit {text:string;anchor:SourceAnchor;score:number}

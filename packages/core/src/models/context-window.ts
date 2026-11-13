@@ -1,31 +1,39 @@
 import type {ModelProvider} from '../../../sdk/src/capabilities.js';
 import {LocalSettings} from '../runtime/local-settings.js';
+import {writePrivateJson} from '../runtime/secure-file.js';
 // The configured input limit is an upper bound: a provider may accept less (another model behind the same settings,
 // a deployment limit). When it rejects an input as too long, the estimate of that input bounds what it accepts, and
 // later requests of this process are built to fit below it instead of failing the same way again.
-const learned=new Map<string,number>();
+type SavedLimit={window:number;learnedAt:string};
+type SavedLimits=Record<string,SavedLimit>;
+const learned=new Map<string,SavedLimit>();
 const MINIMUM_WINDOW=4096,SAFETY=0.75;
 /** Input limit (estimated tokens) to build requests for: the configured window, lowered by provider rejections. */
 export function effectiveContextWindow(model:Pick<ModelProvider,'capabilities'|'identity'>):number{
- const value=model.identity?learned.get(model.identity):undefined;return Math.max(MINIMUM_WINDOW,Math.min(model.capabilities.contextWindow,value??Number.POSITIVE_INFINITY));
+ const entry=model.identity?learned.get(model.identity):undefined;
+ if(entry&&!valid(entry)){learned.delete(model.identity!);}
+ return Math.max(MINIMUM_WINDOW,Math.min(model.capabilities.contextWindow,entry&&valid(entry)?entry.window:Number.POSITIVE_INFINITY));
 }
 /** Records a provider rejection of an input estimated at `estimate`; returns the lowered window. */
 export function learnContextLimit(model:Pick<ModelProvider,'capabilities'|'identity'>,estimate:number):number{
  const next=Math.max(MINIMUM_WINDOW,Math.floor(Math.min(estimate,effectiveContextWindow(model))*SAFETY));
- if(model.identity){const value=Math.min(learned.get(model.identity)??Number.POSITIVE_INFINITY,next);learned.set(model.identity,value);persist(model.identity,value);}
+ if(model.identity){const value={window:Math.min(learned.get(model.identity)?.window??Number.POSITIVE_INFINITY,next),learnedAt:new Date(Date.now()).toISOString()};learned.set(model.identity,value);persist(model.identity,value);}
  return next;
 }
 // Learned limits are kept in the private agent settings, so a restart does not meet the same rejection again. Entries
 // are keyed by the provider identity (endpoint, model and capabilities) and expire, since providers raise limits.
-type SavedLimits=Record<string,{window:number;learnedAt:string}>;
 const LIMIT_RETENTION_MS=30*24*60*60*1000;let store:LocalSettings<SavedLimits>|undefined,saving:Promise<unknown>=Promise.resolve();
-function current(saved:SavedLimits,now=Date.now()):SavedLimits{return Object.fromEntries(Object.entries(saved).filter(([,entry])=>Number.isSafeInteger(entry?.window)&&entry.window>=MINIMUM_WINDOW&&now-Date.parse(entry.learnedAt)<LIMIT_RETENTION_MS));}
-function persist(identity:string,window:number){const target=store;if(!target)return;saving=saving.then(()=>target.update(saved=>({...current(saved),[identity]:{window,learnedAt:new Date().toISOString()}}))).catch(()=>{});}
+function valid(value:unknown,now=Date.now()):value is SavedLimit{const entry=value as SavedLimit|undefined,age=now-Date.parse(entry?.learnedAt??'');return Number.isSafeInteger(entry?.window)&&entry!.window>=MINIMUM_WINDOW&&age>=0&&age<LIMIT_RETENTION_MS;}
+function current(saved:unknown,now=Date.now()):SavedLimits{return saved&&typeof saved==='object'&&!Array.isArray(saved)?Object.fromEntries(Object.entries(saved).filter(([,entry])=>valid(entry,now))):{};}
+function persist(identity:string,entry:SavedLimit){const target=store;if(!target)return;saving=saving.then(()=>target.update(saved=>({...current(saved),[identity]:entry}))).catch(()=>{});}
 /** Loads limits learned in earlier runs from the config directory and keeps new ones there. */
 export async function attachContextLimitStore(configDir:string){
  const settings=new LocalSettings<SavedLimits>(configDir,'context-limits',()=>({}));store=settings;
- let saved:SavedLimits={};try{saved=current(await settings.get());}catch{}
- for(const [identity,entry] of Object.entries(saved))learned.set(identity,Math.min(learned.get(identity)??Number.POSITIVE_INFINITY,entry.window));
+ let saved:SavedLimits={};try{saved=current(await settings.get());}catch(error){
+  // This file is a derived cache. Repair invalid JSON so later updates can read and replace it normally.
+  if(error instanceof SyntaxError)await writePrivateJson(settings.file,{}).catch(()=>{});
+ }
+ for(const [identity,entry] of Object.entries(saved)){const existing=learned.get(identity);if(!existing||!valid(existing)||entry.window<existing.window)learned.set(identity,entry);}
 }
 /** Resolves when learned limits have been written. */
 export function flushContextLimits(){return saving;}

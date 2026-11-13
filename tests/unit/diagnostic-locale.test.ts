@@ -14,6 +14,8 @@ describe('application diagnostic localization',()=>{
   ['模型流连接中断，部分输出未加入记忆','The model stream was interrupted. Partial output was not added to memory.'],
   ['请先保存服务地址与 API Key','Save the service address and API key first.'],
   ['本次运行未允许生成文件','File generation is not allowed for this run.'],
+  ['本次运行无法读取问题原文','The original question cannot be read in this run.'],
+  ['问题不属于本次运行','The question does not belong to this run.'],
   ['请先取消或等待当前临时运行','Cancel the current temporary run or wait for it to finish.'],
   ['请先安装插件','Install the plugin first.'],
   ['没有已授权且适用于本机的截图辅助插件','No authorized screenshot helper plugin is available for this computer.'],

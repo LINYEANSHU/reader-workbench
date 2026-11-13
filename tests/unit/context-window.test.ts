@@ -1,9 +1,9 @@
-import {afterEach,expect,it} from 'vitest';
+import {afterEach,expect,it,vi} from 'vitest';
 import {effectiveContextWindow,learnContextLimit,isContextOverflow,resetLearnedContextLimits,attachContextLimitStore,flushContextLimits} from '../../packages/core/src/models/context-window.js';
-import {mkdtemp,readFile,rm,writeFile} from 'node:fs/promises';import {tmpdir} from 'node:os';import {join} from 'node:path';
+import {mkdtemp,mkdir,readFile,rm,writeFile} from 'node:fs/promises';import {tmpdir} from 'node:os';import {join} from 'node:path';
 import {toolLoop} from '../../packages/core/src/runs/tool-loop.js';
 import {ReaderError} from '../../packages/contracts/src/errors.js';
-afterEach(()=>resetLearnedContextLimits());
+afterEach(()=>{resetLearnedContextLimits();vi.restoreAllMocks();});
 it('recognizes overflow rejections however providers word them',()=>{
  expect(isContextOverflow(400,'invalid_request_error',"This model's maximum context length is 131072 tokens. However, you requested 245760 tokens.")).toBe(true);
  expect(isContextOverflow(400,'context_length_exceeded','')).toBe(true);expect(isContextOverflow(413,'','Request Entity Too Large')).toBe(true);
@@ -37,4 +37,18 @@ it('remembers a learned limit across restarts and forgets it after thirty days',
   await attachContextLimitStore(directory);expect(effectiveContextWindow(model)).toBe(1_000_000);
   resetLearnedContextLimits();await writeFile(file,'not json');await attachContextLimitStore(directory);expect(effectiveContextWindow(model)).toBe(1_000_000);
  }finally{resetLearnedContextLimits();await rm(directory,{recursive:true,force:true});}
+});
+it('replaces malformed learned-limit JSON when learning resumes',async()=>{
+ const directory=await mkdtemp(join(tmpdir(),'context-limits-repair-'));try{
+  const file=join(directory,'agent','context-limits.json');await mkdir(join(directory,'agent'));await writeFile(file,'not json');
+  const model={identity:'repaired',capabilities:{vision:false,tools:false,contextWindow:1_000_000}};
+  await attachContextLimitStore(directory);learnContextLimit(model,200_000);await flushContextLimits();
+  resetLearnedContextLimits();await attachContextLimitStore(directory);expect(effectiveContextWindow(model)).toBe(150_000);
+  expect(JSON.parse(await readFile(file,'utf8')).repaired.window).toBe(150_000);
+ }finally{resetLearnedContextLimits();await rm(directory,{recursive:true,force:true});}
+});
+it('expires a learned limit without requiring a process restart',()=>{
+ const now=Date.now(),clock=vi.spyOn(Date,'now').mockReturnValue(now),model={identity:'expires-live',capabilities:{vision:false,tools:false,contextWindow:1_000_000}};
+ learnContextLimit(model,200_000);expect(effectiveContextWindow(model)).toBe(150_000);
+ clock.mockReturnValue(now+31*24*3600*1000);expect(effectiveContextWindow(model)).toBe(1_000_000);
 });
