@@ -70,7 +70,7 @@ export class RunService{
    }).finally(()=>stream.flush().catch(()=>{}));await stream.flush();signal.throwIfAborted();
    for(const anchor of envelope.sourceRanges)await this.records.emit(record,'citation',anchor);
    // History keeps the question and a bounded copy of its selection; the sources lead back to the full text.
-   const content=record.request.question+(record.request.selection?'\n选区：'+clipMiddle(record.request.selection.text,SELECTION_HISTORY_TOKENS,'\n…[选区较长，历史中只保留首尾]…\n')+'\n来源：'+JSON.stringify(record.request.selection.anchors):'');
+   const content=clipMiddle(record.request.question,SELECTION_HISTORY_TOKENS,'\n…[问题原文较长，历史中只保留首尾]…\n')+(record.request.selection?'\n选区：'+clipMiddle(record.request.selection.text,SELECTION_HISTORY_TOKENS,'\n…[选区较长，历史中只保留首尾]…\n')+'\n来源：'+JSON.stringify(record.request.selection.anchors):'');
    signal.throwIfAborted();await this.dependencies.repository.completeOwnTurn(scope,{id:randomUUID(),runId:record.id,question:record.request.question,answer:result.answer,messages:[{role:'user',content},...result.ownMessages.map(withoutReasoning)],sourceAnchors:uniqueAnchors([...envelope.sourceRanges,...result.anchors]),attachmentIds:record.request.attachmentIds,...(record.request.selection?{selection:structuredClone(record.request.selection)}:{})},signal);
    record.result=result.answer;record.status='completed';this.scheduleCompaction(record,actor,usageSession.epoch??0);
    });

@@ -15,10 +15,16 @@ export function excerptAround(text:string,query:string,limit=SEARCH_EXCERPT_CHAR
  const start=at<0?0:Math.max(0,Math.min(at-Math.floor(limit/3),text.length-limit)),end=start+limit;
  return{text:(start>0?'…':'')+text.slice(start,end)+(end<text.length?'…':''),truncated:true};
 }
-/** One bounded slice of a page; the note names the offset that continues it. */
-export function pageSlice(text:string,offset=0,limit=PAGE_READ_CHARS):string{
- if(offset>=text.length&&offset>0)return '[offset '+offset+' 超出本页长度 '+text.length+'，本页没有更多文字]';
+/** One bounded slice of a page (or another long text read through `tool`); the note names the offset that continues it. */
+export function pageSlice(text:string,offset=0,limit=PAGE_READ_CHARS,tool='read_document_page',unit='本页'):string{
+ if(offset>=text.length&&offset>0)return '[offset '+offset+' 超出'+unit+'长度 '+text.length+'，'+unit+'没有更多文字]';
  const slice=text.slice(offset,offset+limit),rest=text.length-offset-slice.length;
- return slice+(rest>0?'\n[本页还有 '+rest+' 字未返回；需要时再次调用 read_document_page 并传 offset: '+(offset+slice.length)+']':'');
+ return slice+(rest>0?'\n['+unit+'还有 '+rest+' 字未返回；需要时再次调用 '+tool+' 并传 offset: '+(offset+slice.length)+']':'');
+}
+/** Up to `limit` windows of the text around case-insensitive occurrences of the query, with their offsets. */
+export function occurrences(text:string,query:string,limit=10,radius=300):Array<{offset:number;text:string}>{
+ const needle=query.trim().toLowerCase();if(!needle)return [];const lower=text.toLowerCase(),found:Array<{offset:number;text:string}>=[];
+ for(let at=lower.indexOf(needle);at>=0&&found.length<limit;at=lower.indexOf(needle,at+needle.length)){const start=Math.max(0,at-radius);found.push({offset:at,text:(start>0?'…':'')+text.slice(start,at+needle.length+radius)+(at+needle.length+radius<text.length?'…':'')});}
+ return found;
 }
 export function clip(text:string,limit:number):string{return text.length<=limit?text:text.slice(0,limit)+'…[已截断，原文共 '+text.length+' 字]';}

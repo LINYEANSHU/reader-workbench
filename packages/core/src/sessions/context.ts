@@ -125,7 +125,10 @@ export class ContextBuilder{
     else throw new ReaderError('VISION_UNAVAILABLE','所选模型没有视觉能力或只读 OCR 工具，不能解读截图');
    }
   }
-  fixed.push({role:'user',content:request.question});
+  // A question over a quarter of the input limit (a pasted chapter, a long log) keeps its beginning and end; the full
+  // text stays in the run request, readable with read_question_text when the model can call tools.
+  const questionLimit=Math.floor(inputLimit*0.25),readable=tools.some(tool=>tool.name==='read_question_text');
+  fixed.push({role:'user',content:clipMiddle(request.question,questionLimit,'\n…[问题原文过长（共 '+request.question.length+' 字），中间部分未随本次发送'+(readable?'；可用 read_question_text 按 offset 分段读取或用 query 查找':'')+']…\n')});
   if(messageCost(fixed)>inputLimit)throw new ReaderError('CONTEXT_LIMIT','当前问题和选区超过模型容量，请缩短选区或提高容量');
   let documentBudget=Math.max(0,Math.min(Math.floor(inputLimit/4),inputLimit-messageCost(fixed)-256));
   let images=request.attachmentIds.length,imageBytes=0;

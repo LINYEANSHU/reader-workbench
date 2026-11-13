@@ -6,7 +6,7 @@ import type {SessionId,RunScope} from '../../../contracts/src/ids.js';
 import type {RunRepository} from '../runs/repository.js';
 import {ReaderError} from '../../../contracts/src/errors.js';
 import {HistorySearch} from '../sessions/history-search.js';
-import {excerptAround,pageSlice,PAGE_READ_CHARS} from './excerpt.js';
+import {excerptAround,pageSlice,occurrences,PAGE_READ_CHARS} from './excerpt.js';
 export function builtinTools(documents:DocumentService,repository:SessionRepository,runs?:Pick<RunRepository,'get'>):ToolProvider{
  const history=new HistorySearch(repository),properties={documentId:{type:'string'},version:{type:'string'}};
  const schema=(extra:object,required:string[])=>({type:'object',properties:{...properties,...extra},required:['documentId','version',...required],additionalProperties:false});
@@ -32,6 +32,11 @@ export function builtinTools(documents:DocumentService,repository:SessionReposit
   {name:'read_document_block',effect:'read',inputSchema:schema({blockId:{type:'string'}},['blockId']),execute:async(input,scope,signal)=>{const value=input as DocumentRef&{blockId:string},ref={workspaceId:scope.workspaceId,documentId:value.documentId,version:value.version},pages=await allowedPages(ref,scope);await documents.waitReady(ref,signal);const block=await documents.readBlock(ref,value.blockId);if(!await allowedAnchor(ref,block.anchor,pages))deny();return{content:block.text,sourceAnchors:[block.anchor]};}},
   {name:'search_document',description:'在本次阅读范围内检索段落；长段落只返回命中处附近的摘录（excerpt: true），需要全文时调用 read_document_block',effect:'read',inputSchema:schema({query:{type:'string',maxLength:1000}},['query']),execute:async(input,scope,signal)=>{const value=input as DocumentRef&{query:string},ref={workspaceId:scope.workspaceId,documentId:value.documentId,version:value.version},pages=await allowedPages(ref,scope);await documents.waitReady(ref,signal);const hits=await documents.search(ref,value.query,10,pages?[...pages]:undefined);return{content:JSON.stringify(hits.map(hit=>{const excerpt=excerptAround(hit.text,value.query);return excerpt.truncated?{...hit,text:excerpt.text,excerpt:true,length:hit.text.length}:hit;})),sourceAnchors:hits.map(hit=>hit.anchor)};}},
   {name:'read_history',description:'读取当前会话或临时会话的父主对话归档',effect:'read',inputSchema:{type:'object',properties:{sessionId:{type:'string'},cursor:{type:'string'}},additionalProperties:false},execute:async(input,scope)=>{const value=input as {sessionId?:SessionId;cursor?:string};return{content:JSON.stringify(await history.read(scope,value.sessionId??scope.sessionId,value.cursor))};}},
-  {name:'search_history',effect:'read',inputSchema:{type:'object',properties:{sessionId:{type:'string'},query:{type:'string',maxLength:1000}},required:['query'],additionalProperties:false},execute:async(input,scope)=>{const value=input as {sessionId?:SessionId;query:string};return{content:JSON.stringify(await history.search(scope,value.sessionId??scope.sessionId,value.query))};}}
+  {name:'search_history',effect:'read',inputSchema:{type:'object',properties:{sessionId:{type:'string'},query:{type:'string',maxLength:1000}},required:['query'],additionalProperties:false},execute:async(input,scope)=>{const value=input as {sessionId?:SessionId;query:string};return{content:JSON.stringify(await history.search(scope,value.sessionId??scope.sessionId,value.query))};}},
+  // A question longer than its context share is sent as its beginning and end; the full text stays in the run request.
+  {name:'read_question_text',description:'当前问题原文过长、只发送了首尾时，按 offset 分段读取完整问题，或用 query 查找问题中的关键词位置',effect:'read',inputSchema:{type:'object',properties:{offset:{type:'integer',minimum:0},query:{type:'string',maxLength:200}},additionalProperties:false},execute:async(input,scope)=>{
+   const value=input as {offset?:number;query?:string};if(!runs)throw new ReaderError('TOOL_SCOPE_DENIED','本次运行无法读取问题原文',403);
+   const record=await runs.get(scope.workspaceId,scope.runId);if(record.sessionId!==scope.sessionId||record.callerId!==scope.actor.callerId)throw new ReaderError('TOOL_SCOPE_DENIED','问题不属于本次运行',403);
+   const text=record.request.question;return{content:value.query?JSON.stringify({length:text.length,matches:occurrences(text,value.query)}):pageSlice(text,value.offset??0,PAGE_READ_CHARS,'read_question_text','问题原文')};}}
  ]};
 }

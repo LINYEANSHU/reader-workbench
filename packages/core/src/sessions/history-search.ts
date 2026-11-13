@@ -6,7 +6,7 @@ import {memorySearchScore} from '../../../contracts/src/document-memory.js';
 import {clip,HISTORY_ANSWER_CHARS} from '../tools/excerpt.js';
 /** What the model sees of an archived turn: the dialogue, not its raw tool messages. */
 export interface HistoryEntry {id:string;revision:number;question:string;answer:string;sourceAnchors:CommittedTurn['sourceAnchors'];selection?:string}
-const entry=(turn:CommittedTurn):HistoryEntry=>({id:turn.id,revision:turn.revision,question:turn.question,answer:clip(turn.answer,HISTORY_ANSWER_CHARS),sourceAnchors:turn.sourceAnchors.slice(0,8),...(turn.selection?{selection:clip(turn.selection.text,1000)}:{})});
+const entry=(turn:CommittedTurn):HistoryEntry=>({id:turn.id,revision:turn.revision,question:clip(turn.question,HISTORY_ANSWER_CHARS),answer:clip(turn.answer,HISTORY_ANSWER_CHARS),sourceAnchors:turn.sourceAnchors.slice(0,8),...(turn.selection?{selection:clip(turn.selection.text,1000)}:{})});
 export class HistorySearch {
  constructor(private repository:SessionRepository){}
  private async turns(scope:RunScope,target:SessionId){
