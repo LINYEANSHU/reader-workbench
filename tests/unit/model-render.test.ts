@@ -17,11 +17,15 @@ it('sends a scan-like page as a smaller JPEG on white and reuses it',async()=>{
  expect(await modelRender(page,new AbortController().signal)).toEqual(jpeg);
  expect((await readdir(root)).sort()).toEqual(['page-1.model.jpg','page-1.png']);
 });
-it('keeps a text page, which PNG stores more compactly, and remembers the decision',async()=>{
- const root=await directory(),canvas=createCanvas(900,1200),context=canvas.getContext('2d');context.fillStyle='#fff';context.fillRect(0,0,900,1200);context.fillStyle='#111';context.font='16px sans-serif';for(let line=0;line<60;line++)context.fillText('Line '+line+' of body text about channel capacity, throughput and delay.',40,30+line*19);
- const page=join(root,'page-2.png');await writeFile(page,canvas.toBuffer('image/png'));
+it('keeps sharp line art when PNG is smaller and remembers the decision',async()=>{
+ const root=await directory(),canvas=createCanvas(256,256),context=canvas.getContext('2d');context.fillStyle='#fff';context.fillRect(0,0,256,256);context.fillStyle='#111';
+ // Pixel-aligned repeated strokes have a large PNG size advantage without depending on installed fonts or fallback glyphs.
+ for(let y=8;y<256;y+=16)for(let x=8;x<256;x+=16){context.fillRect(x,y,9,1);context.fillRect(x,y,1,9);}
+ const png=canvas.toBuffer('image/png');expect(png.length).toBeLessThan(canvas.toBuffer('image/jpeg',85).length);
+ const page=join(root,'page-2.png');await writeFile(page,png);
  expect(await modelRender(page,new AbortController().signal)).toBeUndefined();
  expect((await readdir(root)).sort()).toEqual(['page-2.model.jpg.none','page-2.png']);
+ expect((await stat(join(root,'page-2.model.jpg.none'))).size).toBe(0);
  expect(await modelRender(page,new AbortController().signal)).toBeUndefined();
  expect(await modelRender(join(root,'photo.jpg'),new AbortController().signal)).toBeUndefined();
 });
