@@ -243,11 +243,12 @@ export class ContextBuilder{
   // Context identical across questions goes before the history, so system prompt, full document memory and earlier turns
   // form a stable prefix that providers can serve from their prompt cache; per-question context stays after the history.
   const messages=[fixed[0]!,...fixed.filter(message=>stableMessages.has(message)),...historyMessages,...fixed.slice(1).filter(message=>!stableMessages.has(message))];
-  let envelope:ContextEnvelope={workspaceId:request.workspaceId,sessionId:request.sessionId,mainRevision,ownRevision:own.session.revision,memory,documents,documentReadScopes,documentMemories:memories.map(item=>item.reference),messages,sourceRanges:uniqueAnchors(sourceRanges),budget:{limit:contextWindow,inputTokens:messageCost(messages)+toolTokens+64,reservedOutputTokens,estimated:true,reservedToolTokens:toolTokens},summaryCoverage};
+  let envelope:ContextEnvelope={workspaceId:request.workspaceId,sessionId:request.sessionId,mainRevision,ownRevision:own.session.revision,memory,documents,documentReadScopes,documentMemories:memories.map(item=>item.reference),messages,sourceRanges:uniqueAnchors(sourceRanges),budget:{limit:contextWindow,inputTokens:messageCost(messages)+toolTokens+64,reservedOutputTokens,estimated:true,reservedToolTokens:toolTokens},summaryCoverage,layout:{stable:fixed.filter(message=>stableMessages.has(message)).length,history:historyMessages.length}};
   if(envelope.budget.inputTokens+reservedOutputTokens>contextWindow)throw new ReaderError('CONTEXT_LIMIT','上下文摘要后仍超限，请增加容量或减少选区');
   for(const id of this.capabilities.list(request.workspaceId,'context')){
    const lease=this.capabilities.acquire(request.workspaceId,'context',id);
-   try{const changed=await lease.value.transform(freeze(structuredClone(envelope)),signal);validateContextTransform(envelope,changed);envelope=structuredClone(changed);}
+   // A plugin that changes the messages invalidates the recorded layout; compaction then treats them all as history.
+   try{const changed=await lease.value.transform(freeze(structuredClone(envelope)),signal);validateContextTransform(envelope,changed);const same=JSON.stringify(changed.messages)===JSON.stringify(envelope.messages);envelope=structuredClone(changed);if(!same)delete envelope.layout;}
    finally{lease.release();}
    envelope.budget={limit:contextWindow,inputTokens:messageCost(envelope.messages)+toolTokens+64,reservedOutputTokens,estimated:true,reservedToolTokens:toolTokens};
    if(envelope.budget.inputTokens+reservedOutputTokens>contextWindow)throw new ReaderError('CONTEXT_LIMIT','插件变换后的上下文超限');

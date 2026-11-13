@@ -26,8 +26,9 @@ export class ToolExecutor{
     try{
      const result=await lease.definition.execute(structuredClone(input),structuredClone(scope),signal);signal.throwIfAborted();
      if(!result||typeof result.content!=='string'||result.sourceAnchors?.some(anchor=>anchor.workspaceId!==scope.workspaceId)||result.pageImages?.some(anchor=>anchor.workspaceId!==scope.workspaceId||anchor.location?.kind!=='page'||!Number.isSafeInteger(anchor.location.page)||anchor.location.page<1))throw new ReaderError('TOOL_RESULT_INVALID','工具返回内容或来源无效');
-     if(Buffer.byteLength(JSON.stringify(result))>4*1024*1024)throw new ReaderError('TOOL_RESULT_LIMIT','工具返回内容过大');
-     store.putRecord('tool-executions',executionId,{status:'completed',name,inputHash:hash,result});return result;
+     // An oversized result is cut instead of failing the answer; only one still too large without its text is refused.
+     let kept=result;if(Buffer.byteLength(JSON.stringify(kept))>4*1024*1024){kept={...result,content:result.content.slice(0,512*1024)+'\n[工具返回内容过大，已截断]'};if(Buffer.byteLength(JSON.stringify(kept))>4*1024*1024)throw new ReaderError('TOOL_RESULT_LIMIT','工具返回内容过大');}
+     store.putRecord('tool-executions',executionId,{status:'completed',name,inputHash:hash,result:kept});return kept;
     }catch(error){store.putRecord('tool-executions',executionId,{status:'failed',name,inputHash:hash});throw error;}
    }finally{lease.release();}
   });

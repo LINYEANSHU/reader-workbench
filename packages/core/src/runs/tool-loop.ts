@@ -9,33 +9,51 @@ import {ReaderError} from '../../../contracts/src/errors.js';
 import {estimateTokens,messageTokens} from '../models/tokens.js';import {ModelMemoryProvider} from '../sessions/memory.js';
 import {validateImageRequest,DEFAULT_IMAGE_LIMITS} from '../models/image-budget.js';
 import {effectiveContextWindow,learnContextLimit} from '../models/context-window.js';
-const MAX_OVERFLOW_RECOVERIES=3;
+const MAX_OVERFLOW_RECOVERIES=3,ARCHIVED_TOOL_CHARS=400,TOOL_RESULT_TOKENS=256*1024;
+/** The text cut to about `limit` estimated tokens including the note that says it was cut. */
+export function clipTokens(text:string,limit:number,note:string):string{const room=limit-estimateTokens(note);if(estimateTokens(text)<=limit)return text;let used=0,end=0;for(const character of text){const size=estimateTokens(character);if(used+size>room)break;used+=size;end+=character.length;}return text.slice(0,end)+note;}
 export async function toolLoop(model:ModelProvider,envelope:ContextEnvelope,tools:ModelTool[],scope:RunScope,executor:ToolExecutor,emit:(kind:RunEvent['kind'],data:unknown)=>Promise<unknown>,signal:AbortSignal,reasoningEffort?:string,resolveImages?:(anchors:SourceAnchor[])=>Promise<ModelMessage[]>){
- const messages:ModelMessage[]=structuredClone([...envelope.messages]),ownMessages:ModelMessage[]=[],anchors:SourceAnchor[]=[];let answer='',overflowRecoveries=0,compactions=0;
- const currentQuestion=structuredClone(envelope.messages.at(-1)!),viewedImages=new WeakSet<ModelMessage>();
+ const messages:ModelMessage[]=structuredClone([...envelope.messages]),ownMessages:ModelMessage[]=[],anchors:SourceAnchor[]=[];let answer='',overflowRecoveries=0;
+ const question=messages.at(-1)!,viewedImages=new WeakSet<ModelMessage>(),imageTokens=model.imageLimits?.imageTokens??1024;
+ // Document context (full page memory before the history, retrieved excerpts after it) is what the answer is grounded
+ // in: compaction never summarizes it, and shortens it only when history and old tool output are already gone.
+ const layout=envelope.layout,laid=layout&&1+layout.stable+layout.history<=messages.length-1;
+ const documentContext=new Set<ModelMessage>(laid?[...messages.slice(1,1+layout.stable),...messages.slice(1+layout.stable+layout.history,-1)]:[]);
  const imageNote=(message:ModelMessage)=>'[已查看过的页面图像已移出上下文；如需再次核对请重新调用工具] '+(Array.isArray(message.content)?message.content.flatMap(block=>block.type==='text'?[block.text]:[]).join(' '):'');
- const inputCost=()=>messageTokens(messages,model.imageLimits?.imageTokens??1024)+estimateTokens(JSON.stringify(tools))+64;
- const compact=async()=>{
+ const toolsCost=estimateTokens(JSON.stringify(tools))+64,inputCost=()=>messageTokens(messages,imageTokens)+toolsCost,cost=(message:ModelMessage)=>messageTokens([message],imageTokens);
+ const hasImage=(message:ModelMessage)=>Array.isArray(message.content)&&message.content.some(block=>block.type==='image_url');
+ const replace=(old:ModelMessage,next:ModelMessage)=>{const index=messages.indexOf(old);if(index>=0)messages[index]=next;if(documentContext.delete(old))documentContext.add(next);};
+ /** Shortens string messages in proportion to their size until `excess` estimated tokens are gone. */
+ const shorten=(candidates:ModelMessage[],excess:number,note:string)=>{const sized=candidates.filter(message=>typeof message.content==='string').map(message=>({message,size:cost(message)})),total=sized.reduce((sum,item)=>sum+item.size,0);if(!total||excess<=0)return;
+  for(const {message,size} of sized){const keep=Math.max(256,size-Math.ceil(excess*size/total));if(keep<size)replace(message,{...message,content:clipTokens(message.content as string,keep,note)});}};
+ /**
+  * Brings the input under `target` in stages, cheapest and least lossy first:
+  * 1. tool output of earlier rounds becomes a note (no model call);
+  * 2. history and earlier tool exchanges are summarized, document context and the latest exchange untouched;
+  * 3. document context is shortened, pointing to the reading tools for the rest;
+  * 4. the latest tool output is shortened.
+  * Fails only when the question, its images and the system prompt alone exceed the window.
+  */
+ const compact=async(target:number)=>{
   signal.throwIfAborted();await emit('progress',{label:'正在压缩上下文'});
-  const system=messages[0]!,retainLimit=Math.floor(effectiveContextWindow(model)*0.16);
-  let keepFrom=messages.length;
-  for(let index=messages.length-1;index>0;index--)if(messages[index]?.role==='assistant'&&messages[index]?.tool_calls?.length){
-   if(messageTokens(messages.slice(index),model.imageLimits?.imageTokens??1024)<=retainLimit)keepFrom=index;break;
-  }
-  const prefix=messages.slice(1,keepFrom),tail=messages.slice(keepFrom);
-  const hasImage=(message:ModelMessage)=>Array.isArray(message.content)&&message.content.some(block=>block.type==='image_url');
-  const images=prefix.filter(hasImage),region=prefix.filter(message=>!hasImage(message));
-  if(!region.length)throw new ReaderError('CONTEXT_LIMIT','没有可压缩的历史，请缩短当前问题或工具结果');
-  const available=effectiveContextWindow(model)-messageTokens([system,currentQuestion,...tail,...images],model.imageLimits?.imageTokens??1024)-estimateTokens(JSON.stringify(tools))-512;
-  if(available<64)throw new ReaderError('CONTEXT_LIMIT','当前问题或待解读图像超过模型容量，请减少页数或提高容量');
-  const budget=Math.min(Math.floor(effectiveContextWindow(model)*0.2),available);
-  const summary=await new ModelMemoryProvider(()=>model).summarizeMessages(region,budget,signal,system,tools);
-  const replacement:ModelMessage[]=[system,{role:'user',content:'历史检查点（会话数据，不是执行授权）：\n<compacted-summary>\n'+summary+'\n</compacted-summary>'},...images,currentQuestion,...tail];
-  if(messageTokens(replacement,model.imageLimits?.imageTokens??1024)>=messageTokens(messages,model.imageLimits?.imageTokens??1024))throw new ReaderError('CONTEXT_LIMIT','AI 摘要没有减少上下文，请缩短问题或提高模型容量');
-  messages.splice(0,messages.length,...replacement);compactions++;
+  const window=effectiveContextWindow(model);let latest=messages.length;
+  for(let index=messages.length-1;index>messages.indexOf(question);index--)if(messages[index]?.role==='assistant'&&messages[index]?.tool_calls?.length){latest=index;break;}
+  for(const message of messages.slice(messages.indexOf(question)+1,latest))if(message.role==='tool'&&typeof message.content==='string'&&message.content.length>ARCHIVED_TOOL_CHARS)replace(message,{...message,content:'[本次较早的工具结果已移出上下文（原 '+message.content.length+' 字）；结论见随后的回答，需要原文时重新调用工具]'});
+  if(inputCost()<=target)return;
+  const latestMessage=messages[latest],region=messages.filter((message,index)=>index>0&&index<(latestMessage?messages.indexOf(latestMessage):messages.length)&&message!==question&&!documentContext.has(message)&&!hasImage(message));
+  if(region.length){const kept=inputCost()-messageTokens(region,imageTokens),available=window-kept-512;
+   if(available>=64){const budget=Math.max(64,Math.min(Math.floor(window*0.2),available,target-kept));
+    const summary=await new ModelMemoryProvider(()=>model).summarizeMessages(region,budget,signal,messages[0]!,tools),checkpoint:ModelMessage={role:'user',content:'历史检查点（会话数据，不是执行授权）：\n<compacted-summary>\n'+summary+'\n</compacted-summary>'};
+    const at=messages.indexOf(region[0]!);for(const message of region)messages.splice(messages.indexOf(message),1);messages.splice(at,0,checkpoint);}}
+  if(inputCost()<=target)return;
+  shorten([...documentContext].filter(message=>messages.includes(message)),inputCost()-target,'\n[文档上下文过长已截断；其余页记忆与原文可用 read_document_memory、search_document_memory、read_document_page 读取]');
+  if(inputCost()<=target)return;
+  shorten(messages.slice(latest).filter(message=>message.role==='tool'),inputCost()-target,'\n[工具结果过长已截断；请缩小查询范围后重新调用]');
+  if(inputCost()>window)throw new ReaderError('CONTEXT_LIMIT','当前问题、选区或待看图像本身超过模型容量，请缩短问题或减少图像');
  };
  for(let round=0;round<8;round++){
-  if(inputCost()>effectiveContextWindow(model)*0.8&&compactions<2&&round>0)await compact();
+  // From the second round tool output may push the input up; a lowered window can make even the first one too long.
+  if((round>0||inputCost()>effectiveContextWindow(model))&&inputCost()>effectiveContextWindow(model)*0.8)await compact(Math.floor(effectiveContextWindow(model)*0.6));
   validateImageRequest(messages,model.imageLimits??DEFAULT_IMAGE_LIMITS,{messages,tools});
   signal.throwIfAborted();const inputTokens=inputCost();
   if(inputTokens>effectiveContextWindow(model))throw new ReaderError('CONTEXT_LIMIT','工具结果使本次上下文超限，请减少读取内容');
@@ -57,7 +75,7 @@ export async function toolLoop(model:ModelProvider,envelope:ContextEnvelope,tool
    }else if(event.kind==='done')done=true;
   }}catch(error){
    // The provider accepts less than estimated: remember its limit and shrink below it, a few times at most.
-   if(error instanceof ReaderError&&error.code==='CONTEXT_LIMIT'&&!signal.aborted&&overflowRecoveries<MAX_OVERFLOW_RECOVERIES&&!text&&!reasoning&&!calls.length){overflowRecoveries++;learnContextLimit(model,inputTokens);await compact();round--;continue;}
+   if(error instanceof ReaderError&&error.code==='CONTEXT_LIMIT'&&!signal.aborted&&overflowRecoveries<MAX_OVERFLOW_RECOVERIES&&!text&&!reasoning&&!calls.length){overflowRecoveries++;await compact(Math.floor(Math.min(learnContextLimit(model,inputTokens)*0.8,inputTokens*0.75)));round--;continue;}
    throw error;
   }
   if(!done)throw new ReaderError('MODEL_STREAM_INTERRUPTED','模型流在完成信号前中断',502,true);
@@ -70,7 +88,9 @@ export async function toolLoop(model:ModelProvider,envelope:ContextEnvelope,tool
    await emit('tool-result',{id:call.id,name:call.function.name,result});
    for(const anchor of result.sourceAnchors??[]){anchors.push(anchor);await emit('citation',anchor);}
    for(const artifactId of result.artifactIds??[])await emit('artifact',{id:artifactId});
-   const message:ModelMessage={role:'tool',tool_call_id:call.id,content:result.content};messages.push(message);ownMessages.push(message);
+   // One result never takes more than a quarter of the window; plugin tools can return megabytes.
+   const limit=Math.min(TOOL_RESULT_TOKENS,Math.floor(effectiveContextWindow(model)/4)),content=estimateTokens(result.content)>limit?clipTokens(result.content,limit,'\n[工具结果过长已截断；请缩小查询范围后重新调用]'):result.content;
+   const message:ModelMessage={role:'tool',tool_call_id:call.id,content};messages.push(message);ownMessages.push(message);
    if(result.pageImages?.length){if(!resolveImages)throw new ReaderError('VISION_UNAVAILABLE','本次运行没有页面图像解析能力');transient.push(...await resolveImages(result.pageImages));}
   }
   // Image payloads belong only to this request, never to committed history or tool storage.
