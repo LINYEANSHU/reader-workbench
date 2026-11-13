@@ -6,6 +6,7 @@ import type { RuntimeConfig } from '../../../packages/contracts/src/runtime.js';
 import { ReaderError,publicError } from '../../../packages/contracts/src/errors.js';
 import { writePrivateJson } from '../../../packages/core/src/runtime/secure-file.js';
 import {UiPreferencesService} from '../../../packages/core/src/runtime/ui-preferences.js';
+import {attachContextLimitStore} from '../../../packages/core/src/models/context-window.js';
 import { doctor } from '../../../packages/core/src/runtime/doctor.js';
 import { Authentication } from './auth.js';
 import {WorkspaceService} from '../../../packages/core/src/workspaces/service.js';
@@ -55,6 +56,8 @@ export async function startServer(config:RuntimeConfig){
   auth.attach(app);
   const workspaces=new WorkspaceService(config.configDir);
   const preferences=new UiPreferencesService(config.configDir);
+  // Provider input limits learned from earlier overflow rejections (see effectiveContextWindow).
+  await attachContextLimitStore(config.configDir);
   app.get('/api/v1/settings/preferences',()=>preferences.get());
   app.put('/api/v1/settings/preferences',request=>preferences.save(request.body));
   const capabilities=new CapabilityRegistry();

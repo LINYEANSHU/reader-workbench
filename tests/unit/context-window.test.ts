@@ -1,5 +1,6 @@
 import {afterEach,expect,it} from 'vitest';
-import {effectiveContextWindow,learnContextLimit,isContextOverflow,resetLearnedContextLimits} from '../../packages/core/src/models/context-window.js';
+import {effectiveContextWindow,learnContextLimit,isContextOverflow,resetLearnedContextLimits,attachContextLimitStore,flushContextLimits} from '../../packages/core/src/models/context-window.js';
+import {mkdtemp,readFile,rm,writeFile} from 'node:fs/promises';import {tmpdir} from 'node:os';import {join} from 'node:path';
 import {toolLoop} from '../../packages/core/src/runs/tool-loop.js';
 import {ReaderError} from '../../packages/contracts/src/errors.js';
 afterEach(()=>resetLearnedContextLimits());
@@ -24,4 +25,16 @@ it('compacts below a provider limit lower than configured, retries, and builds l
  const envelope:any={workspaceId:'w',sessionId:'s',mainRevision:1,messages:[{role:'system',content:'规则'},{role:'user',content:'旧问题'.repeat(2000)},{role:'assistant',content:'旧回答'.repeat(2000)},{role:'user',content:'当前问题'}],sourceRanges:[],summaryCoverage:[],budget:{limit:1_000_000,inputTokens:1,reservedOutputTokens:0}};
  const result=await toolLoop(model,envelope,[],{workspaceId:'w',sessionId:'s',runId:'r'} as any,{} as any,async()=>{},new AbortController().signal);
  expect(result.answer).toBe('回答');expect(attempts).toBe(2);expect(summaries).toBe(1);expect(effectiveContextWindow(model)).toBeLessThan(40_000);
+});
+it('remembers a learned limit across restarts and forgets it after thirty days',async()=>{
+ const directory=await mkdtemp(join(tmpdir(),'context-limits-'));try{
+  const model={identity:'provider-a',capabilities:{vision:false,tools:false,contextWindow:1_000_000}};
+  await attachContextLimitStore(directory);learnContextLimit(model,200_000);await flushContextLimits();
+  const file=join(directory,'agent','context-limits.json');expect(JSON.parse(await readFile(file,'utf8'))['provider-a'].window).toBe(150_000);
+  resetLearnedContextLimits();expect(effectiveContextWindow(model)).toBe(1_000_000);
+  await attachContextLimitStore(directory);expect(effectiveContextWindow(model)).toBe(150_000);
+  resetLearnedContextLimits();await writeFile(file,JSON.stringify({'provider-a':{window:150_000,learnedAt:new Date(Date.now()-31*24*3600*1000).toISOString()}}));
+  await attachContextLimitStore(directory);expect(effectiveContextWindow(model)).toBe(1_000_000);
+  resetLearnedContextLimits();await writeFile(file,'not json');await attachContextLimitStore(directory);expect(effectiveContextWindow(model)).toBe(1_000_000);
+ }finally{resetLearnedContextLimits();await rm(directory,{recursive:true,force:true});}
 });
