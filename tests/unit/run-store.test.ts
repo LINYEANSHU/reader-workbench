@@ -38,3 +38,22 @@ it('wakes event readers when an event is appended instead of waiting for the fal
  const aborted=runs.waitForEvent(record.workspaceId,record.id,controller.signal,60_000);controller.abort();await aborted.wait;
  expect((await runs.readEvents(record.workspaceId,record.id,0)).map(event=>event.kind)).toEqual(['delta']);
 });
+it('keeps details of the latest runs and drops bulky details of older finished ones',async()=>{
+ const {store,file,context}=await setup(),runId=(index:number)=>('run-'+String(index).padStart(2,'0')) as never;
+ for(let index=0;index<25;index++){
+  const record:RunRecord={id:runId(index),kind:'agent',workspaceId:'w' as never,sessionId:'s' as never,status:index===2?'running':'completed',requestId:'q'+index,request:{} as never,callerId:'c',partialText:'部分'+index,context:{...context,messages:[...context.messages]} as never};
+  await store.runs.create(record);await store.runs.save(record);
+  for(const kind of ['state','delta','context','citation'] as const)await store.runs.appendEvent({workspaceId:'w' as never,runId:runId(index),seq:0,scope:{kind:'agent',sessionId:'s' as never},kind,data:{}});
+  store.putRecord('tool-executions',runId(index)+':call',{status:'completed',name:'read',inputHash:'h',result:{content:'大'.repeat(1000)}});
+ }
+ // setup() already queued run r; with run-02 still running, run-00, 01, 03 and 04 are the finished ones beyond the latest 20.
+ expect(await store.runs.prune('s' as never,20)).toBe(4);expect(await store.runs.prune('s' as never,20)).toBe(0);
+ const database=new DatabaseSync(file,{readOnly:true});try{
+  const contexts=(database.prepare('SELECT run_id FROM run_contexts ORDER BY run_id').all() as {run_id:string}[]).map(row=>row.run_id);
+  expect(contexts).toEqual(['run-02',...Array.from({length:20},(_,index)=>'run-'+String(index+5).padStart(2,'0'))]);
+ }finally{database.close();}
+ const old=await store.runs.get(runId(0));expect(old.pruned).toBe(true);expect(old.context?.messages).toEqual([]);expect(old.partialText).toBe('部分0');expect(old.status).toBe('completed');
+ expect((await store.runs.readEvents(runId(0),0)).map(event=>event.kind)).toEqual(['state','citation']);
+ expect(store.getRecord('tool-executions',runId(0)+':call')).toBeNull();expect(store.getRecord('tool-executions',runId(10)+':call')).not.toBeNull();
+ expect((await store.runs.get(runId(2))).context?.messages).toHaveLength(2);expect((await store.runs.readEvents(runId(24),0))).toHaveLength(4);
+});

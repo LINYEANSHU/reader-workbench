@@ -40,6 +40,8 @@ export interface RunStorePort {
  findByRequest(sessionId:SessionId,callerId:string,requestId:string):Promise<RunRecord|null>;
  /** Reads only the status, for frequent progress checks. */
  status(id:RunId):Promise<RunStatus>;
+ /** Drops bulky details (context snapshot, streamed events, tool results) of finished runs beyond the latest `keep` of a session. */
+ prune(sessionId:SessionId,keep:number):Promise<number>;
  appendEvent(event:RunEvent):Promise<void>;
  readEvents(id:RunId,afterSeq:number):Promise<RunEvent[]>;
  setStatus(id:RunId,status:RunStatus,error?:PublicError):Promise<void>;

@@ -4,6 +4,7 @@ import type {RunRecord,RunEvent,RunStatus} from '../../../contracts/src/runs.js'
 import {ReaderError} from '../../../contracts/src/errors.js';
 import {KeyedQueue} from './queue.js';
 import type {EventWait} from './events.js';
+export const RUN_DETAIL_RETENTION=20;
 export class RunRepository{
  private submissions=new KeyedQueue();
  private listeners=new Map<string,Set<()=>void>>();
@@ -28,6 +29,8 @@ export class RunRepository{
   await(await this.workspaces.storeFor(record.workspaceId)).runs.appendEvent(event);this.workspaces.onLifecycle?.({workspaceId:record.workspaceId,kind:'run.event',data:event});
   this.wake(record.workspaceId,record.id);return event;
  }
+ /** Details of a session's runs older than the latest RUN_DETAIL_RETENTION are dropped once they finish. */
+ async prune(workspaceId:WorkspaceId,sessionId:string,keep=RUN_DETAIL_RETENTION){return(await this.workspaces.storeFor(workspaceId)).runs.prune(sessionId as RunRecord['sessionId'],keep);}
  async readEvents(workspaceId:WorkspaceId,id:RunId,after:number){return(await this.workspaces.storeFor(workspaceId)).runs.readEvents(id,after);}
  /** Resolves when this process appends an event to the run, on abort, or after fallbackMs. */
  waitForEvent(workspaceId:WorkspaceId,id:RunId,signal:AbortSignal,fallbackMs=500):EventWait{

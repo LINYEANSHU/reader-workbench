@@ -145,6 +145,19 @@ export class SqliteWorkspaceStore implements WorkspaceStore {
       const row=this.database.prepare("SELECT json_extract(data,'$.status') AS status FROM runs WHERE id=?").get(id) as {status:RunRecord['status']}|undefined;
       if(!row)throw new ReaderError('RUN_UNAVAILABLE','此工作区中不存在该运行',404);return row.status;
     },
+    prune:async(sessionId,keep)=>{
+      // Finished runs beyond the latest `keep` of a session drop their bulky details: the context snapshot, streamed
+      // text and progress events, and raw tool results. Records, partial and final answers and final events stay.
+      const old=this.database.prepare("SELECT id FROM runs WHERE session_id=? AND json_extract(data,'$.status') IN ('completed','failed','cancelled') AND json_extract(data,'$.pruned') IS NULL AND rowid NOT IN (SELECT rowid FROM runs WHERE session_id=? ORDER BY rowid DESC LIMIT ?)").all(sessionId,sessionId,Math.max(0,keep)) as {id:string}[];
+      if(!old.length)return 0;
+      this.transaction(()=>{for(const {id} of old){
+        this.database.prepare('DELETE FROM run_contexts WHERE run_id=?').run(id);
+        this.database.prepare("DELETE FROM run_events WHERE run_id=? AND json_extract(data,'$.kind') IN ('delta','progress','context','tool-start','tool-result')").run(id);
+        this.database.prepare("DELETE FROM records WHERE domain='tool-executions' AND id>=? AND id<?").run(id+':',id+';');
+        this.database.prepare("UPDATE runs SET data=json_set(json_remove(data,'$.context.messages'),'$.pruned',json('true')) WHERE id=?").run(id);
+      }});
+      return old.length;
+    },
     appendEvent:async event=>{
       this.checkWorkspace(event.workspaceId);
       this.transaction(()=>{

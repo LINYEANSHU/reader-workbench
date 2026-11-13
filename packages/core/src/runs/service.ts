@@ -75,7 +75,7 @@ export class RunService{
    record.result=result.answer;record.status='completed';this.scheduleCompaction(record,actor,usageSession.epoch??0);
    });
   }catch(error){record.status=signal.aborted?'cancelled':'failed';record.error=signal.aborted?new ReaderError('CANCELLED','本次回答已取消，部分输出未加入会话记忆').public():publicError(error);await this.records.emit(record,'error',record.error);}
-  finally{release?.();releaseModel?.();await this.records.save(record);await this.records.emit(record,'state',{status:record.status});}
+  finally{release?.();releaseModel?.();await this.records.save(record);await this.records.emit(record,'state',{status:record.status});await this.records.prune(record.workspaceId,record.sessionId).catch(()=>{});}
  }
  /** After an answer, older turns of a long main session are summarized on the session queue while the user reads. */
  private scheduleCompaction(record:RunRecord,actor:Actor,epoch:number){
