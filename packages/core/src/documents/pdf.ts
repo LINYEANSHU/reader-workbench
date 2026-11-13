@@ -26,12 +26,38 @@ const GARBLED_CHAR=/[�-\u0000-\u0008\u000b\u000c\u000e-\u001f]/u;
 // A page goes to the model as text only when that is clearly safe: enough readable text, no sizeable pictures,
 // no dense vector drawing (charts, diagrams) and few formula glyphs. Anything else keeps its page image.
 export const TEXT_PAGE_LIMITS=Object.freeze({minChars:80,maxGarbledRatio:0.02,maxImageCoverage:0.1,maxPathOps:120,maxMathRatio:0.08});
-interface ProfileText {str:string;fontName?:string}
+interface ProfileText {str:string;fontName?:string;transform?:number[];width?:number;height?:number}
+// A page that fails the text test only through formula glyphs is read as text plus crops of its formula regions,
+// unless there are so many that the crops would cost about as much as the page image.
+export const FORMULA_REGION_LIMITS=Object.freeze({maxRegions:12,maxCoverage:0.5,maxGlyphRuns:400});
+type Box=[number,number,number,number];
+/**
+ * Formula regions (page fractions, top-left origin) from boxes of formula glyph runs in viewport units. Runs closer than
+ * about one and a half glyph heights across or half a height vertically are one formula, which joins scripts,
+ * numerators and denominators, and the plain-font operators and digits between math-font glyphs.
+ */
+export function formulaRegions(runs:Array<{box:Box;size:number}>,width:number,height:number):Box[]|undefined{
+  if(!runs.length||runs.length>FORMULA_REGION_LIMITS.maxGlyphRuns||width<=0||height<=0)return undefined;
+  const regions=runs.map(run=>({box:[...run.box] as Box,size:Math.max(1,run.size)}));
+  for(let changed=true;changed;){changed=false;
+    for(let first=0;first<regions.length;first++)for(let second=first+1;second<regions.length;second++){
+      const a=regions[first]!,b=regions[second]!,size=Math.max(a.size,b.size),across=Math.max(a.box[0],b.box[0])-Math.min(a.box[2],b.box[2]),down=Math.max(a.box[1],b.box[1])-Math.min(a.box[3],b.box[3]);
+      if(across<=1.5*size&&down<=0.6*size){a.box=[Math.min(a.box[0],b.box[0]),Math.min(a.box[1],b.box[1]),Math.max(a.box[2],b.box[2]),Math.max(a.box[3],b.box[3])];a.size=size;regions.splice(second,1);second--;changed=true;}
+    }}
+  // A glyph height of margin across keeps plain-font scripts and operators right at the edges of the formula.
+  const boxes=regions.map(({box,size}):Box=>[Math.max(0,(box[0]-size)/width),Math.max(0,(box[1]-0.3*size)/height),Math.min(1,(box[2]+size)/width),Math.min(1,(box[3]+0.3*size)/height)]).sort((a,b)=>a[1]-b[1]||a[0]-b[0]);
+  const coverage=boxes.reduce((sum,box)=>sum+(box[2]-box[0])*(box[3]-box[1]),0);
+  return boxes.length<=FORMULA_REGION_LIMITS.maxRegions&&coverage<=FORMULA_REGION_LIMITS.maxCoverage?boxes:undefined;
+}
 /** Classifies one page from its text items and operator list (user-space CTM determinants give drawn image areas). */
-export function profilePage(items:ProfileText[],fontName:(id:string)=>string|undefined,operators:{fnArray:number[];argsArray:unknown[][]},width:number,height:number):PageProfile{
-  let characters=0,garbled=0,math=0;const mathFont=new Map<string,boolean>();
+export function profilePage(items:ProfileText[],fontName:(id:string)=>string|undefined,operators:{fnArray:number[];argsArray:unknown[][]},width:number,height:number,toViewport?:(x:number,y:number)=>number[]):PageProfile{
+  let characters=0,garbled=0,math=0;const mathFont=new Map<string,boolean>(),runs:Array<{box:Box;size:number}>=[];
   for(const item of items){const isMathFont=item.fontName?mathFont.get(item.fontName)??(()=>{const value=MATH_FONT.test(fontName(item.fontName!)??'');mathFont.set(item.fontName!,value);return value;})():false;
-    for(const character of item.str){if(/\s/u.test(character))continue;characters++;if(GARBLED_CHAR.test(character))garbled++;else if(isMathFont||MATH_CHAR.test(character))math++;}}
+    let itemCharacters=0,itemMath=0;
+    for(const character of item.str){if(/\s/u.test(character))continue;characters++;itemCharacters++;if(GARBLED_CHAR.test(character))garbled++;else if(isMathFont||MATH_CHAR.test(character)){math++;itemMath++;}}
+    // A run that is mostly formula glyphs marks where a formula is drawn; its box spans descender to ascender.
+    if(toViewport&&item.transform&&itemCharacters&&itemMath*2>=itemCharacters){const [,,,,x,y]=item.transform as [number,number,number,number,number,number],size=item.height||Math.hypot(item.transform[2]!,item.transform[3]!)||10,corners=[toViewport(x,y-0.25*size),toViewport(x+(item.width??0),y+0.85*size)];
+      runs.push({box:[Math.min(corners[0]![0]!,corners[1]![0]!),Math.min(corners[0]![1]!,corners[1]![1]!),Math.max(corners[0]![0]!,corners[1]![0]!),Math.max(corners[0]![1]!,corners[1]![1]!)],size});}}
   let scale=1,imageArea=0,pathOps=0;const stack:number[]=[];
   operators.fnArray.forEach((operation,index)=>{const args=operators.argsArray[index]??[];
     if(operation===OPS.save)stack.push(scale);else if(operation===OPS.restore)scale=stack.pop()??scale;
@@ -43,7 +69,9 @@ export function profilePage(items:ProfileText[],fontName:(id:string)=>string|und
     else if(operation===OPS.constructPath)pathOps++;});
   const ratio=(value:number)=>characters?value/characters:0,imageCoverage=Math.min(1,width*height>0?imageArea/(width*height):0);
   const profile={textChars:characters,garbledRatio:ratio(garbled),imageCoverage,pathOps,mathRatio:ratio(math)},limits=TEXT_PAGE_LIMITS;
-  return{...profile,textSufficient:characters>=limits.minChars&&profile.garbledRatio<=limits.maxGarbledRatio&&imageCoverage<=limits.maxImageCoverage&&pathOps<=limits.maxPathOps&&profile.mathRatio<=limits.maxMathRatio};
+  const cleanText=characters>=limits.minChars&&profile.garbledRatio<=limits.maxGarbledRatio&&imageCoverage<=limits.maxImageCoverage&&pathOps<=limits.maxPathOps;
+  const textSufficient=cleanText&&profile.mathRatio<=limits.maxMathRatio,regions=cleanText&&!textSufficient?formulaRegions(runs,width,height):undefined;
+  return{...profile,textSufficient,...(regions?{formulaRegions:regions}:{})};
 }
 export async function parsePdf(input:VersionedFile,signal:AbortSignal):Promise<ParsedDocument>{
   const {pdf,release}=await loadPdf(input.path,signal,true);const result:ParsedDocument={pages:[],blocks:[],warnings:[],pdfPath:input.path};
@@ -54,7 +82,7 @@ export async function parsePdf(input:VersionedFile,signal:AbortSignal):Promise<P
     // The operator list also resolves the page's fonts, so their names are readable for formula detection.
     let profile:PageProfile|undefined;
     try{const operators=await documentPage.getOperatorList();signal.throwIfAborted();
-      profile=profilePage(content.items.filter(item=>'str' in item) as ProfileText[],id=>{try{const font=documentPage.commonObjs.get(id) as {name?:string;loadedName?:string}|undefined;return font?.name??font?.loadedName;}catch{return undefined;}},operators as unknown as {fnArray:number[];argsArray:unknown[][]},viewport.width,viewport.height);
+      profile=profilePage(content.items.filter(item=>'str' in item) as ProfileText[],id=>{try{const font=documentPage.commonObjs.get(id) as {name?:string;loadedName?:string}|undefined;return font?.name??font?.loadedName;}catch{return undefined;}},operators as unknown as {fnArray:number[];argsArray:unknown[][]},viewport.width,viewport.height,(x,y)=>viewport.convertToViewportPoint(x,y));
     }catch(error){if(signal.aborted)throw error;}
     result.pages.push({page,text,width:viewport.width,height:viewport.height,anchors:[anchor],...(profile?{profile}:{})});
     result.blocks.push({id:'page-'+page,text,anchor});
@@ -98,6 +126,30 @@ export async function renderPdfPage(path:string,page:number,cacheDir:string,sign
     const abort=()=>rendering.cancel();signal.addEventListener('abort',abort,{once:true});
     try{await rendering.promise;signal.throwIfAborted();const temporary=destination+'.'+process.pid+'-'+Date.now()+'.tmp';await writeFile(temporary,canvas.toBuffer('image/png'));await rename(temporary,destination);}
     finally{signal.removeEventListener('abort',abort);documentPage.cleanup();}return destination;
+  });
+}
+/**
+ * PNG crops of a page's formula regions (page fractions), rendered at a higher scale than the page preview so small
+ * scripts stay legible, and cached beside it as page-N-formula-K.png.
+ */
+export async function renderPdfRegions(path:string,page:number,regions:ReadonlyArray<readonly [number,number,number,number]>,cacheDir:string,signal:AbortSignal):Promise<string[]>{
+  const destinations=regions.map((_,index)=>join(cacheDir,'page-'+page+'-formula-'+(index+1)+'.png'));
+  if((await Promise.all(destinations.map(file=>access(file).then(()=>true,()=>false)))).every(Boolean))return destinations;
+  return renderCache.use(path,async pdf=>{
+    signal.throwIfAborted();
+    if(!Number.isInteger(page)||page<1||page>pdf.numPages)throw new ReaderError('PAGE_UNAVAILABLE','页码无效',404);
+    const documentPage=await pdf.getPage(page),base=documentPage.getViewport({scale:1}),viewport=documentPage.getViewport({scale:Math.min(2.5,6000/Math.max(base.width,base.height))});
+    const canvas=createCanvas(Math.ceil(viewport.width),Math.ceil(viewport.height)),context=canvas.getContext('2d');context.fillStyle='#ffffff';context.fillRect(0,0,canvas.width,canvas.height);
+    const rendering=documentPage.render({canvas:canvas as unknown as HTMLCanvasElement,viewport});
+    const abort=()=>rendering.cancel();signal.addEventListener('abort',abort,{once:true});
+    try{await rendering.promise;signal.throwIfAborted();
+      for(const [index,region] of regions.entries()){
+        const left=Math.floor(region[0]*canvas.width),top=Math.floor(region[1]*canvas.height),cropWidth=Math.max(1,Math.ceil(region[2]*canvas.width)-left),cropHeight=Math.max(1,Math.ceil(region[3]*canvas.height)-top);
+        const crop=createCanvas(cropWidth,cropHeight);crop.getContext('2d').drawImage(canvas,left,top,cropWidth,cropHeight,0,0,cropWidth,cropHeight);
+        const destination=destinations[index]!,temporary=destination+'.'+process.pid+'-'+Date.now()+'.tmp';await writeFile(temporary,crop.toBuffer('image/png'));await rename(temporary,destination);
+      }}
+    finally{signal.removeEventListener('abort',abort);documentPage.cleanup();}
+    return destinations;
   });
 }
 /**

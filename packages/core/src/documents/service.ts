@@ -11,7 +11,7 @@ import {ReaderError} from '../../../contracts/src/errors.js';
 import {snapshot,safeCacheDirectory,mimeFor} from './versions.js';
 import {DocumentJobService} from './jobs.js';
 import {DocumentIndex} from './index.js';
-import {markdownAdapter} from './markdown.js';import {textAdapter} from './text.js';import {pdfAdapter,renderPdfPage,closePdfRenderCache,modelRender} from './pdf.js';
+import {markdownAdapter} from './markdown.js';import {textAdapter} from './text.js';import {pdfAdapter,renderPdfPage,closePdfRenderCache,modelRender,renderPdfRegions} from './pdf.js';
 import {officeAdapter} from './office.js';import {imageAdapter} from './image.js';import {binaryAdapter} from './binary.js';
 import {isWithin} from '../workspaces/path-guard.js';
 import {markdownResources} from './markdown-resources.js';import {resourceUri} from '../../../contracts/src/resource-uri.js';import {KeyedQueue} from '../runs/queue.js';
@@ -129,6 +129,13 @@ export class DocumentService {
   if(parsed.pdfPath){const source=await this.authorizedFile(ref,parsed.pdfPath),cacheDir=await safeCacheDirectory(this.workspaces,ref.workspaceId,['cache',ref.documentId,ref.version]),rendered=await renderPdfPage(source,page,cacheDir,signal);signal.throwIfAborted();return {...result,imagePath:rendered};}
   return result;
  });}
+ /** PNG crops of the formula regions of a page that is otherwise read as text; empty when the page has none. */
+ async formulaImages(ref:DocumentRef,page:number,signal:AbortSignal):Promise<Array<{mime:string;bytes:Buffer;region:[number,number,number,number]}>>{
+  const parsed=await this.parsed(ref),regions=parsed.pages.find(item=>item.page===page)?.profile?.formulaRegions;if(!regions?.length||!parsed.pdfPath)return [];
+  const source=await this.authorizedFile(ref,parsed.pdfPath),cacheDir=await safeCacheDirectory(this.workspaces,ref.workspaceId,['cache',ref.documentId,ref.version]);
+  const files=await this.pageRenders.enqueue(ref.workspaceId+'/'+this.key(ref),()=>renderPdfRegions(source,page,regions,cacheDir,signal));
+  return Promise.all(files.map(async(file,index)=>({mime:'image/png',bytes:await readFile(file,{signal}),region:regions[index]!})));
+ }
  /** A page image for a model: rendered pages through modelRender (JPEG when smaller), image documents unchanged. */
  async modelImage(ref:DocumentRef,page:number,signal:AbortSignal):Promise<{mime:string;bytes:Buffer;anchors:SourceAnchor[]}|undefined>{
   const result=await this.readPage(ref,page,signal);if(!result.imagePath)return undefined;

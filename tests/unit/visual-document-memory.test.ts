@@ -65,6 +65,25 @@ it('keeps an earlier overview tied to the pages it covers while new pages are st
  await expect(prepare(s.host,new AbortController().signal)).rejects.toThrow('render failed');
  expect(s.saved.overviewPages).toEqual([1,2]);expect(s.saved.overview).not.toBe('');
 });
+it('reads a formula-heavy text page as its text plus formula crops instead of the whole page image',async()=>{
+ const{prepare,prepareLocal}=await import(modulePath),s=await setup(),requests:any[]=[],generate=s.host.generate,pages:number[]=[],crops:number[]=[];
+ s.host.readPageText=async(page:number)=>'TEXT '+page;s.host.readPageProfile=async(page:number)=>page===2?{textSufficient:false,formulaRegions:[[0.1,0.2,0.6,0.25],[0.1,0.5,0.7,0.56]]}:{textSufficient:false};
+ s.host.readPageFormulas=async(page:number)=>{crops.push(page);return[{mime:'image/png',bytes:Buffer.from('F1'),region:[0.1,0.2,0.6,0.25]},{mime:'image/png',bytes:Buffer.from('F2'),region:[0.1,0.5,0.7,0.56]}];};
+ const readImage=s.host.readPageImage;s.host.readPageImage=async(page:number,signal:any)=>{pages.push(page);return readImage(page,signal);};
+ s.host.generate=async function*(input:any,signal:any){requests.push(input);yield* generate(input,signal);};
+ await prepareLocal(s.host,new AbortController().signal);expect(crops).toEqual([2]);expect(pages).toEqual([1,3,4,5,6,7]);pages.splice(0);crops.splice(0);
+ await prepare(s.host,new AbortController().signal);expect(pages).not.toContain(2);
+ const sent=requests.filter(request=>request.messages[0].content.includes('VISUAL_DOCUMENT_MEMORY_PAGES')).flatMap(request=>request.messages[1].content),labels=sent.filter((block:any)=>block.type==='text').map((block:any)=>block.text);
+ expect(labels).toContain('文档页 2（PDF 文字层，公式另附局部截图，未发送整页图像）\nTEXT 2');expect(labels).toContain('第 2 页公式区域 2（页面左 10%、上 50% 至 右 70%、下 56%）');
+ expect(sent.filter((block:any)=>block.type==='image_url').map((block:any)=>Buffer.from(block.image_url.url.split(',')[1],'base64').toString())).toEqual(['PAGE1','F1','F2','PAGE3','PAGE4','PAGE5','PAGE6','PAGE7']);
+});
+it('sends the whole page image when its formula crops exceed the model image limit',async()=>{
+ const{prepare}=await import(modulePath),s=await setup(1),pages:number[]=[];
+ s.host.readPageProfile=async(page:number)=>page===2?{textSufficient:false,formulaRegions:[[0,0,1,0.1],[0,0.5,1,0.6]]}:{textSufficient:false};
+ s.host.readPageFormulas=async()=>[{mime:'image/png',bytes:Buffer.from('F1'),region:[0,0,1,0.1]},{mime:'image/png',bytes:Buffer.from('F2'),region:[0,0.5,1,0.6]}];
+ const readImage=s.host.readPageImage;s.host.readPageImage=async(page:number,signal:any)=>{pages.push(page);return readImage(page,signal);};
+ await prepare(s.host,new AbortController().signal);expect(pages).toContain(2);
+});
 it('keeps page batches small even when the provider allows hundreds of images',async()=>{
  const{prepare}=await import(modulePath),s=await setup(600);await prepare(s.host,new AbortController().signal);
  expect(Math.max(...s.calls.map(pages=>pages.length))).toBeLessThanOrEqual(4);expect(s.calls.flat()).toEqual([1,2,3,4,5,6,7]);
