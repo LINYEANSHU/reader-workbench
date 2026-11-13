@@ -14,13 +14,13 @@
 [![Node.js](https://img.shields.io/badge/Node.js-24%2B-417e38)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-64748b)](LICENSE)
 
-[0.5.0 新功能](#050-新功能) · [快速开始](#快速开始) · [Agent 架构](#agent-架构) · [中英文切换](#中英文切换) · [文档](#文档)
+[0.5.1 新功能](#051-新功能) · [快速开始](#快速开始) · [Agent 架构](#agent-架构) · [中英文切换](#中英文切换) · [文档](#文档)
 
 </div>
 
-![0.5.0 中文界面的三栏阅读：原文、主对话与独立追问并排显示](assets/readme/workbench.zh-CN.png)
+![0.5.1 中文界面的三栏阅读：原文、主对话与独立追问并排显示](assets/readme/workbench.zh-CN.png)
 
-<div align="center"><sub>0.5.0 真实界面 · 自编示例文档 · 本机协议测试模型的固定演示回答 · 浅色外观。展示阅读流程，不代表远程模型的回答质量。</sub></div>
+<div align="center"><sub>0.5.1 真实界面 · 自编示例文档 · 本机协议测试模型的固定演示回答 · 浅色外观。展示阅读流程，不代表远程模型的回答质量。</sub></div>
 
 ## 阅读方式
 
@@ -56,13 +56,13 @@ npm start
 Office 原版页面预览需要另行安装 **LibreOffice**。安装后运行 `node bin/reader-workbench.mjs doctor` 检查依赖；PDF、Markdown 和图片可独立使用。详细步骤见[安装与运行](docs/installation.md)。
 
 <details>
-<summary><strong>直接安装 v0.5.0 发行包</strong></summary>
+<summary><strong>直接安装 v0.5.1 发行包</strong></summary>
 
-在 [v0.5.0 Release](https://github.com/LINYEANSHU/reader-workbench/releases/tag/v0.5.0) 下载 `reader-workbench-0.5.0.tgz`，核对同页 `SHA256SUMS.txt`，然后在下载目录运行：
+在 [v0.5.1 Release](https://github.com/LINYEANSHU/reader-workbench/releases/tag/v0.5.1) 下载 `reader-workbench-0.5.1.tgz`，核对同页 `SHA256SUMS.txt`，然后在下载目录运行：
 
 ```powershell
-Get-FileHash .\reader-workbench-0.5.0.tgz -Algorithm SHA256
-npm install --global .\reader-workbench-0.5.0.tgz
+Get-FileHash .\reader-workbench-0.5.1.tgz -Algorithm SHA256
+npm install --global .\reader-workbench-0.5.1.tgz
 reader-workbench web
 ```
 
@@ -70,7 +70,7 @@ reader-workbench web
 
 </details>
 
-## 0.5.0 新功能
+## 0.5.1 新功能
 
 本版围绕长文档和长对话，减少重复解析、重复发送与等待。
 

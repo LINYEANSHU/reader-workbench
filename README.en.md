@@ -14,13 +14,13 @@ Read papers in your own workspace, trace ideas back to their sources, and turn u
 [![Node.js](https://img.shields.io/badge/Node.js-24%2B-417e38)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-64748b)](LICENSE)
 
-[New in 0.5.0](#new-in-050) · [Quick start](#quick-start) · [Agent architecture](#agent-architecture) · [Language switching](#language-switching) · [Documentation](#documentation)
+[New in 0.5.1](#new-in-051) · [Quick start](#quick-start) · [Agent architecture](#agent-architecture) · [Language switching](#language-switching) · [Documentation](#documentation)
 
 </div>
 
-![Actual 0.5.0 English interface showing the source document, main chat and independent follow-up chat](assets/readme/workbench.en.png)
+![Actual 0.5.1 English interface showing the source document, main chat and independent follow-up chat](assets/readme/workbench.en.png)
 
-<div align="center"><sub>Actual 0.5.0 interface · self-authored sample document · deterministic local protocol-model responses · Light theme. This demonstrates the reading workflow, not remote model answer quality.</sub></div>
+<div align="center"><sub>Actual 0.5.1 interface · self-authored sample document · deterministic local protocol-model responses · Light theme. This demonstrates the reading workflow, not remote model answer quality.</sub></div>
 
 ## The reading experience
 
@@ -56,13 +56,13 @@ The browser opens `http://127.0.0.1:4317` by default. After building, double-cli
 Original-page Office previews need a separate **LibreOffice** installation. Run `node bin/reader-workbench.mjs doctor` to check dependencies; PDF, Markdown and images work independently. See [installation and troubleshooting](docs/installation.md).
 
 <details>
-<summary><strong>Install the v0.5.0 release package</strong></summary>
+<summary><strong>Install the v0.5.1 release package</strong></summary>
 
-Download `reader-workbench-0.5.0.tgz` from the [v0.5.0 Release](https://github.com/LINYEANSHU/reader-workbench/releases/tag/v0.5.0), compare its hash with `SHA256SUMS.txt` on that page, then run in the download folder:
+Download `reader-workbench-0.5.1.tgz` from the [v0.5.1 Release](https://github.com/LINYEANSHU/reader-workbench/releases/tag/v0.5.1), compare its hash with `SHA256SUMS.txt` on that page, then run in the download folder:
 
 ```powershell
-Get-FileHash .\reader-workbench-0.5.0.tgz -Algorithm SHA256
-npm install --global .\reader-workbench-0.5.0.tgz
+Get-FileHash .\reader-workbench-0.5.1.tgz -Algorithm SHA256
+npm install --global .\reader-workbench-0.5.1.tgz
 reader-workbench web
 ```
 
@@ -70,7 +70,7 @@ Stop the old service before upgrading, then restart it and refresh the browser. 
 
 </details>
 
-## New in 0.5.0
+## New in 0.5.1
 
 This release reduces repeated parsing, repeated input and waiting during long reading sessions.
 

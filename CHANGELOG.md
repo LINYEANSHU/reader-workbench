@@ -2,6 +2,13 @@
 
 版本使用 `主版本.次版本.修订版本`，每次发布记录实际变化、验证和未测范围。
 
+## 0.5.1 — 2026-11-12
+
+- 修复 Windows CI 中已失效的 LibreOffice 下载地址，改用官方固定版本归档，继续校验原有 SHA-256；全部 Windows 检查仍为必需项。
+- 本版收录下列 0.5.0 功能。0.5.0 标签保留为首次发布尝试记录：该次 CI 在准备 Office 时失败，没有发布正式安装包。
+- Fixes the expired LibreOffice download URL in Windows CI using the official fixed-version archive, retaining SHA-256 verification and every required Windows check.
+- Includes all 0.5.0 features below. The 0.5.0 tag is retained as the initial release attempt; Office preparation failed in CI and no formal release package was published.
+
 ## 0.5.0 — 2026-11-12
 
 ### 中文

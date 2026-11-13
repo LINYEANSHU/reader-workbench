@@ -33,7 +33,7 @@ jobs:
         shell: pwsh
         run: |
           $readerInstaller = Join-Path $env:RUNNER_TEMP 'reader-libreoffice.msi'
-          Invoke-WebRequest 'https://download.documentfoundation.org/libreoffice/stable/26.2.6/win/x86_64/LibreOffice_26.2.6_Win_x86-64.msi' -OutFile $readerInstaller
+          Invoke-WebRequest 'https://downloadarchive.documentfoundation.org/libreoffice/old/26.2.6.3/win/x86_64/LibreOffice_26.2.6.3_Win_x86-64.msi' -OutFile $readerInstaller
           if ((Get-FileHash -LiteralPath $readerInstaller -Algorithm SHA256).Hash.ToLowerInvariant() -ne 'f9877032fd908beb9c0ddf06df4af5c2e85f419c42e14876c4cce5aae5fb2660') { throw 'Converter hash mismatch' }
           $readerInstall = Start-Process msiexec.exe -ArgumentList @('/i', $readerInstaller, '/qn', '/norestart') -WindowStyle Hidden -Wait -PassThru
           if ($readerInstall.ExitCode -notin @(0, 3010)) { throw 'Converter installation failed' }
