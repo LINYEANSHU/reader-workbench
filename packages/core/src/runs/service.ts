@@ -14,7 +14,8 @@ import {validateImageRequest,DEFAULT_IMAGE_LIMITS} from '../models/image-budget.
 import {modelUsageScope} from '../models/usage-scope.js';
 import {withoutReasoning} from '../sessions/memory.js';
 import {DeltaBatcher} from './delta-batcher.js';
-const PARTIAL_SAVE_INTERVAL_MS=250;
+const PARTIAL_SAVE_INTERVAL_MS=250,SELECTION_HISTORY_TOKENS=24*1024;
+import {clipMiddle} from '../models/tokens.js';
 interface Dependencies{workspaces:WorkspaceService;repository:SessionRepository;context:ContextBuilder;tools:ToolRegistry;documents:DocumentService;capabilities:CapabilityRegistry;artifacts?:ArtifactService;documentMemory?:DocumentMemoryConsumer}
 export class RunService{
  readonly records:RunRepository;readonly executor:ToolExecutor;private queue=new KeyedQueue();private recovery=new KeyedQueue();private controllers=new Map<RunId,AbortController>();private liveRecords=new Map<RunId,RunRecord>();private modelLeases=new Map<RunId,CapabilityLease<ModelProvider>>();private tasks=new Map<RunId,Promise<void>>();private compactions=new Map<string,AbortController>();private closed=false;
@@ -68,7 +69,8 @@ export class RunService{
     validateImageRequest(messages,model.value.imageLimits??DEFAULT_IMAGE_LIMITS,{messages});return messages;
    }).finally(()=>stream.flush().catch(()=>{}));await stream.flush();signal.throwIfAborted();
    for(const anchor of envelope.sourceRanges)await this.records.emit(record,'citation',anchor);
-   const content=record.request.question+(record.request.selection?'\n选区：'+record.request.selection.text+'\n来源：'+JSON.stringify(record.request.selection.anchors):'');
+   // History keeps the question and a bounded copy of its selection; the sources lead back to the full text.
+   const content=record.request.question+(record.request.selection?'\n选区：'+clipMiddle(record.request.selection.text,SELECTION_HISTORY_TOKENS,'\n…[选区较长，历史中只保留首尾]…\n')+'\n来源：'+JSON.stringify(record.request.selection.anchors):'');
    signal.throwIfAborted();await this.dependencies.repository.completeOwnTurn(scope,{id:randomUUID(),runId:record.id,question:record.request.question,answer:result.answer,messages:[{role:'user',content},...result.ownMessages.map(withoutReasoning)],sourceAnchors:uniqueAnchors([...envelope.sourceRanges,...result.anchors]),attachmentIds:record.request.attachmentIds,...(record.request.selection?{selection:structuredClone(record.request.selection)}:{})},signal);
    record.result=result.answer;record.status='completed';this.scheduleCompaction(record,actor,usageSession.epoch??0);
    });

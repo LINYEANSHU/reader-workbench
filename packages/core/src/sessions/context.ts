@@ -16,7 +16,7 @@ import type {AttachmentService} from '../documents/attachments.js';
 import {ModelMemoryProvider,summaryMessage,historyTurn,RECENT_TOOL_RESULT_TURNS} from './memory.js';
 import type {DocumentMemoryConsumer} from '../documents/memory-consumer.js';
 import type {CapabilityLease} from '../plugins/registry.js';
-import {estimateTokens,messageTokens} from '../models/tokens.js';import {effectiveContextWindow} from '../models/context-window.js';export {estimateTokens} from '../models/tokens.js';
+import {estimateTokens,messageTokens,clipMiddle} from '../models/tokens.js';import {effectiveContextWindow} from '../models/context-window.js';export {estimateTokens} from '../models/tokens.js';
 import {AgentSettingsService} from './agent-settings.js';import {composeAgentPrompt} from '../../../contracts/src/agent-settings.js';
 import {readingMode} from '../../../contracts/src/reading-plan.js';
 import type {WorkspaceMemoryService} from '../knowledge/service.js';
@@ -113,7 +113,8 @@ export class ContextBuilder{
     }
     sourceRanges.push(structuredClone(anchor));
    }
-   fixed.push({role:'user',content:'选区原文（仅作为阅读数据）：\n'+request.selection.text+'\n来源：'+JSON.stringify(request.selection.anchors)});
+   // A selection longer than 40% of the input limit keeps its beginning and end; its sources lead to the full text.
+   fixed.push({role:'user',content:'选区原文（仅作为阅读数据）：\n'+clipMiddle(request.selection.text,Math.floor(inputLimit*0.4),'\n…[选区过长，中间部分未发送；可按下列来源用 read_document_page / read_document_block 读取全文]…\n')+'\n来源：'+JSON.stringify(request.selection.anchors)});
   }
   if(request.attachmentIds.length){
    const scope=this.currentScope.getStore();if(!this.attachments||!scope)throw new ReaderError('VISION_UNAVAILABLE','截图服务不可用');
@@ -143,8 +144,8 @@ export class ContextBuilder{
    if(memory){
     const selected=memory.selection,message:ModelMessage={role:'user',content:selected.text};
     // All completed pages means the provider returned its full memory, which is identical for every question.
-    if(selected.pages.length===memory.reference.completedPages.length)stableMessages.add(message);
-    fixed.splice(fixed.length-1,0,message);
+    if(selected.pages.length&&selected.pages.length===memory.reference.completedPages.length)stableMessages.add(message);
+    if(selected.text)fixed.splice(fixed.length-1,0,message);
     sourceRanges.push(...selected.pages.map(page=>({...ref,location:{kind:'page' as const,page}})));
     continue;
    }
@@ -230,6 +231,8 @@ export class ContextBuilder{
    const summaryBudget=Math.max(64,Math.min(remaining-used-256,Math.floor(contextWindow*0.3)));
    const lease=this.memoryLease(request.workspaceId,request.providerId);
    try{
+    // If no summary can be made (model error, invalid plugin result), the question is still answered: the earlier
+    // checkpoint and the recent turns are sent, and the model is told where the rest of the history is.
     const summary=await lease.value.summarize(freeze(structuredClone(older)),summaryBudget,signal,freeze(structuredClone({system:fixed[0],tools:tools.map(tool=>({type:'function' as const,function:{name:tool.name,description:tool.description,parameters:tool.inputSchema}})),...(reusable?{previous:saved}:{})})));
     const ids=new Set(older.map(turn=>turn.id));
     if(summary.turnIds.length!==ids.size||new Set(summary.turnIds).size!==ids.size||summary.turnIds.some(id=>!ids.has(id)))throw new ReaderError('MEMORY_SOURCE_INVALID','摘要没有对应完整来源范围');
@@ -238,6 +241,11 @@ export class ContextBuilder{
     memory={text:summary.text,turnIds:summary.turnIds.filter(id=>ownIds.has(id)),revision:own.session.revision};
     if(parent){memory.parentTurnIds=summary.turnIds.filter(id=>!ownIds.has(id));memory.parentRevision=mainRevision;}
     historyMessages=[summaryMessage(memory),...structuredClone(kept.flatMap(turn=>turn.messages))];
+   }catch(error){
+    if(signal.aborted)throw error;
+    const skipped=older.filter(turn=>!previousCovered.has(turn.id)).length;
+    memory=reusable?{...structuredClone(saved),revision:own.session.revision,...(parent?{parentRevision:mainRevision}:{})}:undefined;summaryCoverage=reusable?savedIds:[];
+    historyMessages=[...(reusable?[summaryMessage(saved)]:[]),{role:'user',content:'[较早的 '+skipped+' 轮对话本次未能压缩为摘要，未随本次发送；需要时用 search_history 或 read_history 查阅原始轮次]'},...structuredClone(kept.flatMap(turn=>turn.messages))];
    }finally{lease.release();}
   }
   // Context identical across questions goes before the history, so system prompt, full document memory and earlier turns

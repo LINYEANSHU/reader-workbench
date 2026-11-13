@@ -10,8 +10,7 @@ import {estimateTokens,messageTokens} from '../models/tokens.js';import {ModelMe
 import {validateImageRequest,DEFAULT_IMAGE_LIMITS} from '../models/image-budget.js';
 import {effectiveContextWindow,learnContextLimit} from '../models/context-window.js';
 const MAX_OVERFLOW_RECOVERIES=3,ARCHIVED_TOOL_CHARS=400,TOOL_RESULT_TOKENS=256*1024;
-/** The text cut to about `limit` estimated tokens including the note that says it was cut. */
-export function clipTokens(text:string,limit:number,note:string):string{const room=limit-estimateTokens(note);if(estimateTokens(text)<=limit)return text;let used=0,end=0;for(const character of text){const size=estimateTokens(character);if(used+size>room)break;used+=size;end+=character.length;}return text.slice(0,end)+note;}
+export {clipTokens} from '../models/tokens.js';import {clipTokens} from '../models/tokens.js';
 export async function toolLoop(model:ModelProvider,envelope:ContextEnvelope,tools:ModelTool[],scope:RunScope,executor:ToolExecutor,emit:(kind:RunEvent['kind'],data:unknown)=>Promise<unknown>,signal:AbortSignal,reasoningEffort?:string,resolveImages?:(anchors:SourceAnchor[])=>Promise<ModelMessage[]>){
  const messages:ModelMessage[]=structuredClone([...envelope.messages]),ownMessages:ModelMessage[]=[],anchors:SourceAnchor[]=[];let answer='',overflowRecoveries=0;
  const question=messages.at(-1)!,viewedImages=new WeakSet<ModelMessage>(),imageTokens=model.imageLimits?.imageTokens??1024;
