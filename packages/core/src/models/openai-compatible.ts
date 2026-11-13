@@ -6,6 +6,7 @@ import {parseSSE} from './sse-parser.js';
 import {createHash} from 'node:crypto';import {resolveImageLimits,validateImageRequest} from './image-budget.js';
 import {inputOnlyCapabilities} from '../../../contracts/src/models.js';
 import {estimateTokens,messageTokens} from './tokens.js';
+import {isContextOverflow} from './context-window.js';
 class CredentialRedactor{
  private pending='';constructor(private secret:string){}
  append(text:string,final=false):string{
@@ -61,10 +62,10 @@ export class OpenAICompatibleProvider implements ModelProvider{
   try{response=await fetch(this.endpoint,{method:'POST',headers:{authorization:'Bearer '+key,'content-type':'application/json',accept:'text/event-stream'},body:JSON.stringify(body),signal:networkSignal,redirect:'error'});}
   catch(error){if(signal.aborted)throw signal.reason;if(networkSignal.aborted)throw new ReaderError('MODEL_TIMEOUT','模型请求超时，请降低思考深度或增加超时设置',504,true);throw new ReaderError('MODEL_CONNECTION_FAILED','无法连接模型 API，请检查地址与网络',502,true);}
   if(!response.ok){
-   let code='';try{code=(await response.json() as {error?:{code?:string}}).error?.code??'';}catch{}
+   let code='',message='';try{const text=(await response.text()).slice(0,64*1024);try{const error=(JSON.parse(text) as {error?:{code?:unknown;message?:unknown}}).error;code=typeof error?.code==='string'?error.code:'';message=typeof error?.message==='string'?error.message:'';}catch{message=text;}}catch{}
    if(response.status===401||response.status===403)throw new ReaderError('MODEL_AUTHENTICATION_FAILED','模型 API 凭据无效或无权限',401);
    if(response.status===429)throw new ReaderError('MODEL_RATE_LIMIT','模型 API 请求过于频繁或额度不足，请稍后重试',429,true);
-   if(code==='context_length_exceeded'||code==='context_window_exceeded')throw new ReaderError('CONTEXT_LIMIT','模型端拒绝了超出容量的上下文',400);
+   if(isContextOverflow(response.status,code,message))throw new ReaderError('CONTEXT_LIMIT','模型端拒绝了超出容量的上下文',400);
    throw new ReaderError('MODEL_API_ERROR','模型 API 拒绝请求（HTTP '+response.status+'）',502,response.status>=500);
   }
   if(!response.body||!response.headers.get('content-type')?.includes('text/event-stream'))throw new ReaderError('MODEL_STREAM_INVALID','模型 API 未返回流式事件',502);
@@ -74,7 +75,7 @@ export class OpenAICompatibleProvider implements ModelProvider{
     if(event.data.trim()==='[DONE]'){complete=true;break;}
     let chunk:{error?:unknown;choices?:Array<{delta?:{content?:string;reasoning_content?:string;tool_calls?:Array<{index:number;id?:string;function?:{name?:string;arguments?:string}}>} ;finish_reason?:string|null}>;usage?:{prompt_tokens?:number;completion_tokens?:number;prompt_cache_hit_tokens?:number;prompt_cache_miss_tokens?:number;prompt_tokens_details?:{cached_tokens?:number}}};
     try{chunk=JSON.parse(event.data);}catch{throw new ReaderError('MODEL_STREAM_INVALID','模型事件不是有效 JSON',502);}
-    if(chunk.error)throw new ReaderError('MODEL_API_ERROR','模型在流式过程中报告错误',502);
+    if(chunk.error){const error=chunk.error as {code?:unknown;message?:unknown};if(isContextOverflow(0,typeof error.code==='string'?error.code:'',typeof error.message==='string'?error.message:''))throw new ReaderError('CONTEXT_LIMIT','模型端拒绝了超出容量的上下文',400);throw new ReaderError('MODEL_API_ERROR','模型在流式过程中报告错误',502);}
     const choice=chunk.choices?.[0],delta=choice?.delta;if(choice?.finish_reason)finish=choice.finish_reason;
     if(typeof delta?.content==='string'&&delta.content){const text=textRedactor.append(delta.content);if(text)yield{kind:'delta',text};}
     if(typeof delta?.reasoning_content==='string'&&delta.reasoning_content){const text=reasoningRedactor.append(delta.reasoning_content);if(text)yield{kind:'reasoning',text};}

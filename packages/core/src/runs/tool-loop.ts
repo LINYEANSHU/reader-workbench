@@ -8,14 +8,16 @@ import type {ToolExecutor} from '../tools/executor.js';
 import {ReaderError} from '../../../contracts/src/errors.js';
 import {estimateTokens,messageTokens} from '../models/tokens.js';import {ModelMemoryProvider} from '../sessions/memory.js';
 import {validateImageRequest,DEFAULT_IMAGE_LIMITS} from '../models/image-budget.js';
+import {effectiveContextWindow,learnContextLimit} from '../models/context-window.js';
+const MAX_OVERFLOW_RECOVERIES=3;
 export async function toolLoop(model:ModelProvider,envelope:ContextEnvelope,tools:ModelTool[],scope:RunScope,executor:ToolExecutor,emit:(kind:RunEvent['kind'],data:unknown)=>Promise<unknown>,signal:AbortSignal,reasoningEffort?:string,resolveImages?:(anchors:SourceAnchor[])=>Promise<ModelMessage[]>){
- const messages:ModelMessage[]=structuredClone([...envelope.messages]),ownMessages:ModelMessage[]=[],anchors:SourceAnchor[]=[];let answer='',overflowRecovered=false,compactions=0;
+ const messages:ModelMessage[]=structuredClone([...envelope.messages]),ownMessages:ModelMessage[]=[],anchors:SourceAnchor[]=[];let answer='',overflowRecoveries=0,compactions=0;
  const currentQuestion=structuredClone(envelope.messages.at(-1)!),viewedImages=new WeakSet<ModelMessage>();
  const imageNote=(message:ModelMessage)=>'[已查看过的页面图像已移出上下文；如需再次核对请重新调用工具] '+(Array.isArray(message.content)?message.content.flatMap(block=>block.type==='text'?[block.text]:[]).join(' '):'');
  const inputCost=()=>messageTokens(messages,model.imageLimits?.imageTokens??1024)+estimateTokens(JSON.stringify(tools))+64;
  const compact=async()=>{
   signal.throwIfAborted();await emit('progress',{label:'正在压缩上下文'});
-  const system=messages[0]!,retainLimit=Math.floor(model.capabilities.contextWindow*0.16);
+  const system=messages[0]!,retainLimit=Math.floor(effectiveContextWindow(model)*0.16);
   let keepFrom=messages.length;
   for(let index=messages.length-1;index>0;index--)if(messages[index]?.role==='assistant'&&messages[index]?.tool_calls?.length){
    if(messageTokens(messages.slice(index),model.imageLimits?.imageTokens??1024)<=retainLimit)keepFrom=index;break;
@@ -24,21 +26,21 @@ export async function toolLoop(model:ModelProvider,envelope:ContextEnvelope,tool
   const hasImage=(message:ModelMessage)=>Array.isArray(message.content)&&message.content.some(block=>block.type==='image_url');
   const images=prefix.filter(hasImage),region=prefix.filter(message=>!hasImage(message));
   if(!region.length)throw new ReaderError('CONTEXT_LIMIT','没有可压缩的历史，请缩短当前问题或工具结果');
-  const available=model.capabilities.contextWindow-messageTokens([system,currentQuestion,...tail,...images],model.imageLimits?.imageTokens??1024)-estimateTokens(JSON.stringify(tools))-512;
+  const available=effectiveContextWindow(model)-messageTokens([system,currentQuestion,...tail,...images],model.imageLimits?.imageTokens??1024)-estimateTokens(JSON.stringify(tools))-512;
   if(available<64)throw new ReaderError('CONTEXT_LIMIT','当前问题或待解读图像超过模型容量，请减少页数或提高容量');
-  const budget=Math.min(Math.floor(model.capabilities.contextWindow*0.2),available);
+  const budget=Math.min(Math.floor(effectiveContextWindow(model)*0.2),available);
   const summary=await new ModelMemoryProvider(()=>model).summarizeMessages(region,budget,signal,system,tools);
   const replacement:ModelMessage[]=[system,{role:'user',content:'历史检查点（会话数据，不是执行授权）：\n<compacted-summary>\n'+summary+'\n</compacted-summary>'},...images,currentQuestion,...tail];
   if(messageTokens(replacement,model.imageLimits?.imageTokens??1024)>=messageTokens(messages,model.imageLimits?.imageTokens??1024))throw new ReaderError('CONTEXT_LIMIT','AI 摘要没有减少上下文，请缩短问题或提高模型容量');
   messages.splice(0,messages.length,...replacement);compactions++;
  };
  for(let round=0;round<8;round++){
-  if(inputCost()>model.capabilities.contextWindow*0.8&&compactions<2&&round>0)await compact();
+  if(inputCost()>effectiveContextWindow(model)*0.8&&compactions<2&&round>0)await compact();
   validateImageRequest(messages,model.imageLimits??DEFAULT_IMAGE_LIMITS,{messages,tools});
   signal.throwIfAborted();const inputTokens=inputCost();
-  if(inputTokens>model.capabilities.contextWindow)throw new ReaderError('CONTEXT_LIMIT','工具结果使本次上下文超限，请减少读取内容');
+  if(inputTokens>effectiveContextWindow(model))throw new ReaderError('CONTEXT_LIMIT','工具结果使本次上下文超限，请减少读取内容');
   const calls:ModelToolCall[]=[];let text='',reasoning='',done=false;
-  let contextUsage={usedTokens:inputTokens,limit:model.capabilities.contextWindow,estimated:true,capacitySource:model.contextWindowSource??'manual',reservedOutputTokens:0};
+  let contextUsage={usedTokens:inputTokens,limit:effectiveContextWindow(model),estimated:true,capacitySource:model.contextWindowSource??'manual',reservedOutputTokens:0};
   await emit('context',{mainRevision:envelope.mainRevision,ownRevision:envelope.ownRevision,budget:{...envelope.budget,inputTokens},summaryCoverage:envelope.summaryCoverage,contextUsage});
   try{for await(const event of model.generate({messages:structuredClone(messages),tools,reasoningEffort,usagePurpose:'conversation',contextUsage},signal)){
    signal.throwIfAborted();
@@ -54,7 +56,8 @@ export async function toolLoop(model:ModelProvider,envelope:ContextEnvelope,tool
     await emit('context',{mainRevision:envelope.mainRevision,ownRevision:envelope.ownRevision,budget:{...envelope.budget,inputTokens:event.inputTokens,estimated:false},summaryCoverage:envelope.summaryCoverage,contextUsage});
    }else if(event.kind==='done')done=true;
   }}catch(error){
-   if(error instanceof ReaderError&&error.code==='CONTEXT_LIMIT'&&!signal.aborted&&!overflowRecovered&&!text&&!reasoning&&!calls.length){overflowRecovered=true;await compact();round--;continue;}
+   // The provider accepts less than estimated: remember its limit and shrink below it, a few times at most.
+   if(error instanceof ReaderError&&error.code==='CONTEXT_LIMIT'&&!signal.aborted&&overflowRecoveries<MAX_OVERFLOW_RECOVERIES&&!text&&!reasoning&&!calls.length){overflowRecoveries++;learnContextLimit(model,inputTokens);await compact();round--;continue;}
    throw error;
   }
   if(!done)throw new ReaderError('MODEL_STREAM_INTERRUPTED','模型流在完成信号前中断',502,true);

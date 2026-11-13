@@ -11,6 +11,8 @@ async function endpoint(mode='text'){
   if(req.method==='GET'){res.writeHead(200,{'content-type':'application/json'});res.end('{"data":[]}');return;}
   const body=await new Promise<string>(resolve=>{let text='';req.setEncoding('utf8');req.on('data',part=>text+=part);req.on('end',()=>resolve(text));});requests.push({path:req.url!,authorization:req.headers.authorization,body:body?JSON.parse(body):{}});
   if(mode==='401'||mode==='429'||mode==='context'){res.writeHead(mode==='context'?400:Number(mode),{'content-type':'application/json'});res.end(JSON.stringify({error:{code:mode==='context'?'context_length_exceeded':'invalid_api_key',message:testKey}}));return;}
+  // DeepSeek-style rejection: a generic code, with the overflow only stated in the message.
+  if(mode==='context-message'){res.writeHead(400,{'content-type':'application/json'});res.end(JSON.stringify({error:{code:'invalid_request_error',type:'invalid_request_error',message:"This model's maximum context length is 131072 tokens. However, you requested 245760 tokens. Please reduce the length of the messages."}}));return;}
   res.writeHead(200,{'content-type':'text/event-stream'});res.on('close',()=>{aborted=true;});
   if(mode==='slow'||mode==='slow-first'&&JSON.stringify(requests.at(-1)?.body.messages).includes('FIRST')){res.write('data: '+JSON.stringify(frame({content:'开始'}))+'\n\n');return;}
   const chunks=(mode==='tools'||mode==='tools-then-text'&&requests.length===1)?toolFrames:mode==='echo-key'?[frame({content:testKey.slice(0,9)}),frame({content:testKey.slice(9)}),frame({},'stop')]:mode==='echo-tool'?[frame({tool_calls:[{index:0,id:'secret',function:{name:'read',arguments:JSON.stringify({value:testKey})}}]}),frame({},'tool_calls')]:mode==='cut'?[frame({content:'未完'})]:mode==='invalid'?[frame({tool_calls:[{index:0,id:'bad',function:{name:'read',arguments:'{bad'}}]}),frame({},'tool_calls')]:textFrames;
@@ -56,7 +58,7 @@ describe('OpenAI-compatible HTTP protocol',()=>{
   const [turn]=await server.sessionRepository.getCommittedTurns(workspace.id,main.id);expect(turn?.messages.some(message=>message.role==='assistant'&&message.tool_calls?.length)).toBe(true);expect(turn?.messages.some(message=>message.reasoning_content!==undefined)).toBe(false);
  },serverIntegrationTimeout);
  it('reports authentication, rate, capacity and interruption errors without reflected secrets',async()=>{
-  for(const [mode,code] of [['401','MODEL_AUTHENTICATION_FAILED'],['429','MODEL_RATE_LIMIT'],['context','CONTEXT_LIMIT'],['cut','MODEL_STREAM_INTERRUPTED']]){const remote=await endpoint(mode),{provider}=await configured(remote.url);try{await events(provider);throw new Error('expected error');}catch(error){expect(error).toMatchObject({code});expect(String(error)).not.toContain(testKey);}}
+  for(const [mode,code] of [['401','MODEL_AUTHENTICATION_FAILED'],['429','MODEL_RATE_LIMIT'],['context','CONTEXT_LIMIT'],['context-message','CONTEXT_LIMIT'],['cut','MODEL_STREAM_INTERRUPTED']]){const remote=await endpoint(mode),{provider}=await configured(remote.url);try{await events(provider);throw new Error('expected error');}catch(error){expect(error).toMatchObject({code});expect(String(error)).not.toContain(testKey);}}
  });
  it('rejects unsupported images before HTTP and aborts the actual open stream',async()=>{
   const remote=await endpoint('slow'),{provider}=await configured(remote.url,{capabilities:{vision:false,tools:true,contextWindow:32000,maxOutputTokens:512}});

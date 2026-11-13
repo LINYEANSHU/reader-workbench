@@ -16,7 +16,7 @@ import type {AttachmentService} from '../documents/attachments.js';
 import {ModelMemoryProvider,summaryMessage,historyTurn,RECENT_TOOL_RESULT_TURNS} from './memory.js';
 import type {DocumentMemoryConsumer} from '../documents/memory-consumer.js';
 import type {CapabilityLease} from '../plugins/registry.js';
-import {estimateTokens,messageTokens} from '../models/tokens.js';export {estimateTokens} from '../models/tokens.js';
+import {estimateTokens,messageTokens} from '../models/tokens.js';import {effectiveContextWindow} from '../models/context-window.js';export {estimateTokens} from '../models/tokens.js';
 import {AgentSettingsService} from './agent-settings.js';import {composeAgentPrompt} from '../../../contracts/src/agent-settings.js';
 import {readingMode} from '../../../contracts/src/reading-plan.js';
 import type {WorkspaceMemoryService} from '../knowledge/service.js';
@@ -70,7 +70,7 @@ export class ContextBuilder{
    const tools=this.sessionTools(workspaceId,'main',false,model.capabilities).map(tool=>({type:'function' as const,function:{name:tool.name,description:tool.description,parameters:tool.inputSchema}}));
    const lease=this.memoryLease(workspaceId,providerId);
    try{
-    const summary=await lease.value.summarize(freeze(structuredClone(older)),Math.max(64,Math.min(SUMMARY_TARGET_BYTES,Math.floor(model.capabilities.contextWindow*0.3))),signal,freeze(structuredClone({system:{role:'system' as const,content:await this.instruction(workspaceId,'main')},tools,...(reusable?{previous:reusable}:{})})));
+    const summary=await lease.value.summarize(freeze(structuredClone(older)),Math.max(64,Math.min(SUMMARY_TARGET_BYTES,Math.floor(effectiveContextWindow(model)*0.3))),signal,freeze(structuredClone({system:{role:'system' as const,content:await this.instruction(workspaceId,'main')},tools,...(reusable?{previous:reusable}:{})})));
     const expected=new Set(older.map(turn=>turn.id));
     if(summary.turnIds.length!==expected.size||new Set(summary.turnIds).size!==expected.size||summary.turnIds.some(id=>!expected.has(id)))throw new ReaderError('MEMORY_SOURCE_INVALID','摘要没有对应完整来源范围');
     signal.throwIfAborted();return{text:summary.text,turnIds:[...summary.turnIds],revision:own.session.revision};
@@ -86,10 +86,12 @@ export class ContextBuilder{
   const model=this.currentModel.getStore()!;
   const messageCost=(messages:ReadonlyArray<ModelMessage>)=>messageTokens(messages,model.imageLimits?.imageTokens??1024);
   const capability=model.capabilities;
+  // Configured window, lowered after the provider rejected a longer input (see effectiveContextWindow).
+  const contextWindow=effectiveContextWindow(model);
   const reservedOutputTokens=0;
   const tools=this.sessionTools(request.workspaceId,session.kind,request.allowArtifactWrites,capability);
   const toolTokens=tools.reduce((total,tool)=>total+estimateTokens(JSON.stringify({name:tool.name,description:tool.description,parameters:tool.inputSchema}))+24,0);
-  const inputLimit=capability.contextWindow-reservedOutputTokens-toolTokens-64;
+  const inputLimit=contextWindow-reservedOutputTokens-toolTokens-64;
   if(inputLimit<256)throw new ReaderError('CONTEXT_LIMIT','模型容量不足，请提高上下文设置或减少工具');
   const instruction=await this.instruction(request.workspaceId,session.kind);
   const fixed:ModelMessage[]=[{role:'system',content:instruction}];
@@ -216,16 +218,16 @@ export class ContextBuilder{
    historyMessages=[summaryMessage(saved),...structuredClone(history.filter(turn=>!savedSet.has(turn.id)).flatMap(turn=>turn.messages))];
   }
   // Background compaction normally keeps history small; this bound applies when it could not run (e.g. rapid questions).
-  const pressureLimit=Math.min(remaining,HISTORY_HARD_BYTES,Math.floor(capability.contextWindow*0.8)-reservedOutputTokens-toolTokens-64-messageCost(fixed));
+  const pressureLimit=Math.min(remaining,HISTORY_HARD_BYTES,Math.floor(contextWindow*0.8)-reservedOutputTokens-toolTokens-64-messageCost(fixed));
   if(history.length&&messageCost(historyMessages)>Math.max(0,pressureLimit)){
    await this.currentExecution.getStore()?.progress({completedPages:0,pageCount:0,label:'正在压缩上下文'});
    const kept:CommittedTurn[]=[];let used=0;
    const previousCovered=new Set(reusable?savedIds:[]);
    for(const turn of [...history.filter(turn=>!previousCovered.has(turn.id))].reverse()){
-    const cost=messageCost(turn.messages);if(used+cost>Math.min(remaining*0.6,capability.contextWindow*0.16))break;kept.unshift(turn);used+=cost;
+    const cost=messageCost(turn.messages);if(used+cost>Math.min(remaining*0.6,contextWindow*0.16))break;kept.unshift(turn);used+=cost;
    }
    const keptIds=new Set(kept.map(turn=>turn.id)),older=history.filter(turn=>!keptIds.has(turn.id));
-   const summaryBudget=Math.max(64,Math.min(remaining-used-256,Math.floor(capability.contextWindow*0.3)));
+   const summaryBudget=Math.max(64,Math.min(remaining-used-256,Math.floor(contextWindow*0.3)));
    const lease=this.memoryLease(request.workspaceId,request.providerId);
    try{
     const summary=await lease.value.summarize(freeze(structuredClone(older)),summaryBudget,signal,freeze(structuredClone({system:fixed[0],tools:tools.map(tool=>({type:'function' as const,function:{name:tool.name,description:tool.description,parameters:tool.inputSchema}})),...(reusable?{previous:saved}:{})})));
@@ -241,14 +243,14 @@ export class ContextBuilder{
   // Context identical across questions goes before the history, so system prompt, full document memory and earlier turns
   // form a stable prefix that providers can serve from their prompt cache; per-question context stays after the history.
   const messages=[fixed[0]!,...fixed.filter(message=>stableMessages.has(message)),...historyMessages,...fixed.slice(1).filter(message=>!stableMessages.has(message))];
-  let envelope:ContextEnvelope={workspaceId:request.workspaceId,sessionId:request.sessionId,mainRevision,ownRevision:own.session.revision,memory,documents,documentReadScopes,documentMemories:memories.map(item=>item.reference),messages,sourceRanges:uniqueAnchors(sourceRanges),budget:{limit:capability.contextWindow,inputTokens:messageCost(messages)+toolTokens+64,reservedOutputTokens,estimated:true,reservedToolTokens:toolTokens},summaryCoverage};
-  if(envelope.budget.inputTokens+reservedOutputTokens>capability.contextWindow)throw new ReaderError('CONTEXT_LIMIT','上下文摘要后仍超限，请增加容量或减少选区');
+  let envelope:ContextEnvelope={workspaceId:request.workspaceId,sessionId:request.sessionId,mainRevision,ownRevision:own.session.revision,memory,documents,documentReadScopes,documentMemories:memories.map(item=>item.reference),messages,sourceRanges:uniqueAnchors(sourceRanges),budget:{limit:contextWindow,inputTokens:messageCost(messages)+toolTokens+64,reservedOutputTokens,estimated:true,reservedToolTokens:toolTokens},summaryCoverage};
+  if(envelope.budget.inputTokens+reservedOutputTokens>contextWindow)throw new ReaderError('CONTEXT_LIMIT','上下文摘要后仍超限，请增加容量或减少选区');
   for(const id of this.capabilities.list(request.workspaceId,'context')){
    const lease=this.capabilities.acquire(request.workspaceId,'context',id);
    try{const changed=await lease.value.transform(freeze(structuredClone(envelope)),signal);validateContextTransform(envelope,changed);envelope=structuredClone(changed);}
    finally{lease.release();}
-   envelope.budget={limit:capability.contextWindow,inputTokens:messageCost(envelope.messages)+toolTokens+64,reservedOutputTokens,estimated:true,reservedToolTokens:toolTokens};
-   if(envelope.budget.inputTokens+reservedOutputTokens>capability.contextWindow)throw new ReaderError('CONTEXT_LIMIT','插件变换后的上下文超限');
+   envelope.budget={limit:contextWindow,inputTokens:messageCost(envelope.messages)+toolTokens+64,reservedOutputTokens,estimated:true,reservedToolTokens:toolTokens};
+   if(envelope.budget.inputTokens+reservedOutputTokens>contextWindow)throw new ReaderError('CONTEXT_LIMIT','插件变换后的上下文超限');
   }
   signal.throwIfAborted();return freeze(structuredClone(envelope));
  }
