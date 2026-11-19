@@ -1,8 +1,10 @@
 import {access,readFile} from 'node:fs/promises';
 import {spawn} from 'node:child_process';
 import path from 'node:path';
+import {getDefaultEnvironment} from '@modelcontextprotocol/client/stdio';
 import type {ModelProvider} from '../../../sdk/src/capabilities.js';
 import type {ModelRequest} from '../../../contracts/src/models.js';
+import {stopProcessTree} from '../runtime/process.js';
 export const LOCAL_TRANSLATION_PROVIDER_ID='core.local-translation';
 const INPUT_LIMIT=1024*1024,OUTPUT_LIMIT=16*1024*1024;
 export interface TranslationPayload {targetLanguage:'简体中文'|'English';blocks:Array<{id:string;text:string}>}
@@ -25,14 +27,14 @@ export async function getLocalTranslationStatus(options:LocalTranslationOptions)
 async function runWorker(payload:TranslationPayload,options:LocalTranslationOptions,signal:AbortSignal):Promise<string>{
  signal.throwIfAborted();const status=await getLocalTranslationStatus(options);signal.throwIfAborted();if(!status.ready)fail(status.error!);
  return await new Promise<string>((resolve,reject)=>{
-  const child=spawn(path.join(options.runtimeDirectory,'python',process.platform==='win32'?'python.exe':'bin/python3'),['-I',path.resolve(options.workerPath),'--runtime',path.resolve(options.runtimeDirectory)],{shell:false,windowsHide:true,stdio:['pipe','pipe','pipe'],env:{...process.env,PYTHONUTF8:'1',PYTHONIOENCODING:'utf-8'}});
+  const child=spawn(path.join(options.runtimeDirectory,'python',process.platform==='win32'?'python.exe':'bin/python3'),['-I',path.resolve(options.workerPath),'--runtime',path.resolve(options.runtimeDirectory)],{shell:false,windowsHide:true,detached:process.platform!=='win32',stdio:['pipe','pipe','pipe'],env:{...getDefaultEnvironment(),PYTHONUTF8:'1',PYTHONIOENCODING:'utf-8'}});
   const output:Buffer[]=[];let size=0,stderr='',settled=false;
   const cleanup=()=>{clearTimeout(timer);signal.removeEventListener('abort',abort);};
-  const finish=(error?:Error,text?:string)=>{if(settled)return;settled=true;cleanup();if(error){child.kill();reject(error);}else resolve(text!);};
+  const finish=(error?:Error,text?:string)=>{if(settled)return;settled=true;cleanup();if(error){void stopProcessTree(child).catch(()=>{});reject(error);}else resolve(text!);};
   const abort=()=>finish(new DOMException('Translation aborted','AbortError'));
   const timer=setTimeout(()=>finish(new Error('本地翻译处理超时，请缩小处理范围')),10*60*1000);timer.unref();
   signal.addEventListener('abort',abort,{once:true});if(signal.aborted)abort();
-  child.on('error',error=>finish(error));child.stdin.on('error',error=>finish(error));
+  child.on('error',error=>finish(error));child.stdin.on('error',()=>{});
   child.stdout.on('data',(chunk:Buffer)=>{size+=chunk.length;if(size>OUTPUT_LIMIT)finish(new Error('本地翻译输出超过安全大小'));else output.push(chunk);});
   child.stderr.on('data',(chunk:Buffer)=>{stderr=(stderr+chunk.toString('utf8')).slice(-4096);});
   child.on('close',code=>{if(settled)return;if(code!==0){finish(new Error('本地翻译引擎失败：'+stderr.trim()));return;}

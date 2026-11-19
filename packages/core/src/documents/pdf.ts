@@ -1,4 +1,5 @@
-import {readFile,writeFile,access,rename,stat} from 'node:fs/promises';
+import {readFile,writeFile,access,rename,stat,rm} from 'node:fs/promises';
+import {randomUUID} from 'node:crypto';
 import {join,dirname} from 'node:path';
 import {createRequire} from 'node:module';
 import {pathToFileURL} from 'node:url';
@@ -124,10 +125,12 @@ export async function renderPdfPage(path:string,page:number,cacheDir:string,sign
     if(!Number.isInteger(page)||page<1||page>pdf.numPages)throw new ReaderError('PAGE_UNAVAILABLE','页码无效',404);
     const documentPage=await pdf.getPage(page);const base=documentPage.getViewport({scale:1});
     const scale=Math.min(1.5,4096/Math.max(base.width,base.height));const viewport=documentPage.getViewport({scale});
-    const canvas=createCanvas(Math.ceil(viewport.width),Math.ceil(viewport.height));
+    const canvas=createCanvas(Math.ceil(viewport.width),Math.ceil(viewport.height)),context=canvas.getContext('2d');context.fillStyle='#ffffff';context.fillRect(0,0,canvas.width,canvas.height);
     const rendering=documentPage.render({canvas:canvas as unknown as HTMLCanvasElement,viewport});
     const abort=()=>rendering.cancel();signal.addEventListener('abort',abort,{once:true});
-    try{await rendering.promise;signal.throwIfAborted();const temporary=destination+'.'+process.pid+'-'+Date.now()+'.tmp';await writeFile(temporary,canvas.toBuffer('image/png'));await rename(temporary,destination);}
+    const temporary=destination+'.'+process.pid+'-'+randomUUID()+'.tmp';
+    try{await rendering.promise;signal.throwIfAborted();await writeFile(temporary,canvas.toBuffer('image/png'));await rename(temporary,destination);}
+    catch(error){await rm(temporary,{force:true}).catch(()=>{});throw error;}
     finally{signal.removeEventListener('abort',abort);documentPage.cleanup();}return destination;
   });
 }
@@ -149,7 +152,7 @@ export async function renderPdfRegions(path:string,page:number,regions:ReadonlyA
       for(const [index,region] of regions.entries()){
         const left=Math.floor(region[0]*canvas.width),top=Math.floor(region[1]*canvas.height),cropWidth=Math.max(1,Math.ceil(region[2]*canvas.width)-left),cropHeight=Math.max(1,Math.ceil(region[3]*canvas.height)-top);
         const crop=createCanvas(cropWidth,cropHeight);crop.getContext('2d').drawImage(canvas,left,top,cropWidth,cropHeight,0,0,cropWidth,cropHeight);
-        const destination=destinations[index]!,temporary=destination+'.'+process.pid+'-'+Date.now()+'.tmp';await writeFile(temporary,crop.toBuffer('image/png'));await rename(temporary,destination);
+        const destination=destinations[index]!,temporary=destination+'.'+process.pid+'-'+randomUUID()+'.tmp';try{await writeFile(temporary,crop.toBuffer('image/png'));await rename(temporary,destination);}catch(error){await rm(temporary,{force:true}).catch(()=>{});throw error;}
       }}
     finally{signal.removeEventListener('abort',abort);documentPage.cleanup();}
     return destinations;
@@ -168,8 +171,8 @@ export async function modelRender(pngPath:string,signal:AbortSignal):Promise<Buf
   try{await access(marker);return undefined;}catch{}
   const png=await readFile(pngPath,{signal}),image=await loadImage(png);signal.throwIfAborted();
   const canvas=createCanvas(image.width,image.height),context=canvas.getContext('2d');context.fillStyle='#ffffff';context.fillRect(0,0,image.width,image.height);context.drawImage(image,0,0);
-  const jpeg=canvas.toBuffer('image/jpeg',85),temporary=(jpeg.length<png.length?target:marker)+'.'+process.pid+'-'+Date.now()+'.tmp';
-  await writeFile(temporary,jpeg.length<png.length?jpeg:'');await rename(temporary,jpeg.length<png.length?target:marker);
+  const jpeg=canvas.toBuffer('image/jpeg',85),finalTarget=jpeg.length<png.length?target:marker,temporary=finalTarget+'.'+process.pid+'-'+randomUUID()+'.tmp';
+  try{await writeFile(temporary,jpeg.length<png.length?jpeg:'');await rename(temporary,finalTarget);}catch(error){await rm(temporary,{force:true}).catch(()=>{});throw error;}
   return jpeg.length<png.length?jpeg:undefined;
 }
 export const pdfAdapter:DocumentAdapter={supports:mime=>mime==='application/pdf',parse:parsePdf};

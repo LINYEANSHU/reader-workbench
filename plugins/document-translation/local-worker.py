@@ -8,7 +8,7 @@ import sys
 
 INPUT_LIMIT = 1024 * 1024
 OUTPUT_LIMIT = 16 * 1024 * 1024
-KEEP = re.compile(r'(__RW_KEEP_\d+__|\r?\n|`+[^`\r\n]*`+|\$[^$\r\n]+\$|\d+(?:[.,]\d+)*(?:%|²|³)?)')
+KEEP = re.compile(r'(__RW_KEEP_\d+__|\r?\n|`+[^`\r\n]*`+|\$[^$\r\n]+\$)')
 HAN = re.compile(r'[\u3400-\u9fff]')
 
 
@@ -64,7 +64,7 @@ def prose(text, target, engine):
     match = re.fullmatch(r'(\s*)(.*?)(\s*)', text, flags=re.S)
     leading, core, trailing = match.groups()
     chinese = bool(HAN.search(core))
-    if chinese and re.search(r'[A-Za-z]{2,}', core):
+    if target == '简体中文' and chinese and re.search(r'[A-Za-z]{2,}', core):
         # Translate each script span so an annotation in the target language
         # cannot suppress the surrounding source-language prose.
         spans = re.split(r'([\u3400-\u9fff][\u3400-\u9fff\s，。！？；：“”‘’、（）]*)', core)
@@ -72,7 +72,6 @@ def prose(text, target, engine):
         for span in spans:
             if not span: continue
             translated = prose(span, target, engine)
-            if target == 'English' and re.search(r'[A-Za-z0-9]$', result) and re.match(r'[A-Za-z0-9]', translated): result += ' '
             result += translated
         return leading + result + trailing
     if target == '简体中文' and chinese:

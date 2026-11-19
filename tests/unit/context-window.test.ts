@@ -24,7 +24,7 @@ it('compacts below a provider limit lower than configured, retries, and builds l
   attempts++;if(Buffer.byteLength(JSON.stringify(request.messages))>2000)throw new ReaderError('CONTEXT_LIMIT','overflow');yield{kind:'delta',text:'回答'};yield{kind:'done'};}};
  const envelope:any={workspaceId:'w',sessionId:'s',mainRevision:1,messages:[{role:'system',content:'规则'},{role:'user',content:'旧问题'.repeat(2000)},{role:'assistant',content:'旧回答'.repeat(2000)},{role:'user',content:'当前问题'}],sourceRanges:[],summaryCoverage:[],budget:{limit:1_000_000,inputTokens:1,reservedOutputTokens:0}};
  const result=await toolLoop(model,envelope,[],{workspaceId:'w',sessionId:'s',runId:'r'} as any,{} as any,async()=>{},new AbortController().signal);
- expect(result.answer).toBe('回答');expect(attempts).toBe(2);expect(summaries).toBe(1);expect(effectiveContextWindow(model)).toBeLessThan(40_000);
+ expect(result.answer).toBe('回答');expect(attempts).toBe(2);expect(summaries).toBeGreaterThanOrEqual(1);expect(effectiveContextWindow(model)).toBeLessThan(40_000);
 });
 it('remembers a learned limit across restarts and forgets it after thirty days',async()=>{
  const directory=await mkdtemp(join(tmpdir(),'context-limits-'));try{

@@ -15,7 +15,8 @@ export class HistorySearch {
   return this.repository.getCommittedTurns(scope.workspaceId,target,scope.readRevisions?.[target]);
  }
  async read(scope:RunScope,target:SessionId,cursor?:string):Promise<HistoryEntry[]>{
-  const before=cursor?Number(cursor):Number.POSITIVE_INFINITY;
+  const before=cursor!==undefined&&cursor!==''?Number(cursor):Number.POSITIVE_INFINITY;
+  if(cursor!==undefined&&cursor!==''&&(!Number.isSafeInteger(before)||before<0))throw new ReaderError('INVALID_CURSOR','历史游标无效');
   return (await this.turns(scope,target)).filter(turn=>turn.revision<before).slice(-20).map(turn=>entry(turn));
  }
  /** Full question text is read only after applying the same session and revision boundary as history search. */

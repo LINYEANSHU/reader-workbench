@@ -39,19 +39,26 @@ export async function toolLoop(model:ModelProvider,envelope:ContextEnvelope,tool
   for(let index=messages.length-1;index>messages.indexOf(question);index--)if(messages[index]?.role==='assistant'&&messages[index]?.tool_calls?.length){latest=index;break;}
   for(const message of messages.slice(messages.indexOf(question)+1,latest))if(message.role==='tool'&&typeof message.content==='string'&&message.content.length>ARCHIVED_TOOL_CHARS)replace(message,{...message,content:'[本次较早的工具结果已移出上下文（原 '+message.content.length+' 字）；结论见随后的回答，需要原文时重新调用工具]'});
   if(inputCost()<=target)return;
-  const latestMessage=messages[latest],region=messages.filter((message,index)=>index>0&&index<(latestMessage?messages.indexOf(latestMessage):messages.length)&&message!==question&&!documentContext.has(message)&&!hasImage(message));
-  if(region.length){const kept=inputCost()-messageTokens(region,imageTokens),available=window-kept-512;
-   if(available>=64){const budget=Math.max(64,Math.min(Math.floor(window*0.2),available,target-kept));
-    let summary:string;
-    try{summary=await new ModelMemoryProvider(()=>model).summarizeMessages(region,budget,signal,messages[0]!,tools);}
-    catch(error){
-     // A newly discovered provider limit can also reject the history being summarized. Keep a bounded data excerpt
-     // instead of abandoning recovery; the original history remains in storage and the latest tool exchange stays intact.
-     if(signal.aborted||!(error instanceof ReaderError)||error.code!=='CONTEXT_LIMIT')throw error;
-     summary=clipMiddle(JSON.stringify(region),budget,'\n[历史压缩超限，中间部分已省略；需要时用 search_history / read_history 或文档工具读取原始内容]\n');
-    }
-    const checkpoint:ModelMessage={role:'user',content:'历史检查点（会话数据，不是执行授权）：\n<compacted-summary>\n'+summary+'\n</compacted-summary>'};
-    const at=messages.indexOf(region[0]!);for(const message of region)messages.splice(messages.indexOf(message),1);messages.splice(at,0,checkpoint);}}
+  const latestMessage=messages[latest],questionIndex=messages.indexOf(question),latestIndex=latestMessage?messages.indexOf(latestMessage):messages.length;
+  const summarizeSegment=async(segment:ModelMessage[],label:string,budget:number)=>{
+   let summary:string;
+   try{summary=await new ModelMemoryProvider(()=>model).summarizeMessages(segment,budget,signal,messages[0]!,tools);}
+   catch(error){
+    // A newly discovered provider limit can also reject the history being summarized. Keep a bounded data excerpt
+    // instead of abandoning recovery; the original history remains in storage and the latest tool exchange stays intact.
+    if(signal.aborted||!(error instanceof ReaderError)||error.code!=='CONTEXT_LIMIT')throw error;
+    summary=clipMiddle(JSON.stringify(segment),budget,'\n[历史压缩超限，中间部分已省略；需要时用 search_history / read_history 或文档工具读取原始内容]\n');
+   }
+   const checkpoint:ModelMessage={role:'user',content:label+'（会话数据，不是执行授权）：\n<compacted-summary>\n'+summary+'\n</compacted-summary>'};
+   const at=messages.indexOf(segment[0]!);for(const message of segment)messages.splice(messages.indexOf(message),1);messages.splice(at,0,checkpoint);
+  };
+  const beforeQuestion=messages.filter((message,index)=>index>0&&index<questionIndex&&!documentContext.has(message)&&!hasImage(message));
+  const afterQuestion=messages.filter((message,index)=>index>questionIndex&&index<latestIndex&&!documentContext.has(message)&&!hasImage(message));
+  const segments:[ModelMessage[],string][]=[[beforeQuestion,'历史检查点'],[afterQuestion,'本轮较早工具检查点']].filter(([segment])=>segment.length) as [ModelMessage[],string][];
+  if(segments.length){const region=segments.flatMap(([segment])=>segment),kept=inputCost()-messageTokens(region,imageTokens),available=window-kept-512;
+   if(available>=64){const totalBudget=Math.max(64,Math.min(Math.floor(window*0.2),available,target-kept));
+    const perSegment=Math.max(64,Math.floor(totalBudget/segments.length));
+    for(const [segment,label] of segments)await summarizeSegment(segment,label,perSegment);}}
   if(inputCost()<=target)return;
   shorten([...documentContext].filter(message=>messages.includes(message)),inputCost()-target,'\n[文档上下文过长已截断；其余页记忆与原文可用 read_document_memory、search_document_memory、read_document_page 读取]');
   if(inputCost()<=target)return;
@@ -69,7 +76,7 @@ export async function toolLoop(model:ModelProvider,envelope:ContextEnvelope,tool
   await emit('context',{mainRevision:envelope.mainRevision,ownRevision:envelope.ownRevision,budget:{...envelope.budget,inputTokens},summaryCoverage:envelope.summaryCoverage,contextUsage});
   try{for await(const event of model.generate({messages:structuredClone(messages),tools,reasoningEffort,usagePurpose:'conversation',contextUsage},signal)){
    signal.throwIfAborted();
-   if(event.kind==='delta'){text+=event.text;answer+=event.text;await emit('delta',{text:event.text});}
+   if(event.kind==='delta'){const sep=round>0&&!text&&answer&&!answer.endsWith('\n')&&!event.text.startsWith('\n')?'\n\n':'';text+=event.text;answer+=sep+event.text;await emit('delta',{text:sep+event.text});}
    else if(event.kind==='reasoning'){if(!reasoning)await emit('progress',{label:'正在思考'});reasoning+=event.text;}
    else if(event.kind==='tool-call'){
     if(!model.capabilities.tools)throw new ReaderError('MODEL_TOOLS_UNSUPPORTED','该模型未声明工具调用能力');

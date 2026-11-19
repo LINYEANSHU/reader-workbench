@@ -91,6 +91,18 @@ export class ModelSettingsService{
    this.register(workspaceId,settings);return{...settings,hasKey:await this.credentials.hasSecret(credentialRef)};
   });
  }
+ async deleteModelSettings(workspaceId:WorkspaceId,id:string):Promise<{deleted:true}>{
+  await this.listModelSettings(workspaceId);
+  return this.queue.enqueue('settings',async()=>{
+   if(!id||id==='demo'||id.startsWith('core.'))throw new ReaderError('MODEL_SETTINGS_INVALID','系统内置模型不能删除');
+   const current=await this.settings.get(),existing=current.find(model=>model.id===id);
+   if(!existing)throw new ReaderError('MODEL_UNAVAILABLE','此工作区未保存该模型连接',404);
+   await this.settings.update(list=>list.filter(model=>model.id!==id));
+   if(existing.credentialRef)await this.credentials.deleteSecret(existing.credentialRef).catch(()=>{});
+   for(const name of [...this.loaded.keys()])if(name.endsWith('/'+id)){this.releases.get(name)?.();this.releases.delete(name);this.loaded.delete(name);}
+   return{deleted:true};
+  });
+ }
  async listModelSettings(workspaceId:WorkspaceId):Promise<MaskedModelSettings[]>{
   return this.queue.enqueue('settings',async()=>{
    const store=await this.workspaces.storeFor(workspaceId),legacy=store.listRecords<ModelSettings>('model-settings');

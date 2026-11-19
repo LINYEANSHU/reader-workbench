@@ -15,7 +15,7 @@ export function runRoutes(app:FastifyInstance,runs:RunService,auth:Authenticatio
   const workspaceId=workspace(request.query),after=Number(request.query.afterSeq??request.headers['last-event-id']??0);
   if(!Number.isSafeInteger(after)||after<0)throw new ReaderError('INVALID_CURSOR','事件序号无效');await runs.get(workspaceId,request.params.id);
   const controller=new AbortController();reply.raw.on('close',()=>controller.abort());reply.hijack();reply.raw.writeHead(200,{'content-type':'text/event-stream; charset=utf-8','cache-control':'no-cache, no-transform','connection':'keep-alive','x-accel-buffering':'no'});reply.raw.flushHeaders();
-  const heartbeat=setInterval(()=>{if(!controller.signal.aborted)reply.raw.write(': heartbeat\n\n');},10000);
+  const heartbeat=setInterval(()=>{if(!controller.signal.aborted&&!reply.raw.destroyed&&!reply.raw.writableEnded)reply.raw.write(': heartbeat\n\n');},10000);heartbeat.unref?.();
   try{for await(const event of runs.events(workspaceId,request.params.id,after,controller.signal)){if(controller.signal.aborted)break;reply.raw.write('id: '+event.seq+'\nevent: '+event.kind+'\ndata: '+JSON.stringify(event)+'\n\n');}}
   finally{clearInterval(heartbeat);if(!reply.raw.destroyed)reply.raw.end();}
  });

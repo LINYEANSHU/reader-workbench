@@ -13,7 +13,7 @@ export function boundedUnzip(bytes:Uint8Array,options:{limits?:Partial<ZipLimits
  const count=u16(end+10),directory=u32(end+16);
  if(count===0xffff||directory===0xffffffff)fail('不支持 ZIP64 压缩包');
  if(count>limits.maxEntries)fail('压缩包成员数量超过上限');
- const decoder=new TextDecoder(),files:Record<string,Uint8Array>={};let total=0;
+ const decoder=new TextDecoder(),files:Record<string,Uint8Array>=Object.create(null);let total=0;
  for(let index=0,at=directory;index<count;index++){
   options.signal?.throwIfAborted();
   if(u32(at)!==0x02014b50)invalid();

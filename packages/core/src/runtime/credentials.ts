@@ -16,6 +16,12 @@ export class CredentialStore {
     const next=previous.catch(()=>{}).then(async()=>{const data=await this.load();data[ref]=value;await writePrivateJson(this.file,data);});
     pending.set(this.file,next);try{await next;}finally{if(pending.get(this.file)===next)pending.delete(this.file);}
   }
-  async getSecret(ref:string):Promise<string>{await pending.get(this.file);const value=(await this.load())[ref];if(!value)throw new ReaderError('CREDENTIAL_REQUIRED','请配置模型 API Key');return value;}
-  async hasSecret(ref:string):Promise<boolean>{await pending.get(this.file);return Boolean((await this.load())[ref]);}
+  async getSecret(ref:string):Promise<string>{await pending.get(this.file)?.catch(()=>{});const value=(await this.load())[ref];if(!value)throw new ReaderError('CREDENTIAL_REQUIRED','请配置模型 API Key');return value;}
+  async hasSecret(ref:string):Promise<boolean>{await pending.get(this.file)?.catch(()=>{});return Boolean((await this.load())[ref]);}
+  async deleteSecret(ref:string):Promise<void>{
+    if(!/^[a-zA-Z0-9._-]{1,128}$/.test(ref))throw new ReaderError('INVALID_CREDENTIAL','凭据引用无效');
+    const previous=pending.get(this.file)??Promise.resolve();
+    const next=previous.catch(()=>{}).then(async()=>{const data=await this.load();if(Object.hasOwn(data,ref)){delete data[ref];await writePrivateJson(this.file,data);}});
+    pending.set(this.file,next);try{await next;}finally{if(pending.get(this.file)===next)pending.delete(this.file);}
+  }
 }

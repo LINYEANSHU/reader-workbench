@@ -41,7 +41,7 @@ export async function prepare(host,signal){signal.throwIfAborted();const documen
   catch(error){
    signal.throwIfAborted();
    if(batch.length<2||!['MODEL_OUTPUT_LIMIT','MODEL_TIMEOUT','DOCUMENT_MEMORY_INVALID','DOCUMENT_MEMORY_INCOMPLETE'].includes(error?.code))throw error;
-   await host.progress({completedPages:record.completedPages.length,pageCount:document.pageCount,label:'阅读结果未完整，缩小批次后重试'});
+   await host.progress({completedPages:selected.filter(page=>record.completedPages.includes(page)).length,pageCount:selected.length,label:'阅读结果未完整，缩小批次后重试'});
    const middle=Math.floor(batch.length/2);await flush(batch.slice(0,middle));await flush(batch.slice(middle));return;
   }
   for(const page of pages){const blocks=asText&&host.readPageBlocks?await host.readPageBlocks(page.page):[];page.entries=['formula','figure','term'].flatMap(kind=>page[kind==='formula'?'formulas':kind==='figure'?'figures':'terms'].map(text=>{const block=blocks.find(block=>block.anchor.location.kind==='block'&&block.text.includes(text));return{kind,text,source:block?{...block.anchor.location,start:block.text.indexOf(text),end:block.text.indexOf(text)+text.length}:{kind:'page',page:page.page}};}));}

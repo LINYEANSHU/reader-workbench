@@ -198,17 +198,18 @@ export class SqliteWorkspaceStore implements WorkspaceStore {
   indexDocument(ref:DocumentRef,blocks:DocumentBlock[]){
     if(ref.workspaceId!==this.workspaceId)throw new Error('Workspace mismatch');
     this.transaction(()=>{
+      this.database.prepare('DELETE FROM document_blocks WHERE document_id=? AND version=?').run(ref.documentId,ref.version);
       this.database.prepare('DELETE FROM document_index WHERE document_id=? AND version=?').run(ref.documentId,ref.version);
-      const insert=this.database.prepare('INSERT INTO document_index(document_id,version,block_id,text,anchor) VALUES(?,?,?,?,?)');
+      const insert=this.database.prepare('INSERT INTO document_blocks(document_id,version,block_id,text,anchor) VALUES(?,?,?,?,?)');
       for(const block of blocks)insert.run(ref.documentId,ref.version,block.id,block.text,JSON.stringify(block.anchor));
     });
   }
   searchDocument(ref:DocumentRef,query:string,limit:number):SearchHit[]{
     if(ref.workspaceId!==this.workspaceId)throw new Error('Workspace mismatch');
     if(query.length>1000||!query.trim())return [];
-    // FTS phrase matching cannot tokenize Chinese formula descriptions reliably.
-    // Rank only this document version's stored blocks, using complete numeric tokens.
-    const rows=this.database.prepare('SELECT text,anchor FROM document_index WHERE document_id=? AND version=?').all(ref.documentId,ref.version) as {text:string;anchor:string}[];
+    // Rank only this document version's stored blocks via the indexed primary key, falling back to legacy FTS rows.
+    let rows=this.database.prepare('SELECT text,anchor FROM document_blocks WHERE document_id=? AND version=?').all(ref.documentId,ref.version) as {text:string;anchor:string}[];
+    if(!rows.length)rows=this.database.prepare('SELECT text,anchor FROM document_index WHERE document_id=? AND version=?').all(ref.documentId,ref.version) as {text:string;anchor:string}[];
     return rows.map(row=>({text:row.text,anchor:JSON.parse(row.anchor),score:memorySearchScore(row.text,query)})).filter(hit=>hit.score>0).sort((a,b)=>b.score-a.score).slice(0,Math.max(1,Math.min(limit,100)));
   }
   transaction<T>(callback:()=>T):T{this.database.exec('BEGIN IMMEDIATE');try{const result=callback();this.database.exec('COMMIT');return result;}catch(error){this.database.exec('ROLLBACK');throw error;}}

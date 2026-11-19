@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import type { WorkspaceService } from '../workspaces/service.js';
 import type { DocumentService } from '../documents/service.js';
 import { DocumentMemoryStore } from '../documents/memory-store.js';
@@ -18,6 +18,7 @@ export class WorkspaceMemoryService {
         promise: Promise<void>;
     }>();
     private scheduled = new Map<WorkspaceId, number>();
+    private fileHashCache = new Map<string, { size: number; mtimeMs: number; hash: string }>();
     private closed = false;
     constructor(private workspaces: WorkspaceService, private documents: DocumentService, private engine: WorkspaceMemoryEngine) { this.settings = new LocalSettings(workspaces.configDir, 'workspace-memory-preferences', () => ({ enabled: true })); }
     private async saved(id: WorkspaceId) { return (await this.workspaces.storeFor(id)).getRecord<WorkspaceMemorySnapshot>('workspace-memory', 'snapshot'); }
@@ -147,7 +148,21 @@ export class WorkspaceMemoryService {
                             versions.set(source.relativePath, null);
                         else {
                             const path = await this.workspaces.resolvePath(id, source.relativePath, 'read');
-                            versions.set(source.relativePath, hash(await readFile(path, { signal })));
+                            const info = await stat(path);
+                            const cached = this.fileHashCache.get(path);
+                            if (cached && cached.size === info.size && cached.mtimeMs === info.mtimeMs) {
+                                versions.set(source.relativePath, cached.hash);
+                            }
+                            else {
+                                const digest = hash(await readFile(path, { signal }));
+                                if (this.fileHashCache.size >= 2000) {
+                                    const oldest = this.fileHashCache.keys().next().value;
+                                    if (oldest !== undefined)
+                                        this.fileHashCache.delete(oldest);
+                                }
+                                this.fileHashCache.set(path, { size: info.size, mtimeMs: info.mtimeMs, hash: digest });
+                                versions.set(source.relativePath, digest);
+                            }
                         }
                     }
                     catch {

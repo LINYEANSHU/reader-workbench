@@ -52,7 +52,7 @@ export class RunService{
    const scope=await this.dependencies.repository.setReadRevisions(initialScope,readRevisions);
    if(envelope.memory)await this.dependencies.repository.saveOwnSummary(scope,envelope.memory);
    const session=await this.dependencies.repository.authorizeScope(scope);
-   const definitions=this.dependencies.tools.list(scope.workspaceId).filter(tool=>session.kind==='main'||tool.effect==='read'||tool.effect==='write_artifact'&&scope.allowArtifactWrites);
+   const definitions=this.dependencies.tools.list(scope.workspaceId).filter(tool=>tool.effect==='read'||tool.effect==='write_artifact'&&scope.allowArtifactWrites||session.kind==='main'&&(tool.effect==='write_session'||tool.effect==='external_write'));
    const tools=model.value.capabilities.tools?definitions.map(tool=>({type:'function' as const,function:{name:tool.name,description:tool.description,parameters:tool.inputSchema}})):[];
    // Deltas are stored as batched events; the partial answer copy is only refreshed periodically and on finish.
    let partialSavedAt=0;const stream=new DeltaBatcher((kind,data)=>this.records.emit(record,kind,data));

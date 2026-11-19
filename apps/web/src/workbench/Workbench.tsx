@@ -23,7 +23,7 @@ export function Workbench({workspace,demo,onChooseWorkspace}:{workspace:Workspac
   const previous=stateRef.current,next=typeof patch==='function'?patch(previous):{...previous,...patch};
   if(JSON.stringify([previous.providers,previous.efforts,previous.captureBinding])!==JSON.stringify([next.providers,next.efforts,next.captureBinding]))void api.savePreferences({providers:next.providers,efforts:next.efforts,captureBinding:next.captureBinding}).catch(error=>{if(mounted.current)setError(errorText(error));});
   stateRef.current=next;if(mounted.current)setState(next);clearTimeout(saveTimer.current);
-  if(mounted.current)saveTimer.current=setTimeout(()=>{void api.saveUiState(workspace.id,client,stateRef.current).catch(error=>setError(errorText(error)));},250);else void api.saveUiState(workspace.id,client,next).catch(()=>{});
+  if(mounted.current)saveTimer.current=setTimeout(()=>{void api.saveUiState(workspace.id,client,stateRef.current).catch(error=>{if(mounted.current)setError(errorText(error));});},250);else void api.saveUiState(workspace.id,client,next).catch(()=>{});
  },[workspace.id,client]);
  const journalKey=submissionKey(client,workspace.id),submitting=useRef(new Map<string,Promise<{runId:RunId;request:AskRequest}>>());
  const forgetSubmission=useCallback((sessionId:SessionId,runId?:RunId)=>{const current=stateRef.current,entry=current.submissions[sessionId];if(runId&&entry?.runId&&entry.runId!==runId)return;const submissions={...current.submissions};delete submissions[sessionId];saveSubmissions(journalKey,submissions);update(previous=>{const activeRuns={...previous.activeRuns};if(!runId||activeRuns[sessionId]===runId)delete activeRuns[sessionId];return{...previous,activeRuns,submissions};});},[journalKey,update]);

@@ -85,7 +85,7 @@ export class DocumentService {
   return resources;
  }
  async import(workspaceId:WorkspaceId,name:string,bytes:Uint8Array,signal:AbortSignal):Promise<DocumentRecord>{
-  if(name!==basename(name)||/[\\/:]/.test(name)||!name||name==='.'||name==='..')throw new ReaderError('INVALID_FILENAME','文件名无效');
+  if(name!==basename(name)||/[\\/:*?"<>|\u0000-\u001f]/.test(name)||!name||name==='.'||name==='..'||/[. ]$/.test(name)||/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(name))throw new ReaderError('INVALID_FILENAME','文件名无效');
   signal.throwIfAborted();const workspace=await this.workspaces.get(workspaceId);
   const imports=join(workspace.root,'imports');const guarded=await this.workspaces.resolvePath(workspaceId,'imports','create');
   if(guarded!==imports)throw new ReaderError('PATH_OUTSIDE_WORKSPACE','导入目录路径异常');

@@ -10,10 +10,17 @@ import {isContextOverflow} from './context-window.js';
 class CredentialRedactor{
  private pending='';constructor(private secret:string){}
  append(text:string,final=false):string{
+  if(!this.secret)return text;
   this.pending=(this.pending+text).replaceAll(this.secret,'[已隐藏凭据]');let hold=0;
   if(!final)for(let count=1;count<Math.min(this.secret.length,this.pending.length+1);count++)if(this.pending.endsWith(this.secret.slice(0,count)))hold=count;
   const result=this.pending.slice(0,this.pending.length-hold);this.pending=this.pending.slice(this.pending.length-hold);return result;
  }
+}
+async function readBoundedText(response:Response,limit=64*1024):Promise<string>{
+ if(!response.body)return '';
+ const reader=response.body.getReader(),decoder=new TextDecoder();let text='',bytes=0;
+ try{while(bytes<limit){const part=await reader.read();if(part.done)break;const chunk=part.value.subarray(0,limit-bytes);bytes+=chunk.length;text+=decoder.decode(chunk,{stream:true});}text+=decoder.decode();return text;}
+ finally{await reader.cancel().catch(()=>{});reader.releaseLock();}
 }
 export function completionUrl(baseUrl:string):string{
  let url:URL;try{url=new URL(baseUrl);}catch{throw new ReaderError('MODEL_URL_INVALID','模型 API 地址无效');}
@@ -39,7 +46,7 @@ export class OpenAICompatibleProvider implements ModelProvider{
     yield event;
    }
   }finally{
-   if(startedAt&&this.onUsage)await this.onUsage({at:new Date().toISOString(),inputTokens:usage?.inputTokens??null,outputTokens:usage?.outputTokens??null,totalTokens:usage?usage.inputTokens+usage.outputTokens:null,cachedInputTokens:usage?.cachedInputTokens??null,uncachedInputTokens:usage?.uncachedInputTokens??null,...(request.contextUsage?{context:{...request.contextUsage,usedTokens:usage?usage.inputTokens:request.contextUsage.usedTokens,estimated:!usage}}:{}),status:completed?'completed':signal.aborted?'cancelled':'failed'},startedAt);
+   if(startedAt&&this.onUsage)try{await this.onUsage({at:new Date().toISOString(),inputTokens:usage?.inputTokens??null,outputTokens:usage?.outputTokens??null,totalTokens:usage?usage.inputTokens+usage.outputTokens:null,cachedInputTokens:usage?.cachedInputTokens??null,uncachedInputTokens:usage?.uncachedInputTokens??null,...(request.contextUsage?{context:{...request.contextUsage,usedTokens:usage?usage.inputTokens:request.contextUsage.usedTokens,estimated:!usage}}:{}),status:completed?'completed':signal.aborted?'cancelled':'failed'},startedAt);}catch{}
   }
  }
  private async *generateResponse(request:ModelRequest,signal:AbortSignal,onSubmitted:()=>void):AsyncIterable<ModelEvent>{
@@ -56,22 +63,29 @@ export class OpenAICompatibleProvider implements ModelProvider{
   if(request.tools.length&&request.toolChoice)body.tool_choice=request.toolChoice;
   if(effort!==undefined){body.reasoning_effort=effort;if(settings.reasoningFormat==='deepseek')body.thinking={type:effort==='none'?'disabled':'enabled'};}
   validateImageRequest(request.messages,this.imageLimits,body);
-  const networkSignal=AbortSignal.any([signal,AbortSignal.timeout(settings.requestTimeoutMs??180000)]);
+  const timeoutMs=settings.requestTimeoutMs??180000,idleController=new AbortController();
+  let idleTimer:ReturnType<typeof setTimeout>|undefined;
+  const resetIdle=()=>{clearTimeout(idleTimer);idleTimer=setTimeout(()=>idleController.abort(),timeoutMs);idleTimer.unref?.();};
+  const networkSignal=AbortSignal.any([signal,idleController.signal]);
+  resetIdle();
   let response:Response;
   onSubmitted();
   try{response=await fetch(this.endpoint,{method:'POST',headers:{authorization:'Bearer '+key,'content-type':'application/json',accept:'text/event-stream'},body:JSON.stringify(body),signal:networkSignal,redirect:'error'});}
-  catch(error){if(signal.aborted)throw signal.reason;if(networkSignal.aborted)throw new ReaderError('MODEL_TIMEOUT','模型请求超时，请降低思考深度或增加超时设置',504,true);throw new ReaderError('MODEL_CONNECTION_FAILED','无法连接模型 API，请检查地址与网络',502,true);}
+  catch(error){clearTimeout(idleTimer);if(signal.aborted)throw signal.reason;if(networkSignal.aborted)throw new ReaderError('MODEL_TIMEOUT','模型请求超时，请降低思考深度或增加超时设置',504,true);throw new ReaderError('MODEL_CONNECTION_FAILED','无法连接模型 API，请检查地址与网络',502,true);}
   if(!response.ok){
-   let code='',message='';try{const text=(await response.text()).slice(0,64*1024);try{const error=(JSON.parse(text) as {error?:{code?:unknown;message?:unknown}}).error;code=typeof error?.code==='string'?error.code:'';message=typeof error?.message==='string'?error.message:'';}catch{message=text;}}catch{}
+   clearTimeout(idleTimer);
+   let code='',message='';try{const text=await readBoundedText(response,64*1024);try{const error=(JSON.parse(text) as {error?:{code?:unknown;message?:unknown}}).error;code=typeof error?.code==='string'?error.code:'';message=typeof error?.message==='string'?error.message:'';}catch{message=text;}}catch{}
    if(response.status===401||response.status===403)throw new ReaderError('MODEL_AUTHENTICATION_FAILED','模型 API 凭据无效或无权限',401);
    if(response.status===429)throw new ReaderError('MODEL_RATE_LIMIT','模型 API 请求过于频繁或额度不足，请稍后重试',429,true);
    if(isContextOverflow(response.status,code,message))throw new ReaderError('CONTEXT_LIMIT','模型端拒绝了超出容量的上下文',400);
    throw new ReaderError('MODEL_API_ERROR','模型 API 拒绝请求（HTTP '+response.status+'）',502,response.status>=500);
   }
-  if(!response.body||!response.headers.get('content-type')?.includes('text/event-stream'))throw new ReaderError('MODEL_STREAM_INVALID','模型 API 未返回流式事件',502);
+  if(!response.body||!response.headers.get('content-type')?.toLowerCase().includes('text/event-stream')){clearTimeout(idleTimer);void response.body?.cancel().catch(()=>{});throw new ReaderError('MODEL_STREAM_INVALID','模型 API 未返回流式事件',502);}
   const calls=new Map<number,{id:string;name:string;arguments:string}>();let complete=false,finish:string|null=null;const textRedactor=new CredentialRedactor(key),reasoningRedactor=new CredentialRedactor(key);
   try{
+   resetIdle();
    for await(const event of parseSSE(response.body,networkSignal)){
+    resetIdle();
     if(event.data.trim()==='[DONE]'){complete=true;break;}
     let chunk:{error?:unknown;choices?:Array<{delta?:{content?:string;reasoning_content?:string;tool_calls?:Array<{index:number;id?:string;function?:{name?:string;arguments?:string}}>} ;finish_reason?:string|null}>;usage?:{prompt_tokens?:number;completion_tokens?:number;prompt_cache_hit_tokens?:number;prompt_cache_miss_tokens?:number;prompt_tokens_details?:{cached_tokens?:number}}};
     try{chunk=JSON.parse(event.data);}catch{throw new ReaderError('MODEL_STREAM_INVALID','模型事件不是有效 JSON',502);}
@@ -90,12 +104,12 @@ export class OpenAICompatibleProvider implements ModelProvider{
      yield{kind:'usage',inputTokens,outputTokens:chunk.usage.completion_tokens!,...(validCache?{cachedInputTokens:cached!,uncachedInputTokens:miss??inputTokens-cached!}:{})};
     }
    }
-  }catch(error){if(signal.aborted)throw signal.reason;if(networkSignal.aborted)throw new ReaderError('MODEL_TIMEOUT','模型流超时',504,true);if(error instanceof ReaderError)throw error;throw new ReaderError('MODEL_STREAM_INTERRUPTED','模型流连接中断，部分输出未加入记忆',502,true);}
+  }catch(error){if(signal.aborted)throw signal.reason;if(networkSignal.aborted)throw new ReaderError('MODEL_TIMEOUT','模型流超时',504,true);if(error instanceof ReaderError)throw error;throw new ReaderError('MODEL_STREAM_INTERRUPTED','模型流连接中断，部分输出未加入记忆',502,true);}finally{clearTimeout(idleTimer);}
   const finalText=textRedactor.append('',true),finalReasoning=reasoningRedactor.append('',true);if(finalText)yield{kind:'delta',text:finalText};if(finalReasoning)yield{kind:'reasoning',text:finalReasoning};
   if(finish==='length')throw new ReaderError('MODEL_OUTPUT_LIMIT','模型达到输出上限，回答未完整完成');
   if(finish==='content_filter')throw new ReaderError('MODEL_REPLY_BLOCKED','模型未完成本次回答');
   if(!complete&&!finish)throw new ReaderError('MODEL_STREAM_INTERRUPTED','模型流缺少完成信号',502,true);
-  for(const [,call] of [...calls].sort((a,b)=>a[0]-b[0])){let input:unknown;try{input=JSON.parse(call.arguments);}catch{throw new ReaderError('TOOL_INPUT_INVALID','模型工具参数 JSON 不完整，未执行');}if(!call.id||!call.name||!input||typeof input!=='object'||Array.isArray(input))throw new ReaderError('TOOL_INPUT_INVALID','模型工具参数无效');if(call.id.includes(key)||call.name.includes(key)||JSON.stringify(input).includes(key))throw new ReaderError('MODEL_SECRET_REFLECTED','模型返回中含服务端凭据，工具未执行',502);yield{kind:'tool-call',id:call.id,name:call.name,input};}
+  for(const [,call] of [...calls].sort((a,b)=>a[0]-b[0])){let input:unknown;try{input=JSON.parse(call.arguments);}catch{throw new ReaderError('TOOL_INPUT_INVALID','模型工具参数 JSON 不完整，未执行');}if(!call.id||!call.name||!input||typeof input!=='object'||Array.isArray(input))throw new ReaderError('TOOL_INPUT_INVALID','模型工具参数无效');if(key&&(call.id.includes(key)||call.name.includes(key)||JSON.stringify(input).includes(key)))throw new ReaderError('MODEL_SECRET_REFLECTED','模型返回中含服务端凭据，工具未执行',502);yield{kind:'tool-call',id:call.id,name:call.name,input};}
   yield{kind:'done'};
  }
 }
