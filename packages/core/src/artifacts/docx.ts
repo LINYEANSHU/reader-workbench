@@ -1,5 +1,5 @@
 import {Document,Packer,Paragraph,TextRun,Table,TableRow,TableCell,ImageRun} from 'docx';import {loadImage} from '@napi-rs/canvas';
-import type {ArtifactExporter} from '../../../sdk/src/capabilities.js';import {formulaImage} from './formula.js';
+import type {ArtifactExporter} from '../../../sdk/src/capabilities.js';import {formulaImage} from './formula.js';import {assertSafeImageDimensions} from '../documents/image.js';
 export const docxExporter:ArtifactExporter={formats:['docx'],export:async(input,_scope,signal)=>{
  const children:Array<Paragraph|Table>=[],warnings:string[]=[];
  for(const block of input.blocks){signal.throwIfAborted();
@@ -11,6 +11,7 @@ export const docxExporter:ArtifactExporter={formats:['docx'],export:async(input,
    children.push(new Paragraph({children:[new TextRun({text:'公式源表达式: '+block.text,size:18,color:'566475'})]}));continue;
   }
   if(block.kind==='image'){
+   assertSafeImageDimensions(block.data);
    const image=await loadImage(block.data),scale=Math.min(1,580/image.width,640/image.height);children.push(new Paragraph({children:[new ImageRun({type:block.mime==='image/jpeg'?'jpg':'png',data:block.data,transformation:{width:image.width*scale,height:image.height*scale},altText:{title:block.alt,description:block.alt,name:block.alt}})]}));continue;
   }
   children.push(new Paragraph({text:block.text,...(block.kind==='heading'?{heading:('Heading'+Math.max(1,Math.min(6,block.level))) as 'Heading1'}:{}),spacing:{after:160}}));

@@ -5,9 +5,12 @@ export function isWithin(root:string,target:string,flavor:typeof path=path):bool
   const relative=flavor.relative(flavor.resolve(root),flavor.resolve(target));
   return relative===''||(!relative.startsWith('..'+flavor.sep)&&relative!=='..'&&!flavor.isAbsolute(relative));
 }
+export function isDisallowedFilesystemPath(input:string):boolean{
+  return typeof input!=='string'||input.includes('\0')||/^(?:\\\\|\/\/)/.test(input);
+}
 export async function resolveScopedPath(root:string,input:string,mode:'read'|'create',protectedPaths:string[]=[]):Promise<string>{
   const deny=()=>new ReaderError('PATH_OUTSIDE_WORKSPACE','路径越过工作区或指向受保护的内部文件',403);
-  if(typeof input!=='string'||input.includes('\0')||path.isAbsolute(input)||path.win32.isAbsolute(input)||/^[a-z]:/i.test(input)||input.split(/[\\/]/).some(part=>part==='..'||part.toLowerCase()==='.reader-workbench'))throw deny();
+  if(typeof input!=='string'||input.includes('\0')||input.includes(':')||path.isAbsolute(input)||path.win32.isAbsolute(input)||input.split(/[\\/]/).some(part=>part==='..'||part.toLowerCase()==='.reader-workbench'))throw deny();
   const candidate=path.resolve(root,input);
   if(!isWithin(root,candidate)||protectedPaths.some(p=>isWithin(p,candidate)))throw deny();
   let existing=candidate;let suffix:string[]=[];

@@ -1,13 +1,13 @@
 import {readFile} from 'node:fs/promises';
 import {posix} from 'node:path';
-import {unzipSync,strFromU8} from 'fflate';
+import {strFromU8} from 'fflate';
 import {XMLParser} from 'fast-xml-parser';
+import {boundedUnzip} from './bounded-zip.js';
 export async function extractNotes(path:string):Promise<Array<{page:number;text:string;id:string}>>{
- let remaining=64*1024*1024;
- const zip=unzipSync(new Uint8Array(await readFile(path)),{filter:file=>{
-  const wanted=/^ppt\/(presentation\.xml|_rels\/presentation\.xml\.rels|slides\/_rels\/slide\d+\.xml\.rels|notesSlides\/notesSlide\d+\.xml)$/.test(file.name);
-  if(!wanted||file.originalSize>2*1024*1024||file.originalSize>remaining)return false;remaining-=file.originalSize;return true;
- }});
+ const zip=boundedUnzip(new Uint8Array(await readFile(path)),{
+  filter:name=>/^ppt\/(presentation\.xml|_rels\/presentation\.xml\.rels|slides\/_rels\/slide\d+\.xml\.rels|notesSlides\/notesSlide\d+\.xml)$/.test(name),
+  limits:{maxEntryBytes:2*1024*1024,maxTotalBytes:64*1024*1024}
+ });
  const parser=new XMLParser({ignoreAttributes:false,processEntities:false});
  const parse=(name:string)=>zip[name]?parser.parse(strFromU8(zip[name]!)):null;
  const array=<T>(value:T|T[]|undefined):T[]=>value===undefined?[]:Array.isArray(value)?value:[value];

@@ -14,10 +14,13 @@ import {docxTableBlocks} from './docx-tables.js';
 import {extractSlides,slidePages,type SlideContent} from './slides.js';
 import {isWithin} from '../workspaces/path-guard.js';
 let queue:Promise<unknown>=Promise.resolve();
+const OFFICE_ENV_KEYS=['PATH','Path','SystemRoot','WINDIR','TEMP','TMP','USERPROFILE','HOME','LOCALAPPDATA','APPDATA','SystemDrive','COMSPEC','ProgramFiles','ProgramFiles(x86)','CommonProgramFiles','NUMBER_OF_PROCESSORS','OS','PROCESSOR_ARCHITECTURE','LANG','LC_ALL'];
+export function officeEnvironment():NodeJS.ProcessEnv{const env:NodeJS.ProcessEnv={};for(const key of OFFICE_ENV_KEYS)if(process.env[key])env[key]=process.env[key];return env;}
 export async function convertOffice(input:VersionedFile,signal:AbortSignal):Promise<string>{
  const conversion=queue.catch(()=>{}).then(async()=>{
   signal.throwIfAborted();const executable=await findLibreOffice();if(!executable)throw new ReaderError('CONVERTER_UNAVAILABLE','未找到 LibreOffice，请安装或设置 READER_LIBREOFFICE');
-  const version=await runProcess(executable,['--version'],signal,10000);
+  const env=officeEnvironment();
+  const version=await runProcess(executable,['--version'],signal,10000,undefined,env);
   const signature=version.stdout.trim();const metadata=join(input.cacheDir,'conversion.json'),destination=join(input.cacheDir,'source.pdf');
   try{if(JSON.parse(await readFile(metadata,'utf8')).engine===signature){await access(destination);return destination;}}catch{}
   // LibreOffice creates long nested profile files; keep its private staging
@@ -26,7 +29,7 @@ export async function convertOffice(input:VersionedFile,signal:AbortSignal):Prom
   try{
     const staged=join(output,'source'+input.extension);await writeFile(staged,await readFile(input.path),{flag:'wx',mode:0o600});
     const profile=pathToFileURL(join(output,'profile')).href;
-    await runProcess(executable,['-env:UserInstallation='+profile,'--headless','--nologo','--nodefault','--nofirststartwizard','--convert-to','pdf','--outdir',output,staged],signal,120000);
+    await runProcess(executable,['-env:UserInstallation='+profile,'--headless','--nologo','--nodefault','--nofirststartwizard','--convert-to','pdf','--outdir',output,staged],signal,120000,undefined,env);
     const converted=join(output,'source.pdf');try{await access(converted);}catch{throw new ReaderError('CONVERTER_FAILED','LibreOffice 未生成预览，请检查转换器和本机字体');}
     await writeFile(destination,await readFile(converted));await writeFile(metadata,JSON.stringify({engine:signature,source:input.version}));
   }finally{if(resolve(output)===resolve(workRoot)||!isWithin(workRoot,output))throw new ReaderError('PATH_OUTSIDE_WORKSPACE','临时转换目录无效',403);await rm(output,{recursive:true,force:true});}

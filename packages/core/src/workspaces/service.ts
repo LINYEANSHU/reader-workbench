@@ -8,7 +8,7 @@ import {ReaderError} from '../../../contracts/src/errors.js';
 import {writePrivateJson} from '../runtime/secure-file.js';
 import {SqliteWorkspaceStore} from '../storage/workspace-store.js';
 import {databaseWorkspaceId} from '../storage/identity.js';
-import {isWithin,resolveScopedPath} from './path-guard.js';
+import {isWithin,resolveScopedPath,isDisallowedFilesystemPath} from './path-guard.js';
 import {browseDirectories,browseDirectoryBrowser,directoryParent,directoryRoot} from './directory-browser.js';
 import type {CapabilityRegistry} from '../plugins/registry.js';import {StorageConsumer} from '../plugins/storage-consumer.js';import {ExecutionTrustStore} from '../plugins/trust.js';import type {LifecycleEvent} from '../../../contracts/src/runs.js';
 interface SavedWorkspace extends Workspace {callerId:string}
@@ -34,6 +34,7 @@ export class WorkspaceService {
     if(this.closing)throw new ReaderError('SERVER_CLOSING','服务正在退出',503);
     const operation=this.selecting.catch(()=>{}).then(async()=>{
       await this.ready;let actual:string;
+      if(isDisallowedFilesystemPath(root))throw new ReaderError('PATH_OUTSIDE_WORKSPACE','工作区不支持网络共享或设备路径',403);
       try{actual=await realpath(resolve(root));if(!(await stat(actual)).isDirectory())throw new Error('not directory');}
       catch{throw new ReaderError('WORKSPACE_UNAVAILABLE','工作区目录不存在或不可访问',404);}
       if(isWithin(this.configRoot,actual))throw new ReaderError('PATH_OUTSIDE_WORKSPACE','全局配置目录不能作为阅读工作区',403);

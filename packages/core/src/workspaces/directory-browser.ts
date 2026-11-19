@@ -3,6 +3,7 @@ import {resolve,join,win32,posix} from 'node:path';
 import {homedir} from 'node:os';
 import type {DirectoryBrowser,DirectoryEntry} from '../../../contracts/src/workspaces.js';
 import {ReaderError} from '../../../contracts/src/errors.js';
+import {isDisallowedFilesystemPath} from './path-guard.js';
 
 const paths=(path:string)=>/^(?:[a-z]:[\\/]|\\\\)/i.test(path)?win32:posix;
 export function directoryRoot(path:string):string{return paths(path).parse(path).root;}
@@ -25,6 +26,7 @@ async function navigationRoots(current:string):Promise<DirectoryEntry[]>{
  return roots;
 }
 export async function browseDirectoryBrowser(input:string):Promise<DirectoryBrowser>{
+ if(input&&isDisallowedFilesystemPath(input))throw new ReaderError('PATH_OUTSIDE_WORKSPACE','不支持访问网络共享或设备路径',403);
  try{
   const path=await realpath(resolve(input||homedir()));
   const [entries,roots]=await Promise.all([entriesAt(path),navigationRoots(path)]);
@@ -32,6 +34,7 @@ export async function browseDirectoryBrowser(input:string):Promise<DirectoryBrow
  }catch{throw new ReaderError('DIRECTORY_UNAVAILABLE','目录不存在或不可访问',404);}
 }
 export async function browseDirectories(input:string):Promise<DirectoryEntry[]>{
+ if(input&&isDisallowedFilesystemPath(input))throw new ReaderError('PATH_OUTSIDE_WORKSPACE','不支持访问网络共享或设备路径',403);
  try{return await entriesAt(await realpath(resolve(input||homedir())));}
  catch{throw new ReaderError('DIRECTORY_UNAVAILABLE','目录不存在或不可访问',404);}
 }

@@ -15,6 +15,7 @@ export async function loadRuntimeConfig(args:string[]):Promise<RuntimeConfig> {
     if(key==='port'){if(!/^\d+$/.test(value)||Number(value)<1||Number(value)>65535)throw new ReaderError('INVALID_ARGUMENT','port 端口必须为 1–65535');config.port=Number(value);}
     else config[key]=key==='configDir'||key==='workspace'?resolve(value):value;
   }
-  if(!config.host.trim()||/[\s/\\]/.test(config.host))throw new ReaderError('INVALID_ARGUMENT','host 无效');
+  const normalizedHost=config.host.trim().toLowerCase().replace(/^\[|\]$/g,'');
+  if(!['127.0.0.1','localhost','::1'].includes(normalizedHost))throw new ReaderError('INVALID_ARGUMENT','host 仅允许本机回环地址（127.0.0.1、localhost 或 ::1）');
   return config;
 }

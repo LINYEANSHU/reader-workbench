@@ -1,4 +1,4 @@
-import {readFile,writeFile,mkdir,lstat} from 'node:fs/promises';
+import {readFile,writeFile,mkdir,lstat,stat} from 'node:fs/promises';
 import {join,extname} from 'node:path';
 import {createHash} from 'node:crypto';
 import type {WorkspaceService} from '../workspaces/service.js';
@@ -18,6 +18,7 @@ export async function safeCacheDirectory(workspaces:WorkspaceService,id:Workspac
 }
 export async function snapshot(workspaces:WorkspaceService,id:WorkspaceId,relativePath:string,signal:AbortSignal):Promise<VersionedFile>{
   const source=await workspaces.resolvePath(id,relativePath,'read');
+  const info=await stat(source);if(info.size>256*1024*1024)throw new ReaderError('DOCUMENT_TOO_LARGE','文档超过 256 MiB，请拆分后读取');
   const bytes=await readFile(source,{signal});if(bytes.length>256*1024*1024)throw new ReaderError('DOCUMENT_TOO_LARGE','文档超过 256 MiB，请拆分后读取');
   const version=createHash('sha256').update(bytes).digest('hex') as DocumentVersion;
   const documentId=createHash('sha256').update(relativePath.replaceAll('\\','/')).digest('hex').slice(0,24) as DocumentId;
